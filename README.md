@@ -5,7 +5,7 @@ Drop in any turn-based game by implementing a single interface; the framework ha
 
 Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/JavaScript** (client).
 
-**Bundled games:** Monopoly (2–8 players) · Connect Four (2 players)
+**Bundled games:** Monopoly (2–8 players) · Connect Four (2 players) · Risk (2–6 players)
 
 ---
 
@@ -17,6 +17,7 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 4. [How to Play](#how-to-play)
    - [Monopoly](#monopoly)
    - [Connect Four](#connect-four)
+   - [Risk](#risk)
 5. [Adding a New Game](#adding-a-new-game)
 6. [Architecture](#architecture)
 7. [Configuration](#configuration)
@@ -24,6 +25,9 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Monopoly Board](#monopoly-board--properties)
    - [Monopoly Cards](#monopoly-cards)
    - [Connect Four Settings](#connect-four-settings)
+   - [Risk Settings](#risk-settings)
+   - [Risk Board](#risk-board--territories)
+   - [Risk Cards](#risk-cards)
 8. [API Reference](#api-reference)
 9. [Socket.io Events](#socketio-events)
 10. [Security Notes](#security-notes)
@@ -52,6 +56,16 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 - Standard 7 × 6 board; drop pieces by clicking column buttons
 - Win detection: horizontal, vertical, and both diagonals
 - Draw detection when the board is full
+
+### Risk
+- Classic 42-territory world map across 6 continents; 2–6 players
+- Three-phase turns: reinforce → attack → fortify
+- Auto-distributed initial setup; armies and territories dealt evenly to all players
+- Dice combat: attacker rolls up to 3, defender auto-rolls up to 2; ties go to defender
+- Continent bonuses (NA 5, SA 2, EU 5, AF 3, AS 7, AU 2) applied at the start of every reinforce phase
+- 44-card deck (42 territory + 2 wild); valid sets (3 of a kind, 3 different, or any 2 + wild) traded for escalating bonus armies (4, 6, 8, 10, 12, 15, then +5 each)
+- Player elimination transfers all cards to the conqueror; last player standing wins by world domination
+- **First game with hidden information** — each player's hand is private, enforced server-side by the game's `getStateForPlayer` filter
 
 ---
 
@@ -210,6 +224,36 @@ Click a **▼** button above any column to drop your piece.
 The game alternates turns automatically.  
 **Win** by connecting 4 of your pieces in a row — horizontally, vertically, or diagonally.  
 **Draw** when the board fills with no winner.
+
+---
+
+### Risk
+
+Your turn has three phases. The sidebar's **End … phase** button advances to the next one.
+
+#### 1. Reinforce
+
+You start the phase with `max(3, ⌊territoriesOwned / 3⌋) + continent bonuses` armies to place.  
+**Click any of your territories** to drop one army there. Repeat until your reserve hits zero, then **End reinforce phase**.
+
+If your hand contains a valid 3-card set (3 of a kind, 1 of each, or 2+wild), the **Trade cards** button appears. Trading immediately adds the bonus armies to your reserve.
+
+#### 2. Attack (optional)
+
+**Click one of your territories** (with ≥ 2 armies) to select it as the attacker.  
+**Click an adjacent enemy territory** to launch one round of combat. Dice are rolled server-side, ties go to the defender, and a conquered territory automatically receives your dice count in armies.  
+Attack as many times as you want; click the source again to deselect. Click **End attack phase** when done.
+
+If you conquer at least one territory this turn, you draw one card at end of turn.
+
+#### 3. Fortify (one move per turn)
+
+**Click your source territory**, then **a destination territory** reachable through your own land. A prompt asks how many armies to move (leaving at least 1 behind).  
+Click **End turn** to pass.
+
+#### Winning
+
+Conquer every territory on the board.
 
 ---
 
@@ -616,6 +660,80 @@ The deck reshuffles automatically when exhausted.
 
 ---
 
+### Risk Settings
+
+`server/games/risk/config/settings.json`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `initialArmiesByPlayerCount` | `{2:40,3:35,4:30,5:25,6:20}` | Starting armies per player as a function of player count |
+| `reinforcementMinimum` | 3 | Minimum armies per reinforce phase |
+| `reinforcementDivisor` | 3 | Base reinforcements = `floor(territoriesOwned / divisor)` |
+| `cardTradeBonuses` | `[4, 6, 8, 10, 12, 15]` | Bonus armies for the 1st, 2nd, … sets traded |
+| `cardTradeIncrement` | 5 | Added to the last bonus for each set beyond the array |
+| `attackerMaxDice` | 3 | Max dice per attack |
+| `defenderMaxDice` | 2 | Max dice per defence |
+| `defenderDicePolicy` | `"auto-max"` | Defender always rolls as many dice as possible (no interactive choice) |
+| `minArmiesToAttack` | 2 | Source territory must have at least this many armies to attack |
+| `maxAttacksPerTurn` | `null` | No limit |
+| `fortifyOncePerTurn` | true | Single fortify move per turn (classic rule) |
+| `winCondition` | `"world-domination"` | Only victory mode supported |
+| `minPlayers` | 2 | |
+| `maxPlayers` | 6 | |
+| `playerColors` | 6 entries | Array of `{ id, hex }` |
+| `playerTokens` | 🔴 🔵 🟢 🟡 🟣 ⚫ | Emoji tokens shown in the player panel |
+
+---
+
+### Risk Board / Territories
+
+`server/games/risk/config/board.json`
+
+The board is an object with two keys: `continents` and `territories`. Continents declare a name, an army bonus, and the list of member territory ids:
+
+```json
+{
+  "continents": {
+    "north-america": { "name": "North America", "bonus": 5, "territories": [...9 ids] },
+    "australia":     { "name": "Australia",     "bonus": 2, "territories": [...4 ids] }
+  },
+  "territories": [
+    {
+      "id":        "alaska",
+      "name":      "Alaska",
+      "continent": "north-america",
+      "adjacent":  ["northwest-territory", "alberta", "kamchatka"]
+    }
+  ]
+}
+```
+
+Adjacencies are validated at load time as **symmetric** — if A lists B as a neighbour, B must list A. Each continent's `territories` array must exactly match the set of territories whose `continent` field points to it.
+
+### Risk Cards
+
+`server/games/risk/config/cards.json`
+
+44 cards total: 42 territory cards plus 2 wilds. A territory card has a `troopType` of `infantry`, `cavalry`, or `artillery` and a `territoryId` matching a board territory. Wild cards have `troopType: "wild"` and `territoryId: null`.
+
+```json
+{
+  "cards": [
+    { "id": "card-alaska",  "territoryId": "alaska",  "troopType": "infantry" },
+    { "id": "card-wild-1",  "territoryId": null,      "troopType": "wild" }
+  ]
+}
+```
+
+A valid trade-in is exactly 3 cards forming one of:
+- Three of the same troop type
+- One of each of the three troop types
+- Any 2 cards plus a wild
+
+Trading a card whose `territoryId` you currently own grants +2 extra armies on that territory.
+
+---
+
 ## API Reference
 
 All endpoints live under `/api`. Authenticated endpoints (`✓`) require:
@@ -698,6 +816,19 @@ Authorization: Bearer <jwt-token>
 |----------|--------------|--------|
 | `dropPiece` | `{ column }` | Drop a piece into the given column (0-indexed) |
 
+**Risk**
+
+| `action` | Extra payload | Valid in phase | Effect |
+|----------|--------------|----------------|--------|
+| `placeReinforcement` | `{ territoryId, count }` | reinforce | Add armies to one of your territories |
+| `tradeCards` | `{ cardIds: [id, id, id] }` | reinforce | Trade a 3-card set for escalating bonus armies |
+| `endReinforcePhase` | — | reinforce | Advance to attack (only when no armies remain) |
+| `attackTerritory` | `{ from, to, attackerDice }` | attack | One round of combat; defender auto-rolls max dice |
+| `endAttackPhase` | — | attack | Advance to fortify |
+| `fortify` | `{ from, to, count }` | fortify | Move armies through a connected friendly chain (once per turn) |
+| `endTurn` | — | fortify | End turn and draw a card if you conquered at least one territory |
+| `declareBankruptcy` | — | any | Eliminate yourself; all your territories become neutral and your cards are discarded |
+
 ### Server → Client
 
 | Event | Payload | Description |
@@ -735,6 +866,16 @@ Each event has `{ type, data, timestamp }`. Clients use these for sounds, animat
 | `PLAYER_JAILED` | `username` |
 | `TURN_SKIPPED` | `username` |
 | `PIECE_DROPPED` | `username`, `column`, `row` |
+| `REINFORCEMENT_PLACED` *(Risk)* | `username`, `territoryId`, `count` |
+| `CARDS_TRADED` *(Risk)* | `username`, `cardIds`, `bonusArmies`, `setNumber`, `territoryBonus`, `bonusTerritoryId` |
+| `ATTACK_DECLARED` *(Risk)* | `from`, `to`, `attacker`, `defender`, `attackerDice`, `defenderDice` |
+| `DICE_ROLLED` *(Risk variant)* | `from`, `to`, `attackerRolls[]`, `defenderRolls[]`, `attackerLosses`, `defenderLosses` |
+| `TERRITORY_CONQUERED` *(Risk)* | `username`, `from`, `to`, `armiesMovedIn` |
+| `ARMIES_FORTIFIED` *(Risk)* | `username`, `from`, `to`, `count` |
+| `CONTINENT_HELD` *(Risk)* | `username`, `continent`, `bonus` |
+| `CARD_DRAWN` *(Risk variant)* | `username` *(actual card is private — sent only inside the owning player's filtered state)* |
+| `PHASE_CHANGED` *(Risk)* | `phase` (`reinforce` / `attack` / `fortify`), `username` |
+| `PLAYER_ELIMINATED` *(Risk)* | `username`, `eliminatedBy` |
 | `GAME_OVER` | `winner` (username or `null` for draw) |
 
 ---
@@ -768,18 +909,47 @@ Each event has `{ type, data, timestamp }`. Clients use these for sounds, animat
 
 - **Server-side validation** — every action is validated on the server before being applied. Clients cannot manipulate state directly or forge another player's moves.
 
+- **Offline by design** — once installed and configured, the server and client need **zero internet connectivity** to run. This is a deliberate property of the architecture, not an accident:
+
+  - **No external CDN assets.** All scripts, styles, fonts, and images are served from the local `client/` directory. There are no `<script src="https://…">`, no `@import url(https://…)`, no Google Fonts — the UI uses the system font stack (`Segoe UI`, `system-ui`, `sans-serif`, `monospace`).
+  - **No third-party runtime fetches.** The client only ever hits relative URLs (`/api/*`, `/img/*`, `/socket.io/socket.io.js`). Socket.io connects to the same origin it loaded from.
+  - **No telemetry or analytics.** Server dependencies are limited to seven self-contained packages (`bcrypt`, `better-sqlite3`, `cors`, `express`, `jsonwebtoken`, `socket.io`, `uuid`) — none of them phone home.
+  - **No server-side outbound HTTP.** The server's only use of the `http` module is `http.createServer(app)` for the listener. There are no `fetch()`, `axios`, or `node-fetch` calls anywhere in `src/` or `games/`.
+  - **No runtime npm install.** Both the local `npm start` path and the bundled Docker image install dependencies once at setup time. After that, an air-gapped LAN deployment runs indefinitely.
+
+  This makes the project safe for trusted internal LANs with no internet uplink — a school LAN party, a board-gamers' Wi-Fi, a flight, a basement bunker.
+
 ---
 
 ## Development
 
 ### Environment variables
 
+All of these can live in `.env` at the repo root.  The `npm run dev` and `npm start` scripts at the root source `.env` automatically; `docker compose` reads it through `env_file`.
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `3000` | TCP port |
-| `HOST` | `0.0.0.0` | Bind address |
-| `JWT_SECRET` | *(insecure default)* | JWT signing secret |
+| `PORT` | `3000` | TCP port the server listens on (Docker host port maps to the same value) |
+| `HOST` | `0.0.0.0` | Bind address; set to `127.0.0.1` to refuse LAN connections |
+| `JWT_SECRET` | *(server refuses to start without one)* | JWT signing secret |
 | `JWT_EXPIRES` | `7d` | JWT token lifetime |
+| `NODE_ENV` | *(unset)* | Set to `development` to suppress the "bound to all interfaces" startup warning |
+
+### Changing the port
+
+Add a line to `.env`:
+
+```bash
+PORT=5050
+```
+
+Then restart with `npm run dev` (or `docker compose up`).  Everything follows automatically:
+
+- The server binds to the new port and prints the right URLs at startup
+- The client uses relative URLs, so opening `http://<host>:5050` Just Works — Socket.io and `/api/*` traffic inherit the same origin
+- Docker maps the host port to the same value, so `http://localhost:5050` works in either dev or containerised mode
+
+No code changes, no rebuild.
 
 ### Scripts
 

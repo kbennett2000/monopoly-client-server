@@ -19,6 +19,11 @@
  *   SoundManager.playMonopoly()    — monopoly achieved fanfare
  *   SoundManager.playBankrupt()    — player goes bankrupt
  *   SoundManager.playGameOver()    — game-over fanfare
+ *   SoundManager.playBattle()      — Risk: one round of combat (steel clash)
+ *   SoundManager.playConquest()    — Risk: territory conquered (brass stab + drum)
+ *   SoundManager.playFortify()     — Risk: armies marched between territories
+ *   SoundManager.playEliminate()   — Risk: a player has been eliminated (dirge)
+ *   SoundManager.playCardTrade()   — Risk: Risk-card set traded for armies
  *   SoundManager.toggle()          — mute / unmute; returns new enabled state
  *   SoundManager.isEnabled()
  */
@@ -275,6 +280,93 @@ const SoundManager = (() => {
     });
   }
 
+  // ── Risk-specific sounds ──────────────────────────────────────────────────
+
+  /**
+   * Battle clash: percussive noise burst with a steel-on-steel ring.
+   * Used for: each round of combat (sweet on top of playDice).
+   */
+  function playBattle() {
+    play(a => {
+      const t = a.currentTime;
+      // Initial impact
+      tone(a, 180, t, 0.08, 'square',   0.28);
+      noise(a, t, 0.12, 1500, 0.18);
+      // Metallic ring decay
+      tone(a, 1760, t + 0.02, 0.35, 'triangle', 0.12, 880);
+      tone(a, 2349, t + 0.04, 0.28, 'sine',     0.08);
+    });
+  }
+
+  /**
+   * Territory conquered: short rising brass stab + drum hit.
+   * Used for: TERRITORY_CONQUERED event.
+   */
+  function playConquest() {
+    play(a => {
+      const t = a.currentTime;
+      // Drum thump
+      tone(a, 70, t, 0.18, 'triangle', 0.4, 40);
+      noise(a, t, 0.05, 200, 0.18);
+      // Triumphant rising brass (G–C–E ascending fifth)
+      tone(a, 392, t + 0.05, 0.18, 'sawtooth', 0.22);
+      tone(a, 523, t + 0.18, 0.18, 'sawtooth', 0.24);
+      tone(a, 659, t + 0.31, 0.32, 'sawtooth', 0.26);
+      // Bright top harmonic
+      tone(a, 1319, t + 0.31, 0.32, 'sine', 0.08);
+    });
+  }
+
+  /**
+   * Fortify: marching footsteps + soft bugle tone.
+   * Used for: ARMIES_FORTIFIED event.
+   */
+  function playFortify() {
+    play(a => {
+      const t = a.currentTime;
+      // Three footstep thuds
+      [0, 0.12, 0.24].forEach(off => {
+        tone(a, 120, t + off, 0.06, 'triangle', 0.22);
+        noise(a, t + off, 0.04, 400, 0.08);
+      });
+      // Soft horn note at the end
+      tone(a, 523, t + 0.32, 0.3, 'sine', 0.18);
+      tone(a, 659, t + 0.32, 0.3, 'sine', 0.12);
+    });
+  }
+
+  /**
+   * Player eliminated: descending minor dirge with low drone.
+   * Used for: PLAYER_ELIMINATED event.
+   */
+  function playEliminate() {
+    play(a => {
+      const t = a.currentTime;
+      // Sombre descending tones (A–F–C#–A)
+      [440, 349, 277, 220].forEach((f, i) =>
+        tone(a, f, t + i * 0.18, 0.36, 'sawtooth', 0.2)
+      );
+      // Held low drone
+      tone(a, 55, t + 0.1, 1.4, 'triangle', 0.22);
+      tone(a, 110, t + 0.1, 1.4, 'sine',    0.12);
+    });
+  }
+
+  /**
+   * Card trade-in: paper-shuffle plus rising chime trio.
+   * Used for: CARDS_TRADED event.
+   */
+  function playCardTrade() {
+    play(a => {
+      const t = a.currentTime;
+      noise(a, t,        0.08, 4500, 0.1);
+      noise(a, t + 0.05, 0.06, 3000, 0.08);
+      [659, 784, 988].forEach((f, i) =>
+        tone(a, f, t + 0.1 + i * 0.06, 0.18, 'sine', 0.22)
+      );
+    });
+  }
+
   // ── controls ───────────────────────────────────────────────────────────────
 
   function toggle() {
@@ -301,6 +393,12 @@ const SoundManager = (() => {
     playMonopoly,
     playBankrupt,
     playGameOver,
+    // Risk
+    playBattle,
+    playConquest,
+    playFortify,
+    playEliminate,
+    playCardTrade,
     toggle,
     isEnabled,
   };

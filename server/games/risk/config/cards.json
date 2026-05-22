@@ -1,0 +1,54 @@
+{
+  "cards": [
+    { "id": "card-alaska",                "territoryId": "alaska",                "troopType": "infantry"  },
+    { "id": "card-northwest-territory",   "territoryId": "northwest-territory",   "troopType": "cavalry"   },
+    { "id": "card-greenland",             "territoryId": "greenland",             "troopType": "artillery" },
+    { "id": "card-alberta",               "territoryId": "alberta",               "troopType": "infantry"  },
+    { "id": "card-ontario",               "territoryId": "ontario",               "troopType": "cavalry"   },
+    { "id": "card-quebec",                "territoryId": "quebec",                "troopType": "artillery" },
+    { "id": "card-western-united-states", "territoryId": "western-united-states", "troopType": "infantry"  },
+    { "id": "card-eastern-united-states", "territoryId": "eastern-united-states", "troopType": "cavalry"   },
+    { "id": "card-central-america",       "territoryId": "central-america",       "troopType": "artillery" },
+
+    { "id": "card-venezuela",             "territoryId": "venezuela",             "troopType": "infantry"  },
+    { "id": "card-brazil",                "territoryId": "brazil",                "troopType": "cavalry"   },
+    { "id": "card-peru",                  "territoryId": "peru",                  "troopType": "artillery" },
+    { "id": "card-argentina",             "territoryId": "argentina",             "troopType": "infantry"  },
+
+    { "id": "card-iceland",               "territoryId": "iceland",               "troopType": "cavalry"   },
+    { "id": "card-scandinavia",           "territoryId": "scandinavia",           "troopType": "artillery" },
+    { "id": "card-ukraine",               "territoryId": "ukraine",               "troopType": "infantry"  },
+    { "id": "card-great-britain",         "territoryId": "great-britain",         "troopType": "cavalry"   },
+    { "id": "card-northern-europe",       "territoryId": "northern-europe",       "troopType": "artillery" },
+    { "id": "card-western-europe",        "territoryId": "western-europe",        "troopType": "infantry"  },
+    { "id": "card-southern-europe",       "territoryId": "southern-europe",       "troopType": "cavalry"   },
+
+    { "id": "card-north-africa",          "territoryId": "north-africa",          "troopType": "artillery" },
+    { "id": "card-egypt",                 "territoryId": "egypt",                 "troopType": "infantry"  },
+    { "id": "card-east-africa",           "territoryId": "east-africa",           "troopType": "cavalry"   },
+    { "id": "card-congo",                 "territoryId": "congo",                 "troopType": "artillery" },
+    { "id": "card-south-africa",          "territoryId": "south-africa",          "troopType": "infantry"  },
+    { "id": "card-madagascar",            "territoryId": "madagascar",            "troopType": "cavalry"   },
+
+    { "id": "card-ural",                  "territoryId": "ural",                  "troopType": "artillery" },
+    { "id": "card-siberia",               "territoryId": "siberia",               "troopType": "infantry"  },
+    { "id": "card-yakutsk",               "territoryId": "yakutsk",               "troopType": "cavalry"   },
+    { "id": "card-kamchatka",             "territoryId": "kamchatka",             "troopType": "artillery" },
+    { "id": "card-irkutsk",               "territoryId": "irkutsk",               "troopType": "infantry"  },
+    { "id": "card-mongolia",              "territoryId": "mongolia",              "troopType": "cavalry"   },
+    { "id": "card-japan",                 "territoryId": "japan",                 "troopType": "artillery" },
+    { "id": "card-afghanistan",           "territoryId": "afghanistan",           "troopType": "infantry"  },
+    { "id": "card-china",                 "territoryId": "china",                 "troopType": "cavalry"   },
+    { "id": "card-middle-east",           "territoryId": "middle-east",           "troopType": "artillery" },
+    { "id": "card-india",                 "territoryId": "india",                 "troopType": "infantry"  },
+    { "id": "card-siam",                  "territoryId": "siam",                  "troopType": "cavalry"   },
+
+    { "id": "card-indonesia",             "territoryId": "indonesia",             "troopType": "artillery" },
+    { "id": "card-new-guinea",            "territoryId": "new-guinea",            "troopType": "infantry"  },
+    { "id": "card-western-australia",     "territoryId": "western-australia",     "troopType": "cavalry"   },
+    { "id": "card-eastern-australia",     "territoryId": "eastern-australia",     "troopType": "artillery" },
+
+    { "id": "card-wild-1",                "territoryId": null,                    "troopType": "wild"      },
+    { "id": "card-wild-2",                "territoryId": null,                    "troopType": "wild"      }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "initialArmiesByPlayerCount": {
+    "2": 40,
+    "3": 35,
+    "4": 30,
+    "5": 25,
+    "6": 20
+  },
+  "reinforcementMinimum":  3,
+  "reinforcementDivisor":  3,
+  "cardTradeBonuses":      [4, 6, 8, 10, 12, 15],
+  "cardTradeIncrement":    5,
+  "attackerMaxDice":       3,
+  "defenderMaxDice":       2,
+  "defenderDicePolicy":    "auto-max",
+  "minArmiesToAttack":     2,
+  "maxAttacksPerTurn":     null,
+  "fortifyOncePerTurn":    true,
+  "winCondition":          "world-domination",
+  "minPlayers":            2,
+  "maxPlayers":            6,
+  "playerColors": [
+    { "id": "red",     "hex": "#c8312c" },
+    { "id": "blue",    "hex": "#2c5fc8" },
+    { "id": "green",   "hex": "#2c9c3c" },
+    { "id": "yellow",  "hex": "#e8c428" },
+    { "id": "purple",  "hex": "#7c2cc8" },
+    { "id": "black",   "hex": "#2c2c2c" }
+  ],
+  "playerTokens": ["🔴", "🔵", "🟢", "🟡", "🟣", "⚫"]
+}

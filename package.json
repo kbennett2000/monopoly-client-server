@@ -1,0 +1,19 @@
+{
+  "name": "lan-games",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root proxy — all real package config lives in server/package.json. Scripts here just cd into server/ so you can run from the repo root.",
+  "scripts": {
+    "start":             "set -a && . ./.env && set +a && npm --prefix server start",
+    "dev":               "set -a && . ./.env && set +a && npm --prefix server run dev",
+    "test":              "npm --prefix server test",
+    "test:integration":  "npm --prefix server run test:integration",
+    "lint":              "npm --prefix server run lint",
+    "lint:fix":          "npm --prefix server run lint:fix",
+    "format:check":      "npm --prefix server run format:check",
+    "format:write":      "npm --prefix server run format:write",
+    "reset-db":          "npm --prefix server run reset-db",
+    "reset-db:hard":     "npm --prefix server run reset-db:hard",
+    "install:server":    "npm --prefix server install"
+  }
+}

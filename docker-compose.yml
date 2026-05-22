@@ -1,14 +1,18 @@
 services:
   server:
     build: .
+    # Port mapping reads PORT from .env (defaults to 3000).  Both sides of the
+    # mapping use the same value so the host port matches what the server
+    # listens on inside the container — keeps URLs consistent regardless of
+    # which PORT is chosen.
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:${PORT:-3000}"
     volumes:
       # SQLite database — persists between restarts and survives image rebuilds.
       - db-data:/app/server/data
-    # Reads JWT_SECRET (required) and any optional overrides from .env at the
-    # repo root.  See the Security Notes section of README.md for how to
-    # generate a JWT_SECRET.
+    # Reads JWT_SECRET (required) and any optional overrides (PORT, HOST,
+    # JWT_EXPIRES, NODE_ENV) from .env at the repo root.  See the Security
+    # Notes section of README.md for how to generate a JWT_SECRET.
     env_file:
       - .env
     restart: unless-stopped
