@@ -19,7 +19,8 @@
       "Bash(grep -v 'http.createServer\\\\|require..http..\\\\s*$')",
       "Bash(python3 -c \"import sys, json; d=json.load\\(sys.stdin\\); print\\('Deps:    ', ', '.join\\(sorted\\(d.get\\('dependencies', {}\\).keys\\(\\)\\)\\)\\); print\\('DevDeps: ', ', '.join\\(sorted\\(d.get\\('devDependencies', {}\\).keys\\(\\)\\)\\)\\)\")",
       "Bash(awk '{print $1}')",
-      "Bash(xargs -r kill)"
+      "Bash(xargs -r kill)",
+      "Bash(node /tmp/test-risk-renderer.js)"
     ]
   }
 }

@@ -11,6 +11,11 @@
  * Implements: init / update / onEvent / destroy
  */
 
+// Diagnostic: log on file load so we can confirm the LATEST renderer is running
+// rather than a stale browser-cached version.  Look for "[risk-renderer] v3"
+// in the browser console.
+console.log('[risk-renderer] v3 loaded at', new Date().toISOString());
+
 const RiskRenderer = (() => {
 
   // ── module-private state ───────────────────────────────────────────────────
@@ -55,11 +60,14 @@ const RiskRenderer = (() => {
     loading.textContent = 'Loading map…';
     _wrapper.appendChild(loading);
 
+    console.log('[risk-renderer] init() called, status=', state?.status, 'myUserId=', myUserId, 'gameType=', state?.gameType);
+
     // Fetch and inject the SVG inline (so per-path click handlers work)
     fetch(SVG_URL)
-      .then(r => r.text())
+      .then(r => { console.log('[risk-renderer] SVG fetch status:', r.status); return r.text(); })
       .then(svgText => {
-        if (_wrapper === null) return; // destroy() ran while loading
+        if (_wrapper === null) { console.warn('[risk-renderer] wrapper gone, aborting'); return; }
+        console.log('[risk-renderer] SVG bytes:', svgText.length);
         _wrapper.innerHTML = '';
         const mapHost = document.createElement('div');
         mapHost.className = 'risk-map-host';
@@ -93,6 +101,8 @@ const RiskRenderer = (() => {
           }
           svgEl.querySelectorAll('use').forEach(u => u.remove());
           svgEl.querySelectorAll('text').forEach(t => t.remove());
+          console.log('[risk-renderer] after cleanup — paths:', svgEl.querySelectorAll('path[id]').length,
+                      'g#map in defs:', !!svgEl.querySelector('defs > g#map'));
         }
         _wrapper.appendChild(mapHost);
         wireTerritoryHandlers(state);
@@ -253,9 +263,12 @@ const RiskRenderer = (() => {
     if (_svgLoaded) {
       const svg = _wrapper.querySelector('svg');
       if (svg) {
+        let painted = 0;
+        let foundPaths = 0;
         for (const t of state.config.board.territories) {
           const ts    = state.territories[t.id];
           const el    = svg.querySelector(`#${cssEscape(t.id)}`);
+          if (el) foundPaths++;
           const owner = state.players.find(p => p.userId === ts?.ownerId);
           if (el) {
             const fill = owner?.colorHex || '#777';
@@ -268,10 +281,17 @@ const RiskRenderer = (() => {
             // Highlight your own territories with a bold stroke so you can
             // identify them at a glance during the reinforce/attack phases.
             el.classList.toggle('risk-mine', owner?.userId === _myUserId);
+            painted++;
           }
         }
+        console.log('[risk-renderer] update() painted',  painted, '/', foundPaths, 'paths found out of',
+                    state.config.board.territories.length, 'territories in state');
         paintArmyMarkers(svg, state);
+      } else {
+        console.warn('[risk-renderer] update() — _svgLoaded true but no <svg> in wrapper');
       }
+    } else {
+      console.log('[risk-renderer] update() — SVG not loaded yet, skipping map paint');
     }
 
     // Maintain selection highlight
