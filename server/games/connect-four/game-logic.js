@@ -45,11 +45,14 @@ function getConfigCopy() {
 
 function getGameMetadata() {
   return {
-    name:        'Connect Four',
-    description: 'Drop pieces to connect four in a row.',
-    minPlayers:  2,
-    maxPlayers:  2,
-    icon:        '🔴',
+    name:                     'Connect Four',
+    description:              'Drop pieces to connect four in a row.',
+    minPlayers:               2,
+    maxPlayers:               2,
+    icon:                     '🔴',
+    estimatedDurationMinutes: 5,
+    complexity:               'light',
+    tags:                     ['spatial', 'no-luck', 'family', 'classic', 'two-player'],
   };
 }
 
@@ -283,6 +286,7 @@ module.exports = {
   getGameMetadata,
   loadConfig,
   getConfigCopy,
+  // See note in game-logic-interface.js about waiting-room safety.
   getStateForPlayer: defaultGetStateForPlayer,
   migrate,
 };

@@ -1644,11 +1644,14 @@ function _addPropertyManagementActions(state, userId, actions) {
 /** Static metadata about this game type. */
 function getGameMetadata() {
   return {
-    name:        'Monopoly',
-    minPlayers:  2,
-    maxPlayers:  8,
-    description: 'Classic property trading board game for 2–8 players.',
-    icon:        '🎲',
+    name:                     'Monopoly',
+    minPlayers:               2,
+    maxPlayers:               8,
+    description:              'Classic property trading board game for 2–8 players.',
+    icon:                     '🎲',
+    estimatedDurationMinutes: 90,
+    complexity:               'medium',
+    tags:                     ['dice', 'economic', 'trading', 'classic', 'family'],
   };
 }
 
@@ -1699,6 +1702,7 @@ module.exports = {
   getGameMetadata,
   loadConfig,
   getConfigCopy,
+  // See note in game-logic-interface.js about waiting-room safety.
   getStateForPlayer: defaultGetStateForPlayer,
   migrate,
 

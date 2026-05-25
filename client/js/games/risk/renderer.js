@@ -317,12 +317,21 @@ const RiskRenderer = (() => {
 
     // It IS my turn
     const me = state.players.find(p => p.userId === _myUserId);
-    // Prefer the server-supplied validActions list; fall back to local rule
-    // re-derivation if the server didn't send one.
-    // TODO: remove fallback once validActions is fully trusted (one release).
-    const allowed = (action, fallback) => (
-      Array.isArray(state.validActions) ? state.validActions.includes(action) : fallback
-    );
+    // Server-supplied validActions is the source of truth.  We still evaluate
+    // the old hand-rolled fallback so we can detect drift between server
+    // rules and the client's local re-derivation.  If a few playthroughs
+    // produce no `[validActions drift]` warnings, the fallback can be
+    // deleted in a follow-up commit.  If warnings fire, fix the SERVER
+    // (game-logic.getValidActions) — the renderer must not be the authority.
+    const va = Array.isArray(state.validActions) ? state.validActions : null;
+    const allowed = (action, fallback) => {
+      if (!va) return fallback;
+      const serverSays = va.includes(action);
+      if (serverSays !== Boolean(fallback)) {
+        console.warn(`[validActions drift] action="${action}" server=${serverSays} fallback=${Boolean(fallback)}`);
+      }
+      return serverSays;
+    };
 
     if (phase === 'reinforce') {
       const remaining = state.turnState.armiesToPlace;

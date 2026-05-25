@@ -80,6 +80,14 @@
  * @property {number}  maxPlayers  - Maximum players allowed.
  * @property {string}  description - One-sentence description shown in the lobby.
  * @property {string}  [icon]      - Emoji or short string used as a visual badge.
+ * @property {number}  estimatedDurationMinutes - Typical game length (low end of realistic).
+ * @property {('light'|'medium'|'heavy')} complexity
+ *   - `light`  = explainable in 2 minutes
+ *   - `medium` = needs a rules sheet
+ *   - `heavy`  = experienced players only
+ * @property {string[]} tags - Descriptive tags, lowercase + hyphenated.
+ *   Examples: `'dice'`, `'spatial'`, `'bidding'`, `'hidden-information'`,
+ *   `'no-luck'`, `'family'`, `'classic'`, `'two-player'`, `'elimination'`.
  */
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -270,11 +278,14 @@
  *
  * @example
  * return {
- *   name:        'Monopoly',
- *   minPlayers:  2,
- *   maxPlayers:  8,
- *   description: 'Classic property trading board game.',
- *   icon:        '🎲',
+ *   name:                     'Monopoly',
+ *   minPlayers:               2,
+ *   maxPlayers:               8,
+ *   description:              'Classic property trading board game.',
+ *   icon:                     '🎲',
+ *   estimatedDurationMinutes: 90,
+ *   complexity:               'medium',
+ *   tags:                     ['dice', 'economic', 'trading', 'classic', 'family'],
  * };
  */
 
@@ -434,6 +445,19 @@
 //  DEFAULT HELPERS
 // ═════════════════════════════════════════════════════════════════════════════
 
+// ── waiting-room safety (CANONICAL) ─────────────────────────────────────────
+// `getStateForPlayer` (and any helper that reads game state) must be safe to
+// call on every state the framework might emit, including waiting-room
+// states that exist before initGame() has run.  At that point, game-specific
+// fields (deck, board, properties, hand, turnState, etc.) are not yet
+// populated.  Use optional chaining and explicit guards against missing
+// fields, not assumptions about shape.  Crashing here breaks lobby join
+// for the whole game.
+//
+// `defaultGetStateForPlayer` below is trivially safe — it just returns the
+// state unchanged.  Custom filters in hidden-information games must apply
+// the same discipline (see Risk's getStateForPlayer for a reference).
+
 /**
  * Default implementation of `getStateForPlayer` for perfect-information games.
  *
@@ -441,6 +465,9 @@
  * to see the entire game state (Monopoly, Connect Four, Chess, …).  Do NOT use
  * this for games with hidden information (Poker, Coup, Stratego, …) — implement
  * a real filter instead.
+ *
+ * Waiting-room safety: trivially safe (returns input unchanged, never reads
+ * any field).
  *
  * @param {Object} state  - Full canonical game state.
  * @param {string} _userId - Ignored; all players see the same state.
@@ -501,6 +528,8 @@ function validateImplementation(module, options = {}) {
     );
   }
 
+  validateMetadata(module.getGameMetadata());
+
   const known = new Set([
     ...REQUIRED_METHODS,
     ...OPTIONAL_METHODS,
@@ -513,6 +542,33 @@ function validateImplementation(module, options = {}) {
       `[game-logic-interface] Unrecognised exported method(s): ${unknown.join(', ')}. ` +
       'Pass them in options.internalExports to suppress this warning.'
     );
+  }
+}
+
+const VALID_COMPLEXITY = new Set(['light', 'medium', 'heavy']);
+
+/**
+ * Verify that the metadata object returned by `getGameMetadata()` has the
+ * shape declared in the GameMetadata typedef.  Throws on any violation so
+ * the offending game module fails fast at registration time.
+ */
+function validateMetadata(meta) {
+  if (!meta || typeof meta !== 'object') {
+    throw new Error('getGameMetadata() must return an object');
+  }
+  if (typeof meta.estimatedDurationMinutes !== 'number' || !Number.isFinite(meta.estimatedDurationMinutes) || meta.estimatedDurationMinutes <= 0) {
+    throw new Error('getGameMetadata().estimatedDurationMinutes must be a positive number');
+  }
+  if (!VALID_COMPLEXITY.has(meta.complexity)) {
+    throw new Error(`getGameMetadata().complexity must be one of: ${[...VALID_COMPLEXITY].join(', ')}`);
+  }
+  if (!Array.isArray(meta.tags)) {
+    throw new Error('getGameMetadata().tags must be an array');
+  }
+  for (const t of meta.tags) {
+    if (typeof t !== 'string' || t.length === 0) {
+      throw new Error('getGameMetadata().tags must contain only non-empty strings');
+    }
   }
 }
 

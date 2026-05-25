@@ -98,11 +98,14 @@ function getConfigCopy() { return configLoader.getConfigCopy(); }
 
 function getGameMetadata() {
   return {
-    name:        'Risk',
-    minPlayers:  2,
-    maxPlayers:  6,
-    description: 'World domination through dice and diplomacy.',
-    icon:        '🌍',
+    name:                     'Risk',
+    minPlayers:               2,
+    maxPlayers:               6,
+    description:              'World domination through dice and diplomacy.',
+    icon:                     '🌍',
+    estimatedDurationMinutes: 120,
+    complexity:               'heavy',
+    tags:                     ['dice', 'spatial', 'hidden-information', 'elimination', 'classic'],
   };
 }
 
@@ -803,6 +806,13 @@ function skipTurn(state, userId) {
 //
 // Do NOT swap this out for defaultGetStateForPlayer — that would broadcast
 // every player's full hand to every opponent.
+//
+// IMPORTANT: This function must be safe to call on every state the framework
+// might emit, including waiting-room states that exist before initGame() has
+// run.  At that point, game-specific fields (deck, board, properties, hand,
+// turnState, etc.) are not yet populated.  Use optional chaining and explicit
+// guards against missing fields, not assumptions about shape.  Crashing here
+// breaks lobby join for the whole game.
 
 function getStateForPlayer(state, userId) {
   const view = {
