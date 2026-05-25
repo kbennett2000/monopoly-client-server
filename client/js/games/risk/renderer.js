@@ -69,6 +69,19 @@ const RiskRenderer = (() => {
           svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
           svgEl.style.width  = '100%';
           svgEl.style.height = '100%';
+
+          // The Wikimedia SVG renders the map THREE times via <use> overlays
+          // (blue rim stroke, white inner stroke, textured pass).  Those
+          // overlays sit on top of the original <path> elements and intercept
+          // clicks before they reach our handler, plus they hide the
+          // per-territory ownership fills we set in update().  Remove them.
+          svgEl.querySelectorAll('use').forEach(u => u.remove());
+
+          // The source SVG hardcodes 42 territory labels with example army
+          // counts ("1 Alaska", "6 Northwest Territory", …) that have nothing
+          // to do with our actual game state.  Strip every <text> so only
+          // our overlay markers (real army counts) appear on the map.
+          svgEl.querySelectorAll('text').forEach(t => t.remove());
         }
         _wrapper.appendChild(mapHost);
 
@@ -242,7 +255,10 @@ const RiskRenderer = (() => {
           if (el) {
             el.style.fill       = owner?.colorHex || '#666';
             el.style.cursor     = 'pointer';
-            el.style.transition = 'fill 0.2s';
+            el.style.transition = 'fill 0.2s, stroke 0.15s, stroke-width 0.15s';
+            // Highlight your own territories with a bold stroke so you can
+            // identify them at a glance during the reinforce/attack phases.
+            el.classList.toggle('risk-mine', owner?.userId === _myUserId);
           }
         }
       }

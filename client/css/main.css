@@ -895,15 +895,20 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   transition:   fill 0.2s, stroke-width 0.15s, filter 0.15s;
 }
 
+.risk-map-host path.risk-mine {
+  stroke:       #ffffff;
+  stroke-width: 2.4;
+}
+
 .risk-map-host path:hover {
   stroke:       #fff;
-  stroke-width: 2.2;
+  stroke-width: 2.8;
   filter:       brightness(1.18);
 }
 
 .risk-map-host path.risk-selected {
   stroke:       #ffeb3b;
-  stroke-width: 3;
+  stroke-width: 3.5;
   filter:       drop-shadow(0 0 6px rgba(255, 235, 59, 0.7)) brightness(1.18);
 }
 
