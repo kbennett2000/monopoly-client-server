@@ -521,10 +521,10 @@ const OPTIONAL_METHODS = [
  * @throws {Error} If any required method is missing.
  */
 function validateImplementation(module, options = {}) {
-  const missing = REQUIRED_METHODS.filter(name => typeof module[name] !== 'function');
+  const missing = REQUIRED_METHODS.filter((name) => typeof module[name] !== 'function');
   if (missing.length > 0) {
     throw new Error(
-      `GameLogic implementation is missing required method(s): ${missing.join(', ')}`
+      `GameLogic implementation is missing required method(s): ${missing.join(', ')}`,
     );
   }
 
@@ -535,12 +535,12 @@ function validateImplementation(module, options = {}) {
     ...OPTIONAL_METHODS,
     ...(options.internalExports || []),
   ]);
-  const exported = Object.keys(module).filter(k => typeof module[k] === 'function');
-  const unknown  = exported.filter(k => !known.has(k));
+  const exported = Object.keys(module).filter((k) => typeof module[k] === 'function');
+  const unknown = exported.filter((k) => !known.has(k));
   if (unknown.length > 0) {
     console.warn(
       `[game-logic-interface] Unrecognised exported method(s): ${unknown.join(', ')}. ` +
-      'Pass them in options.internalExports to suppress this warning.'
+        'Pass them in options.internalExports to suppress this warning.',
     );
   }
 }
@@ -556,11 +556,17 @@ function validateMetadata(meta) {
   if (!meta || typeof meta !== 'object') {
     throw new Error('getGameMetadata() must return an object');
   }
-  if (typeof meta.estimatedDurationMinutes !== 'number' || !Number.isFinite(meta.estimatedDurationMinutes) || meta.estimatedDurationMinutes <= 0) {
+  if (
+    typeof meta.estimatedDurationMinutes !== 'number' ||
+    !Number.isFinite(meta.estimatedDurationMinutes) ||
+    meta.estimatedDurationMinutes <= 0
+  ) {
     throw new Error('getGameMetadata().estimatedDurationMinutes must be a positive number');
   }
   if (!VALID_COMPLEXITY.has(meta.complexity)) {
-    throw new Error(`getGameMetadata().complexity must be one of: ${[...VALID_COMPLEXITY].join(', ')}`);
+    throw new Error(
+      `getGameMetadata().complexity must be one of: ${[...VALID_COMPLEXITY].join(', ')}`,
+    );
   }
   if (!Array.isArray(meta.tags)) {
     throw new Error('getGameMetadata().tags must be an array');

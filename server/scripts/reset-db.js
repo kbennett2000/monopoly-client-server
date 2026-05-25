@@ -12,10 +12,10 @@
  */
 
 const path = require('path');
-const fs   = require('fs');
+const fs = require('fs');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const DB_PATH  = path.join(DATA_DIR, 'lan-games.db');
+const DB_PATH = path.join(DATA_DIR, 'lan-games.db');
 
 const args = process.argv.slice(2);
 const hard = args.includes('--hard');
@@ -33,11 +33,16 @@ function confirm(question, cb) {
   process.stdin.once('data', (data) => {
     process.stdin.destroy();
     if (data.trim().toLowerCase() === 'y') cb();
-    else { console.log('Aborted.'); process.exit(0); }
+    else {
+      console.log('Aborted.');
+      process.exit(0);
+    }
   });
 }
 
-const action = hard ? 'DELETE the database file' : 'TRUNCATE all tables (users, games, game_players)';
+const action = hard
+  ? 'DELETE the database file'
+  : 'TRUNCATE all tables (users, games, game_players)';
 
 confirm(`This will ${action}. Are you sure?`, () => {
   if (hard) {

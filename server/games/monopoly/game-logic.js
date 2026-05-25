@@ -139,16 +139,15 @@ function passedGo(from, steps) {
 
 /** Count how many railroads / utilities a player owns. */
 function countTypeOwned(state, userId, type) {
-  const positions = type === 'railroad'
-    ? state.config.railroadPositions
-    : state.config.utilityPositions;
-  return positions.filter(pos => state.properties[pos]?.ownerId === userId).length;
+  const positions =
+    type === 'railroad' ? state.config.railroadPositions : state.config.utilityPositions;
+  return positions.filter((pos) => state.properties[pos]?.ownerId === userId).length;
 }
 
 /** Returns true if the player owns all squares in a color group. */
 function hasMonopoly(state, userId, colorGroup) {
   const positions = state.config.colorGroups[colorGroup];
-  return positions.every(pos => state.properties[pos]?.ownerId === userId);
+  return positions.every((pos) => state.properties[pos]?.ownerId === userId);
 }
 
 /** Total number of houses/hotels a player has on all their properties. */
@@ -192,7 +191,7 @@ function assertMyPropertyTurn(state, userId) {
 /** Net worth of a player: cash + property values (at mortgage value). */
 function playerNetWorth(state, userId) {
   let worth = 0;
-  const player = state.players.find(p => p.userId === userId);
+  const player = state.players.find((p) => p.userId === userId);
   if (!player) return 0;
   worth += player.money;
   for (const [pos, propState] of Object.entries(state.properties)) {
@@ -229,7 +228,7 @@ function nearestOfType(currentPos, positions) {
  * @param {number}    [rentMultiplierOverride]  for card-driven railroad/utility landings
  */
 function calculateRent(state, position, dice, rentMultiplierOverride = 1) {
-  const sq        = state.config.board[position];
+  const sq = state.config.board[position];
   const propState = state.properties[position];
 
   if (!propState || !propState.ownerId || propState.mortgaged) return 0;
@@ -243,8 +242,8 @@ function calculateRent(state, position, dice, rentMultiplierOverride = 1) {
   }
 
   if (sq.type === 'utility') {
-    const count  = countTypeOwned(state, ownerId, 'utility');
-    const mult   = count === 2 ? sq.rent.multiplier2 : sq.rent.multiplier1;
+    const count = countTypeOwned(state, ownerId, 'utility');
+    const mult = count === 2 ? sq.rent.multiplier2 : sq.rent.multiplier1;
     const diceSum = dice[0] + dice[1];
     return diceSum * mult * rentMultiplierOverride;
   }
@@ -253,9 +252,7 @@ function calculateRent(state, position, dice, rentMultiplierOverride = 1) {
     const h = propState.houses;
     if (h === 0) {
       // Unimproved: double rent if owner has the monopoly
-      return hasMonopoly(state, ownerId, sq.colorGroup)
-        ? sq.rent.monopoly
-        : sq.rent.base;
+      return hasMonopoly(state, ownerId, sq.colorGroup) ? sq.rent.monopoly : sq.rent.base;
     }
     if (h === 1) return sq.rent.oneHouse;
     if (h === 2) return sq.rent.twoHouses;
@@ -284,32 +281,51 @@ function resolveCard(state, playerIdx, card) {
   switch (card.action) {
     case 'advance_to': {
       const dest = card.data.position;
-      if (card.data.collectGoSalary && passedGo(player.position, (dest - player.position + 40) % 40)) {
+      if (
+        card.data.collectGoSalary &&
+        passedGo(player.position, (dest - player.position + 40) % 40)
+      ) {
         player.money += state.config.settings.goSalary;
-        log(state, `${player.username} passed Go and collected $${state.config.settings.goSalary}`, 'money');
-        events.push(event('PASSED_GO', { username: player.username, amount: state.config.settings.goSalary }));
+        log(
+          state,
+          `${player.username} passed Go and collected $${state.config.settings.goSalary}`,
+          'money',
+        );
+        events.push(
+          event('PASSED_GO', { username: player.username, amount: state.config.settings.goSalary }),
+        );
       }
       player.position = dest;
       const landed = processLanding(state, playerIdx, events);
-      state  = landed.state;
+      state = landed.state;
       events.push(...landed.newEvents);
       break;
     }
 
     case 'advance_to_nearest': {
-      const positions = card.data.type === 'railroad'
-        ? state.config.railroadPositions
-        : state.config.utilityPositions;
+      const positions =
+        card.data.type === 'railroad'
+          ? state.config.railroadPositions
+          : state.config.utilityPositions;
       const dest = nearestOfType(player.position, positions);
-      if (card.data.collectGoSalary && passedGo(player.position, (dest - player.position + 40) % 40)) {
+      if (
+        card.data.collectGoSalary &&
+        passedGo(player.position, (dest - player.position + 40) % 40)
+      ) {
         player.money += state.config.settings.goSalary;
-        log(state, `${player.username} passed Go and collected $${state.config.settings.goSalary}`, 'money');
-        events.push(event('PASSED_GO', { username: player.username, amount: state.config.settings.goSalary }));
+        log(
+          state,
+          `${player.username} passed Go and collected $${state.config.settings.goSalary}`,
+          'money',
+        );
+        events.push(
+          event('PASSED_GO', { username: player.username, amount: state.config.settings.goSalary }),
+        );
       }
       player.position = dest;
       const multiplier = card.data.rentMultiplier || 1;
       const landed = processLanding(state, playerIdx, events, multiplier);
-      state  = landed.state;
+      state = landed.state;
       events.push(...landed.newEvents);
       break;
     }
@@ -317,14 +333,20 @@ function resolveCard(state, playerIdx, card) {
     case 'collect': {
       player.money += card.data.amount;
       log(state, `${player.username} collected $${card.data.amount}`, 'money');
-      events.push(event('MONEY_RECEIVED', { username: player.username, amount: card.data.amount, source: 'bank' }));
+      events.push(
+        event('MONEY_RECEIVED', {
+          username: player.username,
+          amount: card.data.amount,
+          source: 'bank',
+        }),
+      );
       state.turnState.phase = 'post-roll';
       break;
     }
 
     case 'pay': {
       const result = chargePlayer(state, playerIdx, card.data.amount, null);
-      state  = result.state;
+      state = result.state;
       events.push(...result.events);
       break;
     }
@@ -333,7 +355,7 @@ function resolveCard(state, playerIdx, card) {
       for (let i = 0; i < state.players.length; i++) {
         if (i === playerIdx || state.players[i].isBankrupt) continue;
         const result = chargePlayer(state, playerIdx, card.data.amount, state.players[i].userId);
-        state  = result.state;
+        state = result.state;
         events.push(...result.events);
       }
       state.turnState.phase = 'post-roll';
@@ -345,7 +367,7 @@ function resolveCard(state, playerIdx, card) {
         if (i === playerIdx || state.players[i].isBankrupt) continue;
         const payer = state.players[i];
         const amount = Math.min(card.data.amount, payer.money);
-        payer.money  -= amount;
+        payer.money -= amount;
         player.money += amount;
         log(state, `${payer.username} paid ${player.username} $${amount}`, 'money');
         events.push(event('RENT_PAID', { from: payer.username, to: player.username, amount }));
@@ -356,7 +378,7 @@ function resolveCard(state, playerIdx, card) {
 
     case 'go_to_jail': {
       player.position = state.config.settings.jailPosition;
-      player.inJail   = true;
+      player.inJail = true;
       player.jailTurns = 0;
       log(state, `${player.username} was sent to Jail!`, 'jail');
       events.push(event('PLAYER_JAILED', { username: player.username }));
@@ -375,9 +397,13 @@ function resolveCard(state, playerIdx, card) {
 
     case 'go_back': {
       player.position = (player.position - card.data.spaces + 40) % 40;
-      log(state, `${player.username} moved back ${card.data.spaces} spaces to ${state.config.board[player.position].name}`, 'move');
+      log(
+        state,
+        `${player.username} moved back ${card.data.spaces} spaces to ${state.config.board[player.position].name}`,
+        'move',
+      );
       const landed = processLanding(state, playerIdx, events);
-      state  = landed.state;
+      state = landed.state;
       events.push(...landed.newEvents);
       break;
     }
@@ -387,9 +413,13 @@ function resolveCard(state, playerIdx, card) {
       const total = houses * card.data.houseCost + hotels * card.data.hotelCost;
       if (total > 0) {
         const result = chargePlayer(state, playerIdx, total, null);
-        state  = result.state;
+        state = result.state;
         events.push(...result.events);
-        log(state, `${player.username} paid $${total} for property repairs (${houses} houses, ${hotels} hotels)`, 'money');
+        log(
+          state,
+          `${player.username} paid $${total} for property repairs (${houses} houses, ${hotels} hotels)`,
+          'money',
+        );
       } else {
         log(state, `${player.username} has no buildings — no repair cost`, 'info');
         state.turnState.phase = 'post-roll';
@@ -415,19 +445,25 @@ function resolveCard(state, playerIdx, card) {
  */
 function processLanding(state, playerIdx, _existingEvents = [], rentMultiplier = 1) {
   const newEvents = [];
-  const player    = state.players[playerIdx];
-  const position  = player.position;
-  const sq        = state.config.board[position];
+  const player = state.players[playerIdx];
+  const position = player.position;
+  const sq = state.config.board[position];
   const propState = state.properties[position];
 
   log(state, `${player.username} landed on ${sq.name}`, 'move');
-  newEvents.push(event('PLAYER_LANDED', { username: player.username, position, squareName: sq.name }));
+  newEvents.push(
+    event('PLAYER_LANDED', { username: player.username, position, squareName: sq.name }),
+  );
 
   switch (sq.type) {
     case 'go':
     case 'jail':
     case 'free_parking': {
-      if (sq.type === 'free_parking' && state.config.settings.freeParkingJackpot && state.freeParking > 0) {
+      if (
+        sq.type === 'free_parking' &&
+        state.config.settings.freeParkingJackpot &&
+        state.freeParking > 0
+      ) {
         const pot = state.freeParking;
         player.money += pot;
         state.freeParking = 0;
@@ -439,10 +475,10 @@ function processLanding(state, playerIdx, _existingEvents = [], rentMultiplier =
     }
 
     case 'go_to_jail': {
-      player.position  = state.config.settings.jailPosition;
-      player.inJail    = true;
+      player.position = state.config.settings.jailPosition;
+      player.inJail = true;
       player.jailTurns = 0;
-      state.turnState.phase   = 'post-roll';
+      state.turnState.phase = 'post-roll';
       state.turnState.doubles = 0;
       log(state, `${player.username} went to Jail!`, 'jail');
       newEvents.push(event('PLAYER_JAILED', { username: player.username }));
@@ -453,7 +489,9 @@ function processLanding(state, playerIdx, _existingEvents = [], rentMultiplier =
       let amount = sq.amount;
       // Income Tax: player may choose lesser of flat amount or percent of net worth
       if (sq.taxType === 'income' && state.config.settings.incomeTaxChoice) {
-        const percentAmount = Math.floor(playerNetWorth(state, player.userId) * sq.percentOption / 100);
+        const percentAmount = Math.floor(
+          (playerNetWorth(state, player.userId) * sq.percentOption) / 100,
+        );
         amount = Math.min(sq.amount, percentAmount);
       }
       const result = chargePlayer(state, playerIdx, amount, null);
@@ -469,7 +507,7 @@ function processLanding(state, playerIdx, _existingEvents = [], rentMultiplier =
         state.chanceDeck = buildDeck(state.config.cards.chance.length);
       }
       const cardIdx = state.chanceDeck.pop();
-      const card    = state.config.cards.chance[cardIdx];
+      const card = state.config.cards.chance[cardIdx];
       state.turnState.phase = 'card';
       const resolved = resolveCard(state, playerIdx, card);
       state = resolved.state;
@@ -482,7 +520,7 @@ function processLanding(state, playerIdx, _existingEvents = [], rentMultiplier =
         state.chestDeck = buildDeck(state.config.cards.communityChest.length);
       }
       const cardIdx = state.chestDeck.pop();
-      const card    = state.config.cards.communityChest[cardIdx];
+      const card = state.config.cards.communityChest[cardIdx];
       state.turnState.phase = 'card';
       const resolved = resolveCard(state, playerIdx, card);
       state = resolved.state;
@@ -497,7 +535,14 @@ function processLanding(state, playerIdx, _existingEvents = [], rentMultiplier =
         // Unowned — offer purchase decision
         state.turnState.phase = 'buying';
         log(state, `${player.username} can buy ${sq.name} for $${sq.price}`, 'info');
-        newEvents.push(event('PROPERTY_FOR_SALE', { username: player.username, position, name: sq.name, price: sq.price }));
+        newEvents.push(
+          event('PROPERTY_FOR_SALE', {
+            username: player.username,
+            position,
+            name: sq.name,
+            price: sq.price,
+          }),
+        );
       } else if (propState.ownerId === player.userId) {
         // Owned by self — nothing happens
         state.turnState.phase = 'post-roll';
@@ -509,13 +554,24 @@ function processLanding(state, playerIdx, _existingEvents = [], rentMultiplier =
       } else {
         // Owned by someone else — pay rent
         const rent = calculateRent(state, position, state.turnState.dice, rentMultiplier);
-        const owner = state.players.find(p => p.userId === propState.ownerId);
+        const owner = state.players.find((p) => p.userId === propState.ownerId);
         const result = chargePlayer(state, playerIdx, rent, propState.ownerId);
         state = result.state;
         newEvents.push(...result.events);
         if (owner) {
-          log(state, `${player.username} paid $${rent} rent to ${owner.username} for ${sq.name}`, 'money');
-          newEvents.push(event('RENT_PAID', { from: player.username, to: owner.username, amount: rent, property: sq.name }));
+          log(
+            state,
+            `${player.username} paid $${rent} rent to ${owner.username} for ${sq.name}`,
+            'money',
+          );
+          newEvents.push(
+            event('RENT_PAID', {
+              from: player.username,
+              to: owner.username,
+              amount: rent,
+              property: sq.name,
+            }),
+          );
         }
       }
       break;
@@ -543,7 +599,7 @@ function chargePlayer(state, playerIdx, amount, recipientUserId) {
   if (player.money >= amount) {
     player.money -= amount;
     if (recipientUserId) {
-      const recipient = state.players.find(p => p.userId === recipientUserId);
+      const recipient = state.players.find((p) => p.userId === recipientUserId);
       if (recipient) recipient.money += amount;
     } else if (state.config.settings.freeParkingJackpot) {
       // Taxes and fines go to the Free Parking pot
@@ -553,7 +609,7 @@ function chargePlayer(state, playerIdx, amount, recipientUserId) {
   } else {
     // Player can't afford to pay — they are bankrupt
     const result = declareBankruptcy(state, playerIdx, recipientUserId);
-    state  = result.state;
+    state = result.state;
     events.push(...result.events);
   }
 
@@ -579,14 +635,14 @@ function initGame(gameId, gameName, playerList, config) {
     }
   }
 
-  const players = playerList.map(p => ({
-    userId:    p.userId,
-    username:  p.username,
-    color:     p.color,
-    token:     p.token,
-    position:  0,
-    money:     config.settings.startingMoney,
-    inJail:    false,
+  const players = playerList.map((p) => ({
+    userId: p.userId,
+    username: p.username,
+    color: p.color,
+    token: p.token,
+    position: 0,
+    money: config.settings.startingMoney,
+    inJail: false,
     jailTurns: 0,
     jailCards: 0,
     isBankrupt: false,
@@ -594,24 +650,24 @@ function initGame(gameId, gameName, playerList, config) {
   }));
 
   return {
-    id:           gameId,
-    name:         gameName,
+    id: gameId,
+    name: gameName,
     stateVersion: STATE_VERSION,
-    status:       'playing',
+    status: 'playing',
     config,
     players,
     properties,
     turnState: {
       currentPlayerIndex: 0,
-      phase:   'pre-roll',
-      dice:    [0, 0],
+      phase: 'pre-roll',
+      dice: [0, 0],
       doubles: 0,
       cardDrawn: null,
     },
-    auction:     null,
-    trade:       null,
-    chanceDeck:  buildDeck(config.cards.chance.length),
-    chestDeck:   buildDeck(config.cards.communityChest.length),
+    auction: null,
+    trade: null,
+    chanceDeck: buildDeck(config.cards.chance.length),
+    chestDeck: buildDeck(config.cards.communityChest.length),
     freeParking: 0,
     log: [{ timestamp: Date.now(), message: 'Game started!', type: 'info' }],
   };
@@ -628,7 +684,7 @@ function rollDice(state, userId) {
   const events = [];
 
   const playerIdx = state.turnState.currentPlayerIndex;
-  const player    = state.players[playerIdx];
+  const player = state.players[playerIdx];
 
   if (player.userId !== userId) {
     return { state, events, error: 'It is not your turn' };
@@ -644,7 +700,11 @@ function rollDice(state, userId) {
   const isDoubles = d1 === d2;
 
   state.turnState.dice = [d1, d2];
-  log(state, `${player.username} rolled ${d1} + ${d2} = ${d1 + d2}${isDoubles ? ' (doubles!)' : ''}`, 'dice');
+  log(
+    state,
+    `${player.username} rolled ${d1} + ${d2} = ${d1 + d2}${isDoubles ? ' (doubles!)' : ''}`,
+    'dice',
+  );
   events.push(event('DICE_ROLLED', { username: player.username, dice: [d1, d2], isDoubles }));
 
   const currentPlayer = state.players[playerIdx]; // re-reference after clone
@@ -657,13 +717,15 @@ function rollDice(state, userId) {
     state.turnState.doubles++;
     if (state.turnState.doubles >= 3) {
       // Three consecutive doubles → go to jail
-      currentPlayer.position  = state.config.settings.jailPosition;
-      currentPlayer.inJail    = true;
+      currentPlayer.position = state.config.settings.jailPosition;
+      currentPlayer.inJail = true;
       currentPlayer.jailTurns = 0;
-      state.turnState.phase   = 'post-roll';
+      state.turnState.phase = 'post-roll';
       state.turnState.doubles = 0;
       log(state, `${currentPlayer.username} rolled doubles 3 times and was sent to Jail!`, 'jail');
-      events.push(event('PLAYER_JAILED', { username: currentPlayer.username, reason: 'three-doubles' }));
+      events.push(
+        event('PLAYER_JAILED', { username: currentPlayer.username, reason: 'three-doubles' }),
+      );
       return { state, events };
     }
   } else {
@@ -671,22 +733,38 @@ function rollDice(state, userId) {
   }
 
   // Normal movement
-  const steps   = d1 + d2;
-  const oldPos  = currentPlayer.position;
-  const newPos  = advancePosition(oldPos, steps);
+  const steps = d1 + d2;
+  const oldPos = currentPlayer.position;
+  const newPos = advancePosition(oldPos, steps);
 
   if (passedGo(oldPos, steps) && newPos !== 0) {
     currentPlayer.money += state.config.settings.goSalary;
-    log(state, `${currentPlayer.username} passed Go and collected $${state.config.settings.goSalary}`, 'money');
-    events.push(event('PASSED_GO', { username: currentPlayer.username, amount: state.config.settings.goSalary }));
+    log(
+      state,
+      `${currentPlayer.username} passed Go and collected $${state.config.settings.goSalary}`,
+      'money',
+    );
+    events.push(
+      event('PASSED_GO', {
+        username: currentPlayer.username,
+        amount: state.config.settings.goSalary,
+      }),
+    );
   }
 
   currentPlayer.position = newPos;
   log(state, `${currentPlayer.username} moved to ${state.config.board[newPos].name}`, 'move');
-  events.push(event('PLAYER_MOVED', { username: currentPlayer.username, from: oldPos, to: newPos, dice: [d1, d2] }));
+  events.push(
+    event('PLAYER_MOVED', {
+      username: currentPlayer.username,
+      from: oldPos,
+      to: newPos,
+      dice: [d1, d2],
+    }),
+  );
 
   const landed = processLanding(state, playerIdx, events);
-  state  = landed.state;
+  state = landed.state;
   events.push(...landed.newEvents);
 
   // If doubles and not jailed and not in buying/auctioning phase, allow re-roll
@@ -704,47 +782,79 @@ function handleJailRoll(state, playerIdx, d1, d2, isDoubles, events) {
 
   if (isDoubles) {
     // Doubles = get out of jail free (no fine, no card used)
-    player.inJail    = false;
+    player.inJail = false;
     player.jailTurns = 0;
     log(state, `${player.username} rolled doubles and got out of Jail!`, 'jail');
     events.push(event('PLAYER_FREED_FROM_JAIL', { username: player.username, reason: 'doubles' }));
 
-    const steps  = d1 + d2;
+    const steps = d1 + d2;
     const newPos = advancePosition(player.position, steps);
     if (passedGo(player.position, steps) && newPos !== 0) {
       player.money += state.config.settings.goSalary;
-      events.push(event('PASSED_GO', { username: player.username, amount: state.config.settings.goSalary }));
+      events.push(
+        event('PASSED_GO', { username: player.username, amount: state.config.settings.goSalary }),
+      );
     }
     player.position = newPos;
-    events.push(event('PLAYER_MOVED', { username: player.username, from: state.config.settings.jailPosition, to: newPos, dice: [d1, d2] }));
+    events.push(
+      event('PLAYER_MOVED', {
+        username: player.username,
+        from: state.config.settings.jailPosition,
+        to: newPos,
+        dice: [d1, d2],
+      }),
+    );
 
     const landed = processLanding(state, playerIdx, events);
-    state  = landed.state;
+    state = landed.state;
     events.push(...landed.newEvents);
     // Getting out of jail with doubles does NOT grant a re-roll
   } else {
     player.jailTurns++;
     if (player.jailTurns >= state.config.settings.jailMaxTurns) {
       // Forced to pay fine after max turns
-      player.money    -= state.config.settings.jailFine;
-      player.inJail    = false;
+      player.money -= state.config.settings.jailFine;
+      player.inJail = false;
       player.jailTurns = 0;
-      log(state, `${player.username} served max jail time and paid $${state.config.settings.jailFine} fine`, 'jail');
-      events.push(event('JAIL_FINE_PAID', { username: player.username, amount: state.config.settings.jailFine, forced: true }));
+      log(
+        state,
+        `${player.username} served max jail time and paid $${state.config.settings.jailFine} fine`,
+        'jail',
+      );
+      events.push(
+        event('JAIL_FINE_PAID', {
+          username: player.username,
+          amount: state.config.settings.jailFine,
+          forced: true,
+        }),
+      );
 
-      const steps  = d1 + d2;
+      const steps = d1 + d2;
       const newPos = advancePosition(player.position, steps);
       player.position = newPos;
-      events.push(event('PLAYER_MOVED', { username: player.username, from: state.config.settings.jailPosition, to: newPos, dice: [d1, d2] }));
+      events.push(
+        event('PLAYER_MOVED', {
+          username: player.username,
+          from: state.config.settings.jailPosition,
+          to: newPos,
+          dice: [d1, d2],
+        }),
+      );
 
       const landed = processLanding(state, playerIdx, events);
-      state  = landed.state;
+      state = landed.state;
       events.push(...landed.newEvents);
     } else {
       // Stay in jail
       state.turnState.phase = 'post-roll';
-      log(state, `${player.username} did not roll doubles and stays in Jail (turn ${player.jailTurns}/${state.config.settings.jailMaxTurns})`, 'jail');
-      events.push(event('STAYED_IN_JAIL', { username: player.username, jailTurns: player.jailTurns }));
+      log(
+        state,
+        `${player.username} did not roll doubles and stays in Jail (turn ${player.jailTurns}/${state.config.settings.jailMaxTurns})`,
+        'jail',
+      );
+      events.push(
+        event('STAYED_IN_JAIL', { username: player.username, jailTurns: player.jailTurns }),
+      );
     }
   }
 
@@ -757,12 +867,12 @@ function handleJailRoll(state, playerIdx, d1, d2, isDoubles, events) {
  * Pay the jail fine ($50) to exit jail before rolling.
  */
 function payJailFine(state, userId) {
-  const events    = [];
+  const events = [];
   const playerIdx = state.turnState.currentPlayerIndex;
-  const player    = state.players[playerIdx];
+  const player = state.players[playerIdx];
 
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
-  if (!player.inJail)           return { state, events, error: 'You are not in jail' };
+  if (!player.inJail) return { state, events, error: 'You are not in jail' };
   if (state.turnState.phase !== 'pre-roll') return { state, events, error: 'Cannot pay fine now' };
 
   if (player.money < state.config.settings.jailFine) {
@@ -770,12 +880,18 @@ function payJailFine(state, userId) {
   }
 
   state = clone(state);
-  state.players[playerIdx].money     -= state.config.settings.jailFine;
-  state.players[playerIdx].inJail     = false;
-  state.players[playerIdx].jailTurns  = 0;
+  state.players[playerIdx].money -= state.config.settings.jailFine;
+  state.players[playerIdx].inJail = false;
+  state.players[playerIdx].jailTurns = 0;
 
-  log(state, `${player.username} paid $${state.config.settings.jailFine} to get out of Jail`, 'jail');
-  events.push(event('JAIL_FINE_PAID', { username: player.username, amount: state.config.settings.jailFine }));
+  log(
+    state,
+    `${player.username} paid $${state.config.settings.jailFine} to get out of Jail`,
+    'jail',
+  );
+  events.push(
+    event('JAIL_FINE_PAID', { username: player.username, amount: state.config.settings.jailFine }),
+  );
 
   return { state, events };
 }
@@ -784,18 +900,19 @@ function payJailFine(state, userId) {
  * Use a Get Out of Jail Free card.
  */
 function useJailCard(state, userId) {
-  const events    = [];
+  const events = [];
   const playerIdx = state.turnState.currentPlayerIndex;
-  const player    = state.players[playerIdx];
+  const player = state.players[playerIdx];
 
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
-  if (!player.inJail)           return { state, events, error: 'You are not in jail' };
-  if (player.jailCards < 1)     return { state, events, error: 'You do not have a Get Out of Jail Free card' };
+  if (!player.inJail) return { state, events, error: 'You are not in jail' };
+  if (player.jailCards < 1)
+    return { state, events, error: 'You do not have a Get Out of Jail Free card' };
   if (state.turnState.phase !== 'pre-roll') return { state, events, error: 'Cannot use card now' };
 
   state = clone(state);
   state.players[playerIdx].jailCards--;
-  state.players[playerIdx].inJail    = false;
+  state.players[playerIdx].inJail = false;
   state.players[playerIdx].jailTurns = 0;
 
   log(state, `${player.username} used a Get Out of Jail Free card`, 'jail');
@@ -810,19 +927,20 @@ function useJailCard(state, userId) {
  * Current player buys the property they are standing on.
  */
 function buyProperty(state, userId) {
-  const events    = [];
+  const events = [];
   const playerIdx = state.turnState.currentPlayerIndex;
-  const player    = state.players[playerIdx];
+  const player = state.players[playerIdx];
 
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
   if (state.turnState.phase !== 'buying') return { state, events, error: 'Not in buying phase' };
 
-  const position  = player.position;
-  const sq        = state.config.board[position];
+  const position = player.position;
+  const sq = state.config.board[position];
   const propState = state.properties[position];
 
   if (!propState || propState.ownerId) return { state, events, error: 'Property not available' };
-  if (player.money < sq.price)         return { state, events, error: `Not enough money. Need $${sq.price}` };
+  if (player.money < sq.price)
+    return { state, events, error: `Not enough money. Need $${sq.price}` };
 
   state = clone(state);
   state.players[playerIdx].money -= sq.price;
@@ -830,12 +948,21 @@ function buyProperty(state, userId) {
   state.turnState.phase = 'post-roll';
 
   log(state, `${player.username} bought ${sq.name} for $${sq.price}`, 'property');
-  events.push(event('PROPERTY_BOUGHT', { username: player.username, position, name: sq.name, price: sq.price }));
+  events.push(
+    event('PROPERTY_BOUGHT', {
+      username: player.username,
+      position,
+      name: sq.name,
+      price: sq.price,
+    }),
+  );
 
   // Check if they now have a monopoly
   if (sq.type === 'property' && hasMonopoly(state, player.userId, sq.colorGroup)) {
     log(state, `${player.username} now has a monopoly on ${sq.colorGroup}!`, 'property');
-    events.push(event('MONOPOLY_ACHIEVED', { username: player.username, colorGroup: sq.colorGroup }));
+    events.push(
+      event('MONOPOLY_ACHIEVED', { username: player.username, colorGroup: sq.colorGroup }),
+    );
   }
 
   // Re-allow doubles roll if applicable
@@ -850,11 +977,11 @@ function buyProperty(state, userId) {
  * Current player declines to buy and triggers an auction.
  */
 function declinePurchase(state, userId) {
-  const events    = [];
+  const events = [];
   const playerIdx = state.turnState.currentPlayerIndex;
-  const player    = state.players[playerIdx];
+  const player = state.players[playerIdx];
 
-  if (player.userId !== userId)           return { state, events, error: 'Not your turn' };
+  if (player.userId !== userId) return { state, events, error: 'Not your turn' };
   if (state.turnState.phase !== 'buying') return { state, events, error: 'Not in buying phase' };
   if (!state.config.settings.auctionEnabled) {
     // If auctions disabled, just skip
@@ -865,19 +992,29 @@ function declinePurchase(state, userId) {
 
   state = clone(state);
   const position = state.players[playerIdx].position;
-  const sq       = state.config.board[position];
+  const sq = state.config.board[position];
 
   state.auction = {
     position,
-    bids:      {},
-    passed:    [],
+    bids: {},
+    passed: [],
     highBidder: null,
-    highBid:   state.config.settings.auctionMinBid - 1,
+    highBid: state.config.settings.auctionMinBid - 1,
   };
   state.turnState.phase = 'auctioning';
 
-  log(state, `${sq.name} is up for auction! Starting bid: $${state.config.settings.auctionMinBid}`, 'auction');
-  events.push(event('AUCTION_STARTED', { position, name: sq.name, minBid: state.config.settings.auctionMinBid }));
+  log(
+    state,
+    `${sq.name} is up for auction! Starting bid: $${state.config.settings.auctionMinBid}`,
+    'auction',
+  );
+  events.push(
+    event('AUCTION_STARTED', {
+      position,
+      name: sq.name,
+      minBid: state.config.settings.auctionMinBid,
+    }),
+  );
 
   return { state, events };
 }
@@ -889,24 +1026,32 @@ function placeBid(state, userId, amount) {
   const events = [];
 
   if (!state.auction) return { state, events, error: 'No auction in progress' };
-  if (state.turnState.phase !== 'auctioning') return { state, events, error: 'Not in auctioning phase' };
+  if (state.turnState.phase !== 'auctioning')
+    return { state, events, error: 'Not in auctioning phase' };
 
-  const player = state.players.find(p => p.userId === userId);
+  const player = state.players.find((p) => p.userId === userId);
   if (!player) return { state, events, error: 'Player not found' };
   if (player.isBankrupt) return { state, events, error: 'Bankrupt players cannot bid' };
-  if (state.auction.passed.includes(userId)) return { state, events, error: 'You have already passed on this auction' };
+  if (state.auction.passed.includes(userId))
+    return { state, events, error: 'You have already passed on this auction' };
 
   const minBid = Math.max(state.config.settings.auctionMinBid, state.auction.highBid + 1);
   if (amount < minBid) return { state, events, error: `Bid must be at least $${minBid}` };
   if (amount > player.money) return { state, events, error: 'Not enough money for that bid' };
 
   state = clone(state);
-  state.auction.bids[userId]  = amount;
-  state.auction.highBid       = amount;
-  state.auction.highBidder    = userId;
+  state.auction.bids[userId] = amount;
+  state.auction.highBid = amount;
+  state.auction.highBidder = userId;
 
-  log(state, `${player.username} bid $${amount} for ${state.config.board[state.auction.position].name}`, 'auction');
-  events.push(event('AUCTION_BID', { username: player.username, amount, position: state.auction.position }));
+  log(
+    state,
+    `${player.username} bid $${amount} for ${state.config.board[state.auction.position].name}`,
+    'auction',
+  );
+  events.push(
+    event('AUCTION_BID', { username: player.username, amount, position: state.auction.position }),
+  );
 
   return { state, events };
 }
@@ -920,7 +1065,7 @@ function passAuction(state, userId) {
 
   if (!state.auction) return { state, events, error: 'No auction in progress' };
 
-  const player = state.players.find(p => p.userId === userId);
+  const player = state.players.find((p) => p.userId === userId);
   if (!player) return { state, events, error: 'Player not found' };
 
   state = clone(state);
@@ -932,12 +1077,12 @@ function passAuction(state, userId) {
   events.push(event('AUCTION_PASSED', { username: player.username }));
 
   // Check if the auction is over (all non-bankrupt players have passed)
-  const activePlayers = state.players.filter(p => !p.isBankrupt);
-  const allPassed     = activePlayers.every(p => state.auction.passed.includes(p.userId));
+  const activePlayers = state.players.filter((p) => !p.isBankrupt);
+  const allPassed = activePlayers.every((p) => state.auction.passed.includes(p.userId));
 
   if (allPassed) {
     const result = resolveAuction(state, events);
-    state  = result.state;
+    state = result.state;
     events.push(...result.newEvents);
   }
 
@@ -950,23 +1095,27 @@ function resolveAuction(state, _existingEvents = []) {
   const sq = state.config.board[position];
 
   if (highBidder && highBid >= state.config.settings.auctionMinBid) {
-    const winner    = state.players.find(p => p.userId === highBidder);
-    const winnerIdx = state.players.findIndex(p => p.userId === highBidder);
+    const winner = state.players.find((p) => p.userId === highBidder);
+    const winnerIdx = state.players.findIndex((p) => p.userId === highBidder);
     state.players[winnerIdx].money -= highBid;
     state.properties[position].ownerId = highBidder;
 
     log(state, `${winner.username} won the auction for ${sq.name} at $${highBid}`, 'auction');
-    newEvents.push(event('AUCTION_WON', { username: winner.username, position, name: sq.name, amount: highBid }));
+    newEvents.push(
+      event('AUCTION_WON', { username: winner.username, position, name: sq.name, amount: highBid }),
+    );
 
     if (sq.type === 'property' && hasMonopoly(state, highBidder, sq.colorGroup)) {
-      newEvents.push(event('MONOPOLY_ACHIEVED', { username: winner.username, colorGroup: sq.colorGroup }));
+      newEvents.push(
+        event('MONOPOLY_ACHIEVED', { username: winner.username, colorGroup: sq.colorGroup }),
+      );
     }
   } else {
     log(state, `No one bid on ${sq.name} — it remains unsold`, 'auction');
     newEvents.push(event('AUCTION_NO_WINNER', { position, name: sq.name }));
   }
 
-  state.auction         = null;
+  state.auction = null;
   state.turnState.phase = 'post-roll';
 
   // Re-allow doubles roll if applicable
@@ -981,31 +1130,32 @@ function resolveAuction(state, _existingEvents = []) {
  * Build a house on a property.  Validates even-building rule and bank limits.
  */
 function buildHouse(state, userId, position) {
-  const events  = [];
-  const player  = state.players.find(p => p.userId === userId);
+  const events = [];
+  const player = state.players.find((p) => p.userId === userId);
   if (!player) return { state, events, error: 'Player not found' };
 
   const turnError = assertMyPropertyTurn(state, userId);
   if (turnError) return { state, events, error: turnError };
 
-  const sq        = state.config.board[position];
+  const sq = state.config.board[position];
   const propState = state.properties[position];
 
-  if (!propState || sq.type !== 'property')    return { state, events, error: 'Not a property' };
-  if (propState.ownerId !== userId)            return { state, events, error: 'You do not own this property' };
-  if (propState.mortgaged)                     return { state, events, error: 'Property is mortgaged' };
-  if (!hasMonopoly(state, userId, sq.colorGroup)) return { state, events, error: 'You need a monopoly to build' };
-  if (propState.houses >= 5)                   return { state, events, error: 'Already has a hotel' };
+  if (!propState || sq.type !== 'property') return { state, events, error: 'Not a property' };
+  if (propState.ownerId !== userId) return { state, events, error: 'You do not own this property' };
+  if (propState.mortgaged) return { state, events, error: 'Property is mortgaged' };
+  if (!hasMonopoly(state, userId, sq.colorGroup))
+    return { state, events, error: 'You need a monopoly to build' };
+  if (propState.houses >= 5) return { state, events, error: 'Already has a hotel' };
 
   // Check even-building rule
   const groupPositions = state.config.colorGroups[sq.colorGroup];
-  const minHouses = Math.min(...groupPositions.map(p => state.properties[p].houses));
+  const minHouses = Math.min(...groupPositions.map((p) => state.properties[p].houses));
   if (propState.houses > minHouses) {
     return { state, events, error: 'You must build evenly across the color group' };
   }
 
   const isHotel = propState.houses === 4;
-  const cost    = isHotel ? sq.hotelCost : sq.houseCost;
+  const cost = isHotel ? sq.hotelCost : sq.houseCost;
 
   if (player.money < cost) return { state, events, error: `Not enough money. Need $${cost}` };
 
@@ -1019,13 +1169,21 @@ function buildHouse(state, userId, position) {
   }
 
   state = clone(state);
-  const playerRef = state.players.find(p => p.userId === userId);
+  const playerRef = state.players.find((p) => p.userId === userId);
   playerRef.money -= cost;
   state.properties[position].houses++;
 
   const buildingType = state.properties[position].houses === 5 ? 'hotel' : 'house';
   log(state, `${player.username} built a ${buildingType} on ${sq.name}`, 'property');
-  events.push(event('BUILDING_BUILT', { username: player.username, position, name: sq.name, buildingType, houses: state.properties[position].houses }));
+  events.push(
+    event('BUILDING_BUILT', {
+      username: player.username,
+      position,
+      name: sq.name,
+      buildingType,
+      houses: state.properties[position].houses,
+    }),
+  );
 
   return { state, events };
 }
@@ -1034,38 +1192,50 @@ function buildHouse(state, userId, position) {
  * Sell a house back to the bank at half price.
  */
 function sellHouse(state, userId, position) {
-  const events  = [];
-  const player  = state.players.find(p => p.userId === userId);
+  const events = [];
+  const player = state.players.find((p) => p.userId === userId);
   if (!player) return { state, events, error: 'Player not found' };
 
   const turnError = assertMyPropertyTurn(state, userId);
   if (turnError) return { state, events, error: turnError };
 
-  const sq        = state.config.board[position];
+  const sq = state.config.board[position];
   const propState = state.properties[position];
 
   if (!propState || sq.type !== 'property') return { state, events, error: 'Not a property' };
-  if (propState.ownerId !== userId)         return { state, events, error: 'You do not own this property' };
-  if (propState.houses === 0)               return { state, events, error: 'No buildings to sell' };
+  if (propState.ownerId !== userId) return { state, events, error: 'You do not own this property' };
+  if (propState.houses === 0) return { state, events, error: 'No buildings to sell' };
 
   // Check even-selling rule (must sell down evenly)
   const groupPositions = state.config.colorGroups[sq.colorGroup];
-  const maxHouses = Math.max(...groupPositions.map(p => state.properties[p].houses));
+  const maxHouses = Math.max(...groupPositions.map((p) => state.properties[p].houses));
   if (propState.houses < maxHouses) {
     return { state, events, error: 'You must sell buildings evenly across the color group' };
   }
 
-  const wasHotel  = propState.houses === 5;
+  const wasHotel = propState.houses === 5;
   const sellPrice = wasHotel ? Math.floor(sq.hotelCost / 2) : Math.floor(sq.houseCost / 2);
 
   state = clone(state);
-  const playerRef = state.players.find(p => p.userId === userId);
+  const playerRef = state.players.find((p) => p.userId === userId);
   playerRef.money += sellPrice;
   state.properties[position].houses--;
 
   const buildingType = wasHotel ? 'hotel' : 'house';
-  log(state, `${player.username} sold a ${buildingType} on ${sq.name} for $${sellPrice}`, 'property');
-  events.push(event('BUILDING_SOLD', { username: player.username, position, name: sq.name, buildingType, sellPrice }));
+  log(
+    state,
+    `${player.username} sold a ${buildingType} on ${sq.name} for $${sellPrice}`,
+    'property',
+  );
+  events.push(
+    event('BUILDING_SOLD', {
+      username: player.username,
+      position,
+      name: sq.name,
+      buildingType,
+      sellPrice,
+    }),
+  );
 
   return { state, events };
 }
@@ -1076,27 +1246,34 @@ function sellHouse(state, userId, position) {
  * Mortgage a property.  All buildings must be sold first.
  */
 function mortgageProperty(state, userId, position) {
-  const events  = [];
-  const player  = state.players.find(p => p.userId === userId);
+  const events = [];
+  const player = state.players.find((p) => p.userId === userId);
   if (!player) return { state, events, error: 'Player not found' };
 
   const turnError = assertMyPropertyTurn(state, userId);
   if (turnError) return { state, events, error: turnError };
 
-  const sq        = state.config.board[position];
+  const sq = state.config.board[position];
   const propState = state.properties[position];
 
-  if (!propState)                    return { state, events, error: 'Not a purchasable square' };
-  if (propState.ownerId !== userId)  return { state, events, error: 'You do not own this property' };
-  if (propState.mortgaged)           return { state, events, error: 'Already mortgaged' };
-  if (propState.houses > 0)          return { state, events, error: 'Sell all buildings before mortgaging' };
+  if (!propState) return { state, events, error: 'Not a purchasable square' };
+  if (propState.ownerId !== userId) return { state, events, error: 'You do not own this property' };
+  if (propState.mortgaged) return { state, events, error: 'Already mortgaged' };
+  if (propState.houses > 0) return { state, events, error: 'Sell all buildings before mortgaging' };
 
   state = clone(state);
   state.properties[position].mortgaged = true;
-  state.players.find(p => p.userId === userId).money += sq.mortgage;
+  state.players.find((p) => p.userId === userId).money += sq.mortgage;
 
   log(state, `${player.username} mortgaged ${sq.name} for $${sq.mortgage}`, 'property');
-  events.push(event('PROPERTY_MORTGAGED', { username: player.username, position, name: sq.name, amount: sq.mortgage }));
+  events.push(
+    event('PROPERTY_MORTGAGED', {
+      username: player.username,
+      position,
+      name: sq.name,
+      amount: sq.mortgage,
+    }),
+  );
 
   return { state, events };
 }
@@ -1105,29 +1282,41 @@ function mortgageProperty(state, userId, position) {
  * Unmortgage a property (pay mortgage value + 10% interest).
  */
 function unmortgageProperty(state, userId, position) {
-  const events  = [];
-  const player  = state.players.find(p => p.userId === userId);
+  const events = [];
+  const player = state.players.find((p) => p.userId === userId);
   if (!player) return { state, events, error: 'Player not found' };
 
   const turnError = assertMyPropertyTurn(state, userId);
   if (turnError) return { state, events, error: turnError };
 
-  const sq        = state.config.board[position];
+  const sq = state.config.board[position];
   const propState = state.properties[position];
 
-  if (!propState)                    return { state, events, error: 'Not a purchasable square' };
-  if (propState.ownerId !== userId)  return { state, events, error: 'You do not own this property' };
-  if (!propState.mortgaged)          return { state, events, error: 'Not mortgaged' };
+  if (!propState) return { state, events, error: 'Not a purchasable square' };
+  if (propState.ownerId !== userId) return { state, events, error: 'You do not own this property' };
+  if (!propState.mortgaged) return { state, events, error: 'Not mortgaged' };
 
   const cost = sq.unmortgageCost;
-  if (player.money < cost) return { state, events, error: `Need $${cost} to unmortgage (mortgage $${sq.mortgage} + 10% interest)` };
+  if (player.money < cost)
+    return {
+      state,
+      events,
+      error: `Need $${cost} to unmortgage (mortgage $${sq.mortgage} + 10% interest)`,
+    };
 
   state = clone(state);
   state.properties[position].mortgaged = false;
-  state.players.find(p => p.userId === userId).money -= cost;
+  state.players.find((p) => p.userId === userId).money -= cost;
 
   log(state, `${player.username} unmortgaged ${sq.name} for $${cost}`, 'property');
-  events.push(event('PROPERTY_UNMORTGAGED', { username: player.username, position, name: sq.name, amount: cost }));
+  events.push(
+    event('PROPERTY_UNMORTGAGED', {
+      username: player.username,
+      position,
+      name: sq.name,
+      amount: cost,
+    }),
+  );
 
   return { state, events };
 }
@@ -1138,9 +1327,9 @@ function unmortgageProperty(state, userId, position) {
  * End the current player's turn and advance to the next player.
  */
 function endTurn(state, userId) {
-  const events    = [];
+  const events = [];
   const playerIdx = state.turnState.currentPlayerIndex;
-  const player    = state.players[playerIdx];
+  const player = state.players[playerIdx];
 
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
   if (!['post-roll'].includes(state.turnState.phase)) {
@@ -1150,7 +1339,7 @@ function endTurn(state, userId) {
   state = clone(state);
 
   // Check for win condition (only one non-bankrupt player left)
-  const activePlayers = state.players.filter(p => !p.isBankrupt);
+  const activePlayers = state.players.filter((p) => !p.isBankrupt);
   if (activePlayers.length === 1) {
     state.status = 'finished';
     log(state, `${activePlayers[0].username} wins the game!`, 'game');
@@ -1166,12 +1355,12 @@ function endTurn(state, userId) {
 
   state.turnState = {
     currentPlayerIndex: nextIdx,
-    phase:   'pre-roll',
-    dice:    [0, 0],
+    phase: 'pre-roll',
+    dice: [0, 0],
     doubles: 0,
     cardDrawn: null,
   };
-  state.trade  = null; // clear any lingering pending trade
+  state.trade = null; // clear any lingering pending trade
 
   const nextPlayer = state.players[nextIdx];
   log(state, `It is now ${nextPlayer.username}'s turn`, 'turn');
@@ -1186,68 +1375,102 @@ function endTurn(state, userId) {
 /**
  * Offer a trade to another player.
  */
-function offerTrade(state, fromUserId, toUserId, offerMoney, offerProps, offerCards, requestMoney, requestProps, requestCards) {
+function offerTrade(
+  state,
+  fromUserId,
+  toUserId,
+  offerMoney,
+  offerProps,
+  offerCards,
+  requestMoney,
+  requestProps,
+  requestCards,
+) {
   const events = [];
 
   // ── shape validation — never trust client payloads ────────────────────────
   // Each numeric field must be a non-negative integer; each props array must
   // be an array of unique, in-range board positions.
   const isNonNegInt = (n) => Number.isInteger(n) && n >= 0;
-  if (!isNonNegInt(offerMoney))   return { state, events, error: 'offerMoney must be a non-negative integer' };
-  if (!isNonNegInt(requestMoney)) return { state, events, error: 'requestMoney must be a non-negative integer' };
-  if (!isNonNegInt(offerCards))   return { state, events, error: 'offerCards must be a non-negative integer' };
-  if (!isNonNegInt(requestCards)) return { state, events, error: 'requestCards must be a non-negative integer' };
+  if (!isNonNegInt(offerMoney))
+    return { state, events, error: 'offerMoney must be a non-negative integer' };
+  if (!isNonNegInt(requestMoney))
+    return { state, events, error: 'requestMoney must be a non-negative integer' };
+  if (!isNonNegInt(offerCards))
+    return { state, events, error: 'offerCards must be a non-negative integer' };
+  if (!isNonNegInt(requestCards))
+    return { state, events, error: 'requestCards must be a non-negative integer' };
 
   const boardSize = state.config.board.length;
   const validateProps = (arr, label) => {
     if (!Array.isArray(arr)) return `${label} must be an array`;
     const seen = new Set();
     for (const pos of arr) {
-      if (!Number.isInteger(pos) || pos < 0 || pos >= boardSize) return `${label} contains invalid position ${pos}`;
+      if (!Number.isInteger(pos) || pos < 0 || pos >= boardSize)
+        return `${label} contains invalid position ${pos}`;
       if (seen.has(pos)) return `${label} contains duplicate position ${pos}`;
       seen.add(pos);
     }
     return null;
   };
-  const offerErr   = validateProps(offerProps,   'offerProps');
-  if (offerErr)   return { state, events, error: offerErr };
+  const offerErr = validateProps(offerProps, 'offerProps');
+  if (offerErr) return { state, events, error: offerErr };
   const requestErr = validateProps(requestProps, 'requestProps');
   if (requestErr) return { state, events, error: requestErr };
 
   if (!state.config.settings.tradeEnabled) return { state, events, error: 'Trading is disabled' };
-  if (fromUserId === toUserId)              return { state, events, error: 'Cannot trade with yourself' };
+  if (fromUserId === toUserId) return { state, events, error: 'Cannot trade with yourself' };
 
-  const fromPlayer = state.players.find(p => p.userId === fromUserId);
-  const toPlayer   = state.players.find(p => p.userId === toUserId);
+  const fromPlayer = state.players.find((p) => p.userId === fromUserId);
+  const toPlayer = state.players.find((p) => p.userId === toUserId);
   if (!fromPlayer || !toPlayer) return { state, events, error: 'Player not found' };
-  if (fromPlayer.isBankrupt || toPlayer.isBankrupt) return { state, events, error: 'Cannot trade with a bankrupt player' };
+  if (fromPlayer.isBankrupt || toPlayer.isBankrupt)
+    return { state, events, error: 'Cannot trade with a bankrupt player' };
 
   // Validate offer
   if (fromPlayer.money < offerMoney) return { state, events, error: 'Not enough money to offer' };
   for (const pos of offerProps) {
-    if (state.properties[pos]?.ownerId !== fromUserId) return { state, events, error: `You do not own position ${pos}` };
-    if (state.properties[pos]?.houses > 0) return { state, events, error: 'Sell all buildings before trading a property' };
+    if (state.properties[pos]?.ownerId !== fromUserId)
+      return { state, events, error: `You do not own position ${pos}` };
+    if (state.properties[pos]?.houses > 0)
+      return { state, events, error: 'Sell all buildings before trading a property' };
   }
-  if (fromPlayer.jailCards < offerCards) return { state, events, error: 'Not enough jail cards to offer' };
+  if (fromPlayer.jailCards < offerCards)
+    return { state, events, error: 'Not enough jail cards to offer' };
 
   // Validate request
-  if (toPlayer.money < requestMoney) return { state, events, error: `${toPlayer.username} does not have enough money` };
+  if (toPlayer.money < requestMoney)
+    return { state, events, error: `${toPlayer.username} does not have enough money` };
   for (const pos of requestProps) {
-    if (state.properties[pos]?.ownerId !== toUserId) return { state, events, error: `${toPlayer.username} does not own position ${pos}` };
-    if (state.properties[pos]?.houses > 0) return { state, events, error: 'Requested property has buildings — sell them first' };
+    if (state.properties[pos]?.ownerId !== toUserId)
+      return { state, events, error: `${toPlayer.username} does not own position ${pos}` };
+    if (state.properties[pos]?.houses > 0)
+      return { state, events, error: 'Requested property has buildings — sell them first' };
   }
-  if (toPlayer.jailCards < requestCards) return { state, events, error: `${toPlayer.username} does not have enough jail cards` };
+  if (toPlayer.jailCards < requestCards)
+    return { state, events, error: `${toPlayer.username} does not have enough jail cards` };
 
   state = clone(state);
   state.trade = {
-    fromUserId, toUserId,
-    offerMoney, offerProps: offerProps || [], offerCards: offerCards || 0,
-    requestMoney, requestProps: requestProps || [], requestCards: requestCards || 0,
+    fromUserId,
+    toUserId,
+    offerMoney,
+    offerProps: offerProps || [],
+    offerCards: offerCards || 0,
+    requestMoney,
+    requestProps: requestProps || [],
+    requestCards: requestCards || 0,
     status: 'pending',
   };
 
   log(state, `${fromPlayer.username} offered a trade to ${toPlayer.username}`, 'trade');
-  events.push(event('TRADE_OFFERED', { from: fromPlayer.username, to: toPlayer.username, trade: state.trade }));
+  events.push(
+    event('TRADE_OFFERED', {
+      from: fromPlayer.username,
+      to: toPlayer.username,
+      trade: state.trade,
+    }),
+  );
 
   return { state, events };
 }
@@ -1258,34 +1481,45 @@ function offerTrade(state, fromUserId, toUserId, offerMoney, offerProps, offerCa
 function acceptTrade(state, userId) {
   const events = [];
 
-  if (!state.trade || state.trade.status !== 'pending') return { state, events, error: 'No pending trade' };
-  if (state.trade.toUserId !== userId) return { state, events, error: 'This trade is not addressed to you' };
+  if (!state.trade || state.trade.status !== 'pending')
+    return { state, events, error: 'No pending trade' };
+  if (state.trade.toUserId !== userId)
+    return { state, events, error: 'This trade is not addressed to you' };
 
   state = clone(state);
-  const { fromUserId, toUserId, offerMoney, offerProps, offerCards, requestMoney, requestProps, requestCards } = state.trade;
+  const {
+    fromUserId,
+    toUserId,
+    offerMoney,
+    offerProps,
+    offerCards,
+    requestMoney,
+    requestProps,
+    requestCards,
+  } = state.trade;
 
-  const fromIdx = state.players.findIndex(p => p.userId === fromUserId);
-  const toIdx   = state.players.findIndex(p => p.userId === toUserId);
+  const fromIdx = state.players.findIndex((p) => p.userId === fromUserId);
+  const toIdx = state.players.findIndex((p) => p.userId === toUserId);
 
   // Exchange money
   state.players[fromIdx].money -= offerMoney;
-  state.players[toIdx].money   += offerMoney;
-  state.players[toIdx].money   -= requestMoney;
+  state.players[toIdx].money += offerMoney;
+  state.players[toIdx].money -= requestMoney;
   state.players[fromIdx].money += requestMoney;
 
   // Exchange properties
-  for (const pos of offerProps)   state.properties[pos].ownerId = toUserId;
+  for (const pos of offerProps) state.properties[pos].ownerId = toUserId;
   for (const pos of requestProps) state.properties[pos].ownerId = fromUserId;
 
   // Exchange jail cards
   state.players[fromIdx].jailCards -= offerCards;
-  state.players[toIdx].jailCards   += offerCards;
-  state.players[toIdx].jailCards   -= requestCards;
+  state.players[toIdx].jailCards += offerCards;
+  state.players[toIdx].jailCards -= requestCards;
   state.players[fromIdx].jailCards += requestCards;
 
   state.trade.status = 'accepted';
-  const fromPlayer   = state.players[fromIdx];
-  const toPlayer     = state.players[toIdx];
+  const fromPlayer = state.players[fromIdx];
+  const toPlayer = state.players[toIdx];
 
   log(state, `Trade between ${fromPlayer.username} and ${toPlayer.username} was accepted`, 'trade');
   events.push(event('TRADE_ACCEPTED', { from: fromPlayer.username, to: toPlayer.username }));
@@ -1300,12 +1534,14 @@ function acceptTrade(state, userId) {
 function rejectTrade(state, userId) {
   const events = [];
 
-  if (!state.trade || state.trade.status !== 'pending') return { state, events, error: 'No pending trade' };
-  if (state.trade.toUserId !== userId) return { state, events, error: 'This trade is not addressed to you' };
+  if (!state.trade || state.trade.status !== 'pending')
+    return { state, events, error: 'No pending trade' };
+  if (state.trade.toUserId !== userId)
+    return { state, events, error: 'This trade is not addressed to you' };
 
   state = clone(state);
-  const fromPlayer = state.players.find(p => p.userId === state.trade.fromUserId);
-  const toPlayer   = state.players.find(p => p.userId === state.trade.toUserId);
+  const fromPlayer = state.players.find((p) => p.userId === state.trade.fromUserId);
+  const toPlayer = state.players.find((p) => p.userId === state.trade.toUserId);
 
   log(state, `${toPlayer.username} rejected ${fromPlayer.username}'s trade offer`, 'trade');
   events.push(event('TRADE_REJECTED', { from: fromPlayer.username, to: toPlayer.username }));
@@ -1320,11 +1556,13 @@ function rejectTrade(state, userId) {
 function cancelTrade(state, userId) {
   const events = [];
 
-  if (!state.trade || state.trade.status !== 'pending') return { state, events, error: 'No pending trade' };
-  if (state.trade.fromUserId !== userId) return { state, events, error: 'This is not your trade offer' };
+  if (!state.trade || state.trade.status !== 'pending')
+    return { state, events, error: 'No pending trade' };
+  if (state.trade.fromUserId !== userId)
+    return { state, events, error: 'This is not your trade offer' };
 
   state = clone(state);
-  const fromPlayer = state.players.find(p => p.userId === userId);
+  const fromPlayer = state.players.find((p) => p.userId === userId);
 
   log(state, `${fromPlayer.username} cancelled their trade offer`, 'trade');
   events.push(event('TRADE_CANCELLED', { username: fromPlayer.username }));
@@ -1339,8 +1577,8 @@ function cancelTrade(state, userId) {
  * Declare a player bankrupt.  Their assets go to their creditor (or the bank).
  */
 function declareBankruptcy(state, playerIdx, creditorUserId) {
-  const events  = [];
-  const player  = state.players[playerIdx];
+  const events = [];
+  const player = state.players[playerIdx];
 
   state = clone(state);
   state.players[playerIdx].isBankrupt = true;
@@ -1352,7 +1590,7 @@ function declareBankruptcy(state, playerIdx, creditorUserId) {
         // Transfer to creditor (mortgaged properties transfer as-is with 10% fee)
         propState.ownerId = creditorUserId;
         if (propState.mortgaged) {
-          const creditorIdx = state.players.findIndex(p => p.userId === creditorUserId);
+          const creditorIdx = state.players.findIndex((p) => p.userId === creditorUserId);
           const interestFee = Math.floor(state.config.board[Number(pos)].mortgage * 0.1);
           if (state.players[creditorIdx].money >= interestFee) {
             state.players[creditorIdx].money -= interestFee;
@@ -1360,8 +1598,8 @@ function declareBankruptcy(state, playerIdx, creditorUserId) {
         }
       } else {
         // Return to bank
-        propState.ownerId  = null;
-        propState.houses   = 0;
+        propState.ownerId = null;
+        propState.houses = 0;
         propState.mortgaged = false;
       }
     }
@@ -1369,7 +1607,7 @@ function declareBankruptcy(state, playerIdx, creditorUserId) {
 
   // Transfer remaining money
   if (creditorUserId) {
-    const creditorIdx = state.players.findIndex(p => p.userId === creditorUserId);
+    const creditorIdx = state.players.findIndex((p) => p.userId === creditorUserId);
     if (creditorIdx >= 0) {
       state.players[creditorIdx].money += state.players[playerIdx].money;
     }
@@ -1378,7 +1616,7 @@ function declareBankruptcy(state, playerIdx, creditorUserId) {
 
   // Transfer jail cards
   if (creditorUserId && player.jailCards > 0) {
-    const creditorIdx = state.players.findIndex(p => p.userId === creditorUserId);
+    const creditorIdx = state.players.findIndex((p) => p.userId === creditorUserId);
     if (creditorIdx >= 0) state.players[creditorIdx].jailCards += player.jailCards;
   }
   state.players[playerIdx].jailCards = 0;
@@ -1387,7 +1625,7 @@ function declareBankruptcy(state, playerIdx, creditorUserId) {
   events.push(event('PLAYER_BANKRUPT', { username: player.username }));
 
   // Check for game over
-  const remaining = state.players.filter(p => !p.isBankrupt);
+  const remaining = state.players.filter((p) => !p.isBankrupt);
   if (remaining.length === 1) {
     state.status = 'finished';
     log(state, `${remaining[0].username} wins the game!`, 'game');
@@ -1408,11 +1646,11 @@ function declareBankruptcy(state, playerIdx, creditorUserId) {
  * @returns {{ state, events, error? }}
  */
 function skipTurn(state, userId) {
-  const events    = [];
-  const playerIdx = state.players.findIndex(p => p.userId === userId);
+  const events = [];
+  const playerIdx = state.players.findIndex((p) => p.userId === userId);
   if (playerIdx < 0) return { state, events, error: 'Player not found' };
   if (state.turnState.currentPlayerIndex !== playerIdx) {
-    return { state, events, error: 'Not this player\'s turn' };
+    return { state, events, error: "Not this player's turn" };
   }
 
   state = clone(state);
@@ -1420,10 +1658,10 @@ function skipTurn(state, userId) {
 
   // Clear any mid-turn pending state (pending auction, trade offer, etc.)
   state.auction = null;
-  state.trade   = null;
+  state.trade = null;
 
   // Win-condition check (shouldn't fire here, but be safe)
-  const active = state.players.filter(p => !p.isBankrupt);
+  const active = state.players.filter((p) => !p.isBankrupt);
   if (active.length <= 1) {
     if (active.length === 1) {
       state.status = 'finished';
@@ -1440,15 +1678,17 @@ function skipTurn(state, userId) {
 
   state.turnState = {
     currentPlayerIndex: nextIdx,
-    phase:   'pre-roll',
-    dice:    [0, 0],
+    phase: 'pre-roll',
+    dice: [0, 0],
     doubles: 0,
     cardDrawn: null,
   };
 
   log(state, `${player.username}'s turn was auto-skipped (disconnected)`, 'info');
-  events.push(event('TURN_SKIPPED',  { username: player.username }));
-  events.push(event('TURN_STARTED',  { username: state.players[nextIdx].username, playerIndex: nextIdx }));
+  events.push(event('TURN_SKIPPED', { username: player.username }));
+  events.push(
+    event('TURN_STARTED', { username: state.players[nextIdx].username, playerIndex: nextIdx }),
+  );
 
   return { state, events };
 }
@@ -1470,28 +1710,33 @@ function skipTurn(state, userId) {
  */
 function createInitialPlayer(user, existingPlayers = [], config = null) {
   if (!config?.settings?.playerColors || !config?.settings?.playerTokens) {
-    throw new Error('createInitialPlayer requires a config with settings.playerColors and settings.playerTokens');
+    throw new Error(
+      'createInitialPlayer requires a config with settings.playerColors and settings.playerTokens',
+    );
   }
-  const usedColors = new Set(existingPlayers.map(p => p.color));
-  const colorObj   = config.settings.playerColors.find(c => !usedColors.has(c.id)) ?? config.settings.playerColors[0];
-  const color      = colorObj.id;
-  const colorHex   = colorObj.hex;
-  const token      = config.settings.playerTokens[existingPlayers.length] ?? config.settings.playerTokens[0];
+  const usedColors = new Set(existingPlayers.map((p) => p.color));
+  const colorObj =
+    config.settings.playerColors.find((c) => !usedColors.has(c.id)) ??
+    config.settings.playerColors[0];
+  const color = colorObj.id;
+  const colorHex = colorObj.hex;
+  const token =
+    config.settings.playerTokens[existingPlayers.length] ?? config.settings.playerTokens[0];
 
   return {
-    userId:     user.id,
-    username:   user.username,
-    active:     true,
+    userId: user.id,
+    username: user.username,
+    active: true,
     color,
     colorHex,
     token,
-    position:   0,
-    money:      0,
-    inJail:     false,
-    jailTurns:  0,
-    jailCards:  0,
+    position: 0,
+    money: 0,
+    inJail: false,
+    jailTurns: 0,
+    jailCards: 0,
     isBankrupt: false,
-    connected:  true,
+    connected: true,
   };
 }
 
@@ -1501,38 +1746,55 @@ function createInitialPlayer(user, existingPlayers = [], config = null) {
  */
 function applyAction(state, userId, action, payload = {}) {
   switch (action) {
-    case 'rollDice':         return rollDice(state, userId);
-    case 'buyProperty':      return buyProperty(state, userId);
-    case 'declinePurchase':  return declinePurchase(state, userId);
-    case 'placeBid':         return placeBid(state, userId, payload.amount);
-    case 'passAuction':      return passAuction(state, userId);
-    case 'buildHouse':       return buildHouse(state, userId, payload.position);
-    case 'sellHouse':        return sellHouse(state, userId, payload.position);
-    case 'mortgageProperty':   return mortgageProperty(state, userId, payload.position);
-    case 'unmortgageProperty': return unmortgageProperty(state, userId, payload.position);
-    case 'payJailFine':      return payJailFine(state, userId);
-    case 'useJailCard':      return useJailCard(state, userId);
-    case 'endTurn':          return endTurn(state, userId);
+    case 'rollDice':
+      return rollDice(state, userId);
+    case 'buyProperty':
+      return buyProperty(state, userId);
+    case 'declinePurchase':
+      return declinePurchase(state, userId);
+    case 'placeBid':
+      return placeBid(state, userId, payload.amount);
+    case 'passAuction':
+      return passAuction(state, userId);
+    case 'buildHouse':
+      return buildHouse(state, userId, payload.position);
+    case 'sellHouse':
+      return sellHouse(state, userId, payload.position);
+    case 'mortgageProperty':
+      return mortgageProperty(state, userId, payload.position);
+    case 'unmortgageProperty':
+      return unmortgageProperty(state, userId, payload.position);
+    case 'payJailFine':
+      return payJailFine(state, userId);
+    case 'useJailCard':
+      return useJailCard(state, userId);
+    case 'endTurn':
+      return endTurn(state, userId);
     case 'offerTrade':
       return offerTrade(
-        state, userId,
+        state,
+        userId,
         payload.toUserId,
-        payload.offerMoney   || 0,
-        payload.offerProps   || [],
-        payload.offerCards   || 0,
+        payload.offerMoney || 0,
+        payload.offerProps || [],
+        payload.offerCards || 0,
         payload.requestMoney || 0,
         payload.requestProps || [],
         payload.requestCards || 0,
       );
-    case 'acceptTrade':  return acceptTrade(state, userId);
-    case 'rejectTrade':  return rejectTrade(state, userId);
-    case 'cancelTrade':  return cancelTrade(state, userId);
+    case 'acceptTrade':
+      return acceptTrade(state, userId);
+    case 'rejectTrade':
+      return rejectTrade(state, userId);
+    case 'cancelTrade':
+      return cancelTrade(state, userId);
     case 'declareBankruptcy': {
-      const playerIdx = state.players.findIndex(p => p.userId === userId);
+      const playerIdx = state.players.findIndex((p) => p.userId === userId);
       if (playerIdx < 0) return { state, events: [], error: 'Player not found' };
       return declareBankruptcy(state, playerIdx, null);
     }
-    case 'skipTurn': return skipTurn(state, userId);
+    case 'skipTurn':
+      return skipTurn(state, userId);
     default:
       return { state, events: [], error: `Unknown action: ${action}` };
   }
@@ -1562,10 +1824,10 @@ function isTurnTimerBlocked(state) {
 function getValidActions(state, userId) {
   if (state.status !== 'playing') return [];
 
-  const player = state.players.find(p => p.userId === userId);
+  const player = state.players.find((p) => p.userId === userId);
   if (!player || player.isBankrupt) return [];
 
-  const cur   = state.players[state.turnState.currentPlayerIndex];
+  const cur = state.players[state.turnState.currentPlayerIndex];
   const isMyTurn = cur && cur.userId === userId;
   const phase = state.turnState.phase;
   const actions = new Set();
@@ -1589,7 +1851,7 @@ function getValidActions(state, userId) {
   if (phase === 'pre-roll') {
     if (player.inJail) {
       if (player.money >= state.config.settings.jailFine) actions.add('payJailFine');
-      if (player.jailCards > 0)                           actions.add('useJailCard');
+      if (player.jailCards > 0) actions.add('useJailCard');
       // Still allowed to roll (may escape jail with doubles)
     }
     actions.add('rollDice');
@@ -1601,7 +1863,7 @@ function getValidActions(state, userId) {
 
   if (phase === 'buying') {
     const prop = state.properties[cur.position];
-    const sq   = state.config.board[cur.position];
+    const sq = state.config.board[cur.position];
     if (prop && !prop.ownerId && sq && player.money >= sq.price) actions.add('buyProperty');
     actions.add('declinePurchase');
   }
@@ -1621,11 +1883,10 @@ function getValidActions(state, userId) {
 }
 
 function _addPropertyManagementActions(state, userId, actions) {
-  const myProps = Object.entries(state.properties)
-    .filter(([, p]) => p.ownerId === userId);
+  const myProps = Object.entries(state.properties).filter(([, p]) => p.ownerId === userId);
 
   for (const [posStr, prop] of myProps) {
-    const sq  = state.config.board[Number(posStr)];
+    const sq = state.config.board[Number(posStr)];
     if (!prop.mortgaged && sq?.type === 'property' && hasMonopoly(state, userId, sq.colorGroup)) {
       actions.add('buildHouse');
     }
@@ -1644,14 +1905,14 @@ function _addPropertyManagementActions(state, userId, actions) {
 /** Static metadata about this game type. */
 function getGameMetadata() {
   return {
-    name:                     'Monopoly',
-    minPlayers:               2,
-    maxPlayers:               8,
-    description:              'Classic property trading board game for 2–8 players.',
-    icon:                     '🎲',
+    name: 'Monopoly',
+    minPlayers: 2,
+    maxPlayers: 8,
+    description: 'Classic property trading board game for 2–8 players.',
+    icon: '🎲',
     estimatedDurationMinutes: 90,
-    complexity:               'medium',
-    tags:                     ['dice', 'economic', 'trading', 'classic', 'family'],
+    complexity: 'medium',
+    tags: ['dice', 'economic', 'trading', 'classic', 'family'],
   };
 }
 

@@ -27,9 +27,9 @@
 
 'use strict';
 
-const { v4: uuidv4 }  = require('uuid');
-const database        = require('./database');
-const gameRegistry    = require('./game-registry');
+const { v4: uuidv4 } = require('uuid');
+const database = require('./database');
+const gameRegistry = require('./game-registry');
 
 /** Return the game-logic module for a given state. */
 function getLogic(state) {
@@ -57,7 +57,7 @@ const _locks = new Map(); // gameId → Promise (tail of that game's queue)
 async function withGameLock(gameId, fn) {
   const prev = _locks.get(gameId) ?? Promise.resolve();
   let release;
-  const mine = new Promise(r => (release = r));
+  const mine = new Promise((r) => (release = r));
   _locks.set(gameId, mine);
   await prev;
   try {
@@ -87,29 +87,30 @@ function persist(state) {
  */
 function createGame(name, hostUserId, gameType = 'monopoly', configOverrides = {}) {
   const gameId = uuidv4();
-  const logic  = gameRegistry.getGameLogic(gameType);
+  const logic = gameRegistry.getGameLogic(gameType);
   const config = logic.getConfigCopy();
 
   // Merge per-game rule tweaks sent from the client
-  if (configOverrides.settings)              Object.assign(config.settings, configOverrides.settings);
-  if (configOverrides.board)                 config.board = configOverrides.board;
-  if (configOverrides.cards?.chance)         config.cards.chance = configOverrides.cards.chance;
-  if (configOverrides.cards?.communityChest) config.cards.communityChest = configOverrides.cards.communityChest;
+  if (configOverrides.settings) Object.assign(config.settings, configOverrides.settings);
+  if (configOverrides.board) config.board = configOverrides.board;
+  if (configOverrides.cards?.chance) config.cards.chance = configOverrides.cards.chance;
+  if (configOverrides.cards?.communityChest)
+    config.cards.communityChest = configOverrides.cards.communityChest;
 
   const { minPlayers, maxPlayers } = logic.getGameMetadata();
 
   // Minimal waiting-room state — no game-specific fields yet
   const placeholderState = {
-    id:           gameId,
+    id: gameId,
     name,
     gameType,
-    createdBy:    hostUserId,
-    status:       'waiting',
+    createdBy: hostUserId,
+    status: 'waiting',
     stateVersion: logic.STATE_VERSION,
     config,
     minPlayers,
     maxPlayers,
-    players:      [],
+    players: [],
   };
 
   database.createGame(gameId, name, hostUserId, placeholderState, config, gameType);
@@ -153,7 +154,7 @@ function loadGame(gameId) {
     if (typeof logic.migrate !== 'function') {
       console.warn(
         `[game-manager] Game ${gameId} has stateVersion ${row.state.stateVersion} but ` +
-        `current is ${logic.STATE_VERSION}; no migrate() defined — loading as-is.`,
+          `current is ${logic.STATE_VERSION}; no migrate() defined — loading as-is.`,
       );
     } else {
       try {
@@ -163,9 +164,7 @@ function loadGame(gameId) {
           `[game-manager] Migrated game ${gameId} to stateVersion ${logic.STATE_VERSION}`,
         );
       } catch (err) {
-        console.error(
-          `[game-manager] Migration failed for game ${gameId}: ${err.message}`,
-        );
+        console.error(`[game-manager] Migration failed for game ${gameId}: ${err.message}`);
         return null;
       }
     }
@@ -215,7 +214,7 @@ function addPlayerToLobby(gameId, user) {
   const { maxPlayers } = logic.getGameMetadata();
   if (state.players.length >= maxPlayers) return { error: 'Game is full' };
 
-  if (state.players.find(p => p.userId === user.id)) {
+  if (state.players.find((p) => p.userId === user.id)) {
     return { state }; // idempotent
   }
 
@@ -235,7 +234,7 @@ function removePlayerFromLobby(gameId, userId) {
   const state = peekGame(gameId);
   if (!state || state.status !== 'waiting') return;
 
-  state.players = state.players.filter(p => p.userId !== userId);
+  state.players = state.players.filter((p) => p.userId !== userId);
   database.removePlayerFromGame(gameId, userId);
   persist(state);
 }
@@ -249,7 +248,7 @@ function removePlayerFromLobby(gameId, userId) {
  */
 function startGame(gameId, hostUserId) {
   const state = peekGame(gameId);
-  if (!state)                    return { error: 'Game not found' };
+  if (!state) return { error: 'Game not found' };
   if (state.status !== 'waiting') return { error: 'Game is not in waiting state' };
 
   const dbGame = database.getGameById(gameId);
@@ -263,11 +262,22 @@ function startGame(gameId, hostUserId) {
 
   const newState = logic.initGame(gameId, state.name, state.players, state.config);
   newState.createdBy = state.createdBy || hostUserId;
-  newState.gameType  = state.gameType;
+  newState.gameType = state.gameType;
   activeGames.set(gameId, newState);
   persist(newState);
 
-  return { state: newState, events: [{ type: 'GAME_STARTED', data: { players: newState.players.map(p => ({ userId: p.userId, username: p.username })) }, timestamp: Date.now() }] };
+  return {
+    state: newState,
+    events: [
+      {
+        type: 'GAME_STARTED',
+        data: {
+          players: newState.players.map((p) => ({ userId: p.userId, username: p.username })),
+        },
+        timestamp: Date.now(),
+      },
+    ],
+  };
 }
 
 /**
@@ -285,7 +295,8 @@ async function applyAction(gameId, userId, action, payload = {}) {
   return withGameLock(gameId, () => {
     const state = peekGame(gameId);
     if (!state) return { state: null, events: [], error: 'Game not found' };
-    if (state.status !== 'playing') return { state, events: [], error: 'Game is not in playing state' };
+    if (state.status !== 'playing')
+      return { state, events: [], error: 'Game is not in playing state' };
 
     const result = getLogic(state).applyAction(state, userId, action, payload);
     if (result.error) return { state, events: [], error: result.error };
@@ -351,7 +362,7 @@ async function setPlayerConnected(gameId, userId, connected) {
   return withGameLock(gameId, () => {
     const state = peekGame(gameId);
     if (!state) return;
-    const player = state.players.find(p => p.userId === userId);
+    const player = state.players.find((p) => p.userId === userId);
     if (player) player.connected = connected;
     persist(state);
   });

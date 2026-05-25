@@ -11,9 +11,9 @@
  */
 
 const registry = {
-  monopoly:       require('../games/monopoly/game-logic'),
+  monopoly: require('../games/monopoly/game-logic'),
   'connect-four': require('../games/connect-four/game-logic'),
-  risk:           require('../games/risk/game-logic'),
+  risk: require('../games/risk/game-logic'),
 };
 
 /**

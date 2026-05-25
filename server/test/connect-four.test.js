@@ -6,11 +6,11 @@ const gl = require('../games/connect-four/game-logic');
 
 const CF_CONFIG = {
   settings: {
-    boardWidth:   7,
-    boardHeight:  6,
-    winLength:    4,
+    boardWidth: 7,
+    boardHeight: 6,
+    winLength: 4,
     playerColors: [
-      { id: 'red',    hex: '#e53935' },
+      { id: 'red', hex: '#e53935' },
       { id: 'yellow', hex: '#fdd835' },
     ],
     playerTokens: ['🔴', '🟡'],
@@ -18,8 +18,26 @@ const CF_CONFIG = {
 };
 
 const PLAYERS = [
-  { userId: 'p1', username: 'Alice', color: 'red',    colorHex: '#e53935', token: '🔴', active: true, isBankrupt: false, connected: true },
-  { userId: 'p2', username: 'Bob',   color: 'yellow', colorHex: '#fdd835', token: '🟡', active: true, isBankrupt: false, connected: true },
+  {
+    userId: 'p1',
+    username: 'Alice',
+    color: 'red',
+    colorHex: '#e53935',
+    token: '🔴',
+    active: true,
+    isBankrupt: false,
+    connected: true,
+  },
+  {
+    userId: 'p2',
+    username: 'Bob',
+    color: 'yellow',
+    colorHex: '#fdd835',
+    token: '🟡',
+    active: true,
+    isBankrupt: false,
+    connected: true,
+  },
 ];
 
 function emptyBoard() {
@@ -28,16 +46,16 @@ function emptyBoard() {
 
 function makeCFState(overrides = {}) {
   return {
-    id:        'test-game',
-    name:      'Test Game',
-    gameType:  'connect-four',
-    status:    'playing',
-    config:    CF_CONFIG,
-    players:   PLAYERS.map(p => ({ ...p })),
-    board:     emptyBoard(),
+    id: 'test-game',
+    name: 'Test Game',
+    gameType: 'connect-four',
+    status: 'playing',
+    config: CF_CONFIG,
+    players: PLAYERS.map((p) => ({ ...p })),
+    board: emptyBoard(),
     turnState: { currentPlayerIndex: 0, phase: 'drop' },
-    winner:    null,
-    log:       [],
+    winner: null,
+    log: [],
     ...overrides,
   };
 }
@@ -56,9 +74,9 @@ function makeCFState(overrides = {}) {
 // Vertical:   strictly alternating per column.
 // Diagonals:  every 4-cell window contains both colours (verified by hand).
 function drawBoard() {
-  const owner = (r, c) => (Math.floor(c / 2) + r) % 2 === 0 ? 'p1' : 'p2';
+  const owner = (r, c) => ((Math.floor(c / 2) + r) % 2 === 0 ? 'p1' : 'p2');
   const board = Array.from({ length: 6 }, (_, r) =>
-    Array.from({ length: 7 }, (_, c) => owner(r, c))
+    Array.from({ length: 7 }, (_, c) => owner(r, c)),
   );
   board[0][6] = null; // the one empty cell — 'p2' will fill it last
   return board;
@@ -125,7 +143,7 @@ describe('dropPiece', () => {
 
   test('emits PIECE_DROPPED event on a valid drop', () => {
     const { events } = gl.applyAction(makeCFState(), 'p1', 'dropPiece', { column: 0 });
-    expect(events.some(e => e.type === 'PIECE_DROPPED')).toBe(true);
+    expect(events.some((e) => e.type === 'PIECE_DROPPED')).toBe(true);
   });
 
   test('returns an error (does not throw) when the column is full', () => {
@@ -155,7 +173,7 @@ describe('turn alternation', () => {
 });
 
 describe('out-of-turn rejection', () => {
-  test('rejects when it is not the caller\'s turn', () => {
+  test("rejects when it is not the caller's turn", () => {
     const { error } = gl.applyAction(makeCFState(), 'p2', 'dropPiece', { column: 0 });
     expect(error).toBeDefined();
     expect(error).toMatch(/turn/i);
@@ -176,7 +194,7 @@ describe('win detection', () => {
     const { state: s, events } = gl.applyAction(state, 'p1', 'dropPiece', { column: 3 });
     expect(s.status).toBe('finished');
     expect(s.winner).toBe('p1');
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
   });
 
   test('vertical: four in a column wins', () => {
@@ -188,7 +206,7 @@ describe('win detection', () => {
     const { state: s, events } = gl.applyAction(state, 'p1', 'dropPiece', { column: 0 });
     expect(s.status).toBe('finished');
     expect(s.winner).toBe('p1');
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
   });
 
   test('diagonal ↘: four along [+row,+col] direction wins', () => {
@@ -202,7 +220,7 @@ describe('win detection', () => {
     const { state: s, events } = gl.applyAction(state, 'p1', 'dropPiece', { column: 3 });
     expect(s.status).toBe('finished');
     expect(s.winner).toBe('p1');
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
   });
 
   test('diagonal ↙: four along [+row,-col] direction wins', () => {
@@ -216,7 +234,7 @@ describe('win detection', () => {
     const { state: s, events } = gl.applyAction(state, 'p1', 'dropPiece', { column: 3 });
     expect(s.status).toBe('finished');
     expect(s.winner).toBe('p1');
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
   });
 });
 
@@ -231,13 +249,13 @@ describe('draw detection', () => {
     // The dropped piece is p2 (matching the board pattern), and checkWinner
     // returns false, so isBoardFull triggers the draw result.
     const state = makeCFState({
-      board:     drawBoard(),
+      board: drawBoard(),
       turnState: { currentPlayerIndex: 1, phase: 'drop' }, // p2's turn
     });
     const { state: s, events } = gl.applyAction(state, 'p2', 'dropPiece', { column: 6 });
     expect(s.status).toBe('finished');
     expect(s.winner).toBeNull();
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
-    expect(events.find(e => e.type === 'GAME_OVER').data.winner).toBeNull();
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.find((e) => e.type === 'GAME_OVER').data.winner).toBeNull();
   });
 });

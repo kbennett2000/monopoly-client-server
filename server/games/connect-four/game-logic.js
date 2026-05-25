@@ -16,9 +16,12 @@
  *   }
  */
 
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
-const { validateImplementation, defaultGetStateForPlayer } = require('../../src/game-logic-interface');
+const {
+  validateImplementation,
+  defaultGetStateForPlayer,
+} = require('../../src/game-logic-interface');
 
 // Bump this whenever the GameState shape changes incompatibly.
 // game-manager.js will call migrate() for any saved game whose
@@ -45,14 +48,14 @@ function getConfigCopy() {
 
 function getGameMetadata() {
   return {
-    name:                     'Connect Four',
-    description:              'Drop pieces to connect four in a row.',
-    minPlayers:               2,
-    maxPlayers:               2,
-    icon:                     '🔴',
+    name: 'Connect Four',
+    description: 'Drop pieces to connect four in a row.',
+    minPlayers: 2,
+    maxPlayers: 2,
+    icon: '🔴',
     estimatedDurationMinutes: 5,
-    complexity:               'light',
-    tags:                     ['spatial', 'no-luck', 'family', 'classic', 'two-player'],
+    complexity: 'light',
+    tags: ['spatial', 'no-luck', 'family', 'classic', 'two-player'],
   };
 }
 
@@ -60,19 +63,21 @@ function getGameMetadata() {
 
 function createInitialPlayer(user, existingPlayers = [], config = null) {
   if (!config?.settings?.playerColors || !config?.settings?.playerTokens) {
-    throw new Error('createInitialPlayer requires a config with settings.playerColors and settings.playerTokens');
+    throw new Error(
+      'createInitialPlayer requires a config with settings.playerColors and settings.playerTokens',
+    );
   }
   const colors = config.settings.playerColors;
   const tokens = config.settings.playerTokens;
-  const idx    = existingPlayers.length;
+  const idx = existingPlayers.length;
   const colorObj = colors[idx] || colors[0];
   return {
-    userId:    user.id,
-    username:  user.username,
-    color:     colorObj.id,
-    colorHex:  colorObj.hex,
-    token:     tokens[idx] || colorObj.id,
-    active:    true,
+    userId: user.id,
+    username: user.username,
+    color: colorObj.id,
+    colorHex: colorObj.hex,
+    token: tokens[idx] || colorObj.id,
+    active: true,
     isBankrupt: false, // keep field for framework compatibility
     connected: true,
   };
@@ -87,17 +92,17 @@ function initGame(gameId, name, players, config) {
   const board = Array.from({ length: boardHeight }, () => Array(boardWidth).fill(null));
 
   return {
-    id:           gameId,
+    id: gameId,
     name,
-    gameType:     'connect-four',
+    gameType: 'connect-four',
     stateVersion: STATE_VERSION,
-    status:       'playing',
-    config:       cfg,
-    players:      players.map(p => ({ ...p })),
+    status: 'playing',
+    config: cfg,
+    players: players.map((p) => ({ ...p })),
     board,
-    turnState:    { currentPlayerIndex: 0, phase: 'drop' },
-    winner:       null,
-    log:          [],
+    turnState: { currentPlayerIndex: 0, phase: 'drop' },
+    winner: null,
+    log: [],
   };
 }
 
@@ -128,19 +133,26 @@ function getValidActions(state, userId) {
 
 function checkWinner(board, row, col, userId, winLength) {
   const height = board.length;
-  const width  = board[0].length;
+  const width = board[0].length;
   // Four directions: horizontal, vertical, diagonal-↘, diagonal-↙
-  const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+  const dirs = [
+    [0, 1],
+    [1, 0],
+    [1, 1],
+    [1, -1],
+  ];
 
   for (const [dr, dc] of dirs) {
     let count = 1;
     for (let i = 1; i < winLength; i++) {
-      const r = row + dr * i, c = col + dc * i;
+      const r = row + dr * i,
+        c = col + dc * i;
       if (r < 0 || r >= height || c < 0 || c >= width || board[r][c] !== userId) break;
       count++;
     }
     for (let i = 1; i < winLength; i++) {
-      const r = row - dr * i, c = col - dc * i;
+      const r = row - dr * i,
+        c = col - dc * i;
       if (r < 0 || r >= height || c < 0 || c >= width || board[r][c] !== userId) break;
       count++;
     }
@@ -150,7 +162,7 @@ function checkWinner(board, row, col, userId, winLength) {
 }
 
 function isBoardFull(board) {
-  return board[0].every(cell => cell !== null);
+  return board[0].every((cell) => cell !== null);
 }
 
 // ── actions ───────────────────────────────────────────────────────────────────
@@ -170,12 +182,15 @@ function dropPiece(state, userId, column) {
     return { state, events: [], error: 'Invalid column' };
   }
 
-  const newBoard = state.board.map(r => [...r]);
+  const newBoard = state.board.map((r) => [...r]);
 
   // Find the lowest empty row in the column (board[0] = top)
   let row = -1;
   for (let r = boardHeight - 1; r >= 0; r--) {
-    if (newBoard[r][col] === null) { row = r; break; }
+    if (newBoard[r][col] === null) {
+      row = r;
+      break;
+    }
   }
   if (row === -1) {
     return { state, events: [], error: 'Column is full' };
@@ -183,36 +198,41 @@ function dropPiece(state, userId, column) {
 
   newBoard[row][col] = userId;
 
-  const player  = state.players.find(p => p.userId === userId);
-  const events  = [];
-  events.push({ type: 'PIECE_DROPPED', data: { username: player.username, column: col, row }, timestamp: Date.now() });
+  const player = state.players.find((p) => p.userId === userId);
+  const events = [];
+  events.push({
+    type: 'PIECE_DROPPED',
+    data: { username: player.username, column: col, row },
+    timestamp: Date.now(),
+  });
 
   let newStatus = 'playing';
-  let winner    = null;
-  let logMsg    = `${player.username} dropped in column ${col + 1}`;
-  let logType   = 'move';
+  let winner = null;
+  let logMsg = `${player.username} dropped in column ${col + 1}`;
+  let logType = 'move';
 
   if (checkWinner(newBoard, row, col, userId, winLength)) {
     newStatus = 'finished';
-    winner    = userId;
-    logMsg    = `${player.username} wins!`;
-    logType   = 'game';
+    winner = userId;
+    logMsg = `${player.username} wins!`;
+    logType = 'game';
     events.push({ type: 'GAME_OVER', data: { winner: player.username }, timestamp: Date.now() });
   } else if (isBoardFull(newBoard)) {
     newStatus = 'finished';
-    logMsg    = "It's a draw!";
-    logType   = 'game';
+    logMsg = "It's a draw!";
+    logType = 'game';
     events.push({ type: 'GAME_OVER', data: { winner: null }, timestamp: Date.now() });
   }
 
-  const nextIdx = newStatus === 'playing'
-    ? (state.turnState.currentPlayerIndex + 1) % state.players.length
-    : state.turnState.currentPlayerIndex;
+  const nextIdx =
+    newStatus === 'playing'
+      ? (state.turnState.currentPlayerIndex + 1) % state.players.length
+      : state.turnState.currentPlayerIndex;
 
   const newState = {
     ...state,
-    board:     newBoard,
-    status:    newStatus,
+    board: newBoard,
+    status: newStatus,
     winner,
     turnState: { ...state.turnState, currentPlayerIndex: nextIdx },
     log: [...(state.log || []), { message: logMsg, type: logType, timestamp: Date.now() }],
@@ -224,18 +244,21 @@ function dropPiece(state, userId, column) {
 function skipTurn(state, userId) {
   const cur = getCurrentPlayer(state);
   if (!cur || cur.userId !== userId) {
-    return { state, events: [], error: 'Not this player\'s turn' };
+    return { state, events: [], error: "Not this player's turn" };
   }
 
-  const nextIdx  = (state.turnState.currentPlayerIndex + 1) % state.players.length;
+  const nextIdx = (state.turnState.currentPlayerIndex + 1) % state.players.length;
   const newState = {
     ...state,
     turnState: { ...state.turnState, currentPlayerIndex: nextIdx },
-    log: [...(state.log || []), { message: `${cur.username}'s turn was skipped`, type: 'info', timestamp: Date.now() }],
+    log: [
+      ...(state.log || []),
+      { message: `${cur.username}'s turn was skipped`, type: 'info', timestamp: Date.now() },
+    ],
   };
 
   return {
-    state:  newState,
+    state: newState,
     events: [{ type: 'TURN_SKIPPED', data: { username: cur.username }, timestamp: Date.now() }],
   };
 }
@@ -244,9 +267,12 @@ function skipTurn(state, userId) {
 
 function applyAction(state, userId, action, payload = {}) {
   switch (action) {
-    case 'dropPiece': return dropPiece(state, userId, payload.column);
-    case 'skipTurn':  return skipTurn(state, userId);
-    default:          return { state, events: [], error: `Unknown action: ${action}` };
+    case 'dropPiece':
+      return dropPiece(state, userId, payload.column);
+    case 'skipTurn':
+      return skipTurn(state, userId);
+    default:
+      return { state, events: [], error: `Unknown action: ${action}` };
   }
 }
 

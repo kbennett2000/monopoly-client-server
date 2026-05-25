@@ -17,7 +17,7 @@ function stateWithBrownMonopoly(extra = {}) {
 function postRoll(base) {
   const state = base || makeState();
   state.turnState.phase = 'post-roll';
-  state.turnState.dice  = [3, 4];
+  state.turnState.dice = [3, 4];
   return state;
 }
 
@@ -35,10 +35,10 @@ describe('createInitialPlayer', () => {
 
 describe('initGame', () => {
   const { makeConfig } = require('./fixtures');
-  const config   = makeConfig();
-  const players  = [
-    { userId: 'u1', username: 'Alice', color: 'red',  colorHex: '#f00', token: '🎩' },
-    { userId: 'u2', username: 'Bob',   color: 'blue', colorHex: '#00f', token: '🚂' },
+  const config = makeConfig();
+  const players = [
+    { userId: 'u1', username: 'Alice', color: 'red', colorHex: '#f00', token: '🎩' },
+    { userId: 'u2', username: 'Bob', color: 'blue', colorHex: '#00f', token: '🚂' },
   ];
 
   test('sets status to playing', () => {
@@ -48,12 +48,12 @@ describe('initGame', () => {
 
   test('gives every player the configured starting money', () => {
     const s = gl.initGame('g1', 'Test', players, config);
-    s.players.forEach(p => expect(p.money).toBe(config.settings.startingMoney));
+    s.players.forEach((p) => expect(p.money).toBe(config.settings.startingMoney));
   });
 
   test('places all players on Go (position 0)', () => {
     const s = gl.initGame('g1', 'Test', players, config);
-    s.players.forEach(p => expect(p.position).toBe(0));
+    s.players.forEach((p) => expect(p.position).toBe(0));
   });
 
   test('marks all purchasable squares as unowned', () => {
@@ -77,13 +77,21 @@ describe('initGame', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('rollDice', () => {
-  test('rejects when it is not the caller\'s turn', () => {
+  test("rejects when it is not the caller's turn", () => {
     const { error } = gl.rollDice(makeState(), 'p2');
     expect(error).toBeDefined();
   });
 
   test('rejects when not in pre-roll phase', () => {
-    const state = makeState({ turnState: { currentPlayerIndex: 0, phase: 'post-roll', dice: [1,2], doubles: 0, cardDrawn: null } });
+    const state = makeState({
+      turnState: {
+        currentPlayerIndex: 0,
+        phase: 'post-roll',
+        dice: [1, 2],
+        doubles: 0,
+        cardDrawn: null,
+      },
+    });
     const { error } = gl.rollDice(state, 'p1');
     expect(error).toBeDefined();
   });
@@ -96,14 +104,15 @@ describe('rollDice', () => {
 
   test('emits DICE_ROLLED event', () => {
     const { events } = gl.rollDice(makeState(), 'p1');
-    expect(events.some(e => e.type === 'DICE_ROLLED')).toBe(true);
+    expect(events.some((e) => e.type === 'DICE_ROLLED')).toBe(true);
   });
 
   test('player collects go salary when passing Go', () => {
     // Control dice: 5+4=9 from position 36 → newPos=5 (Reading Railroad, unowned, safe)
     // passedGo: 36+9=45 >= 40 ✓, newPos=5 ≠ 0 ✓ → salary credited, no landing cost
-    const spy = jest.spyOn(Math, 'random')
-      .mockReturnValueOnce(0.7)   // Math.floor(0.7*6)+1 = 5
+    const spy = jest
+      .spyOn(Math, 'random')
+      .mockReturnValueOnce(0.7) // Math.floor(0.7*6)+1 = 5
       .mockReturnValueOnce(0.55); // Math.floor(0.55*6)+1 = 4
     const state = makeState({
       players: [makePlayer('p1', 'Alice', { position: 36 }), makePlayer('p2', 'Bob')],
@@ -111,13 +120,19 @@ describe('rollDice', () => {
     const result = gl.rollDice(state, 'p1');
     spy.mockRestore();
 
-    expect(result.events.some(e => e.type === 'PASSED_GO')).toBe(true);
+    expect(result.events.some((e) => e.type === 'PASSED_GO')).toBe(true);
     expect(result.state.players[0].money).toBe(1700); // 1500 + 200 go salary
   });
 
   test('sends player to jail on three consecutive doubles', () => {
     const state = makeState({
-      turnState: { currentPlayerIndex: 0, phase: 'pre-roll', dice: [0,0], doubles: 2, cardDrawn: null },
+      turnState: {
+        currentPlayerIndex: 0,
+        phase: 'pre-roll',
+        dice: [0, 0],
+        doubles: 2,
+        cardDrawn: null,
+      },
     });
     // Force doubles by mocking Math.random to always return the same value
     const origRandom = Math.random;
@@ -125,7 +140,7 @@ describe('rollDice', () => {
     const { state: s, events } = gl.rollDice(state, 'p1');
     Math.random = origRandom;
     expect(s.players[0].inJail).toBe(true);
-    expect(events.some(e => e.type === 'PLAYER_JAILED')).toBe(true);
+    expect(events.some((e) => e.type === 'PLAYER_JAILED')).toBe(true);
   });
 });
 
@@ -136,8 +151,17 @@ describe('rollDice', () => {
 describe('buyProperty', () => {
   function buyingState(moneyOverride) {
     return makeState({
-      players: [makePlayer('p1', 'Alice', { position: 1, money: moneyOverride ?? 1500 }), makePlayer('p2', 'Bob')],
-      turnState: { currentPlayerIndex: 0, phase: 'buying', dice: [1,0], doubles: 0, cardDrawn: null },
+      players: [
+        makePlayer('p1', 'Alice', { position: 1, money: moneyOverride ?? 1500 }),
+        makePlayer('p2', 'Bob'),
+      ],
+      turnState: {
+        currentPlayerIndex: 0,
+        phase: 'buying',
+        dice: [1, 0],
+        doubles: 0,
+        cardDrawn: null,
+      },
     });
   }
 
@@ -167,7 +191,7 @@ describe('buyProperty', () => {
     const state = buyingState();
     state.properties[3].ownerId = 'p1'; // already owns Baltic
     const { events } = gl.buyProperty(state, 'p1');
-    expect(events.some(e => e.type === 'MONOPOLY_ACHIEVED')).toBe(true);
+    expect(events.some((e) => e.type === 'MONOPOLY_ACHIEVED')).toBe(true);
   });
 });
 
@@ -193,20 +217,28 @@ describe('endTurn', () => {
   });
 
   test('skips bankrupt players', () => {
-    const state = postRoll(makeState({
-      players: [makePlayer('p1', 'Alice'), makePlayer('p2', 'Bob', { isBankrupt: true }), makePlayer('p3', 'Charlie')],
-    }));
+    const state = postRoll(
+      makeState({
+        players: [
+          makePlayer('p1', 'Alice'),
+          makePlayer('p2', 'Bob', { isBankrupt: true }),
+          makePlayer('p3', 'Charlie'),
+        ],
+      }),
+    );
     const { state: s } = gl.endTurn(state, 'p1');
     expect(s.turnState.currentPlayerIndex).toBe(2); // p2 is bankrupt, skip to p3
   });
 
   test('declares game over when only one active player remains', () => {
-    const state = postRoll(makeState({
-      players: [makePlayer('p1', 'Alice'), makePlayer('p2', 'Bob', { isBankrupt: true })],
-    }));
+    const state = postRoll(
+      makeState({
+        players: [makePlayer('p1', 'Alice'), makePlayer('p2', 'Bob', { isBankrupt: true })],
+      }),
+    );
     const { state: s, events } = gl.endTurn(state, 'p1');
     expect(s.status).toBe('finished');
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
   });
 
   test('clears any pending trade', () => {
@@ -222,7 +254,7 @@ describe('endTurn', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('buildHouse', () => {
-  test('rejects when not the current player\'s turn', () => {
+  test("rejects when not the current player's turn", () => {
     const state = stateWithBrownMonopoly();
     state.players[0].money = 500;
     // p2 tries to build on their own property but it's p1's turn
@@ -285,7 +317,7 @@ describe('buildHouse', () => {
 });
 
 describe('sellHouse', () => {
-  test('rejects when not the current player\'s turn', () => {
+  test("rejects when not the current player's turn", () => {
     const state = stateWithBrownMonopoly();
     state.properties[1].houses = 1;
     state.properties[3].houses = 1;
@@ -318,7 +350,7 @@ describe('sellHouse', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('mortgageProperty', () => {
-  test('rejects when not the current player\'s turn', () => {
+  test("rejects when not the current player's turn", () => {
     const state = makeState();
     state.properties[1].ownerId = 'p2';
     const { error } = gl.mortgageProperty(state, 'p2', 1);
@@ -351,7 +383,7 @@ describe('mortgageProperty', () => {
 });
 
 describe('unmortgageProperty', () => {
-  test('rejects when not the current player\'s turn', () => {
+  test("rejects when not the current player's turn", () => {
     const state = makeState();
     state.properties[1].ownerId = 'p2';
     state.properties[1].mortgaged = true;
@@ -443,7 +475,9 @@ describe('offerTrade', () => {
   });
 
   test('rejects when offerer lacks the money', () => {
-    const state = makeState({ players: [makePlayer('p1', 'Alice', { money: 10 }), makePlayer('p2', 'Bob')] });
+    const state = makeState({
+      players: [makePlayer('p1', 'Alice', { money: 10 }), makePlayer('p2', 'Bob')],
+    });
     const { error } = gl.offerTrade(state, 'p1', 'p2', 500, [], 0, 0, [], 0);
     expect(error).toBeDefined();
   });
@@ -482,16 +516,24 @@ describe('offerTrade', () => {
 
   test('rejects negative offerCards or requestCards', () => {
     expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], -1, 0, [], 0).error).toMatch(/offerCards/);
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], 0,  0, [], -1).error).toMatch(/requestCards/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], 0, 0, [], -1).error).toMatch(
+      /requestCards/,
+    );
   });
 
   test('rejects fractional money', () => {
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', 1.5, [], 0, 0, [], 0).error).toMatch(/offerMoney/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 1.5, [], 0, 0, [], 0).error).toMatch(
+      /offerMoney/,
+    );
   });
 
   test('rejects NaN and Infinity money', () => {
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', NaN, [], 0, 0, [], 0).error).toMatch(/offerMoney/);
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', Infinity, [], 0, 0, [], 0).error).toMatch(/offerMoney/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', NaN, [], 0, 0, [], 0).error).toMatch(
+      /offerMoney/,
+    );
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', Infinity, [], 0, 0, [], 0).error).toMatch(
+      /offerMoney/,
+    );
   });
 
   test('rejects duplicate props in offerProps', () => {
@@ -500,17 +542,27 @@ describe('offerTrade', () => {
   });
 
   test('rejects out-of-range board positions', () => {
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [40], 0, 0, [], 0).error).toMatch(/invalid position/);
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [-1], 0, 0, [], 0).error).toMatch(/invalid position/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [40], 0, 0, [], 0).error).toMatch(
+      /invalid position/,
+    );
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [-1], 0, 0, [], 0).error).toMatch(
+      /invalid position/,
+    );
   });
 
   test('rejects non-array offerProps/requestProps', () => {
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, 'not an array', 0, 0, [], 0).error).toMatch(/offerProps/);
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], 0, 0, 42,             0).error).toMatch(/requestProps/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, 'not an array', 0, 0, [], 0).error).toMatch(
+      /offerProps/,
+    );
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], 0, 0, 42, 0).error).toMatch(
+      /requestProps/,
+    );
   });
 
   test('rejects fractional position', () => {
-    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [1.5], 0, 0, [], 0).error).toMatch(/invalid position/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [1.5], 0, 0, [], 0).error).toMatch(
+      /invalid position/,
+    );
   });
 });
 
@@ -521,9 +573,14 @@ describe('acceptTrade', () => {
     });
     state.properties[1].ownerId = 'p1';
     state.trade = {
-      fromUserId: 'p1', toUserId: 'p2',
-      offerMoney: 100, offerProps: [1], offerCards: 0,
-      requestMoney: 50, requestProps: [], requestCards: 0,
+      fromUserId: 'p1',
+      toUserId: 'p2',
+      offerMoney: 100,
+      offerProps: [1],
+      offerCards: 0,
+      requestMoney: 50,
+      requestProps: [],
+      requestCards: 0,
       status: 'pending',
     };
     return state;
@@ -538,8 +595,8 @@ describe('acceptTrade', () => {
     const { state: s, error } = gl.acceptTrade(tradeState(), 'p2');
     expect(error).toBeUndefined();
     expect(s.properties[1].ownerId).toBe('p2'); // property transferred
-    expect(s.players[0].money).toBe(500 - 100 + 50);  // p1: paid 100, received 50
-    expect(s.players[1].money).toBe(500 + 100 - 50);  // p2: received 100, paid 50
+    expect(s.players[0].money).toBe(500 - 100 + 50); // p1: paid 100, received 50
+    expect(s.players[1].money).toBe(500 + 100 - 50); // p2: received 100, paid 50
     expect(s.trade).toBeNull();
   });
 });
@@ -596,7 +653,7 @@ describe('declareBankruptcy', () => {
     expect(s.properties[1].ownerId).toBe('p2');
   });
 
-  test('zeroes bankrupt player\'s money', () => {
+  test("zeroes bankrupt player's money", () => {
     const state = makeState();
     const { state: s } = gl.declareBankruptcy(state, 0, null);
     expect(s.players[0].money).toBe(0);
@@ -608,7 +665,7 @@ describe('declareBankruptcy', () => {
     });
     const { state: s, events } = gl.declareBankruptcy(state, 0, null);
     expect(s.status).toBe('finished');
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
   });
 });
 
@@ -617,7 +674,7 @@ describe('declareBankruptcy', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('skipTurn', () => {
-  test('rejects when it is not this player\'s turn', () => {
+  test("rejects when it is not this player's turn", () => {
     const { error } = gl.skipTurn(makeState(), 'p2');
     expect(error).toBeDefined();
   });
@@ -636,7 +693,7 @@ describe('skipTurn', () => {
   test('clears any pending auction and trade', () => {
     const state = makeState();
     state.auction = { position: 1, bids: {}, passed: [], highBidder: null, highBid: 0 };
-    state.trade   = { fromUserId: 'p1', toUserId: 'p2', status: 'pending' };
+    state.trade = { fromUserId: 'p1', toUserId: 'p2', status: 'pending' };
     const { state: s } = gl.skipTurn(state, 'p1');
     expect(s.auction).toBeNull();
     expect(s.trade).toBeNull();
@@ -644,7 +701,7 @@ describe('skipTurn', () => {
 
   test('emits TURN_SKIPPED event', () => {
     const { events } = gl.skipTurn(makeState(), 'p1');
-    expect(events.some(e => e.type === 'TURN_SKIPPED')).toBe(true);
+    expect(events.some((e) => e.type === 'TURN_SKIPPED')).toBe(true);
   });
 
   test('detects game over when only one active player remains', () => {
@@ -653,7 +710,7 @@ describe('skipTurn', () => {
     });
     const { state: s, events } = gl.skipTurn(state, 'p1');
     expect(s.status).toBe('finished');
-    expect(events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(events.some((e) => e.type === 'GAME_OVER')).toBe(true);
   });
 });
 
@@ -669,7 +726,7 @@ describe('calculateRent', () => {
 
   test('returns 0 for mortgaged property', () => {
     const state = makeState();
-    state.properties[1].ownerId  = 'p2';
+    state.properties[1].ownerId = 'p2';
     state.properties[1].mortgaged = true;
     expect(gl.calculateRent(state, 1, [3, 4])).toBe(0);
   });
@@ -691,13 +748,13 @@ describe('calculateRent', () => {
     const state = makeState();
     state.properties[1].ownerId = 'p2';
     state.properties[3].ownerId = 'p2';
-    state.properties[1].houses  = 2;
+    state.properties[1].houses = 2;
     expect(gl.calculateRent(state, 1, [3, 4])).toBe(30); // twoHouses rent
   });
 
   test('returns railroad rent scaled by number owned', () => {
     const state = makeState();
-    state.properties[5].ownerId  = 'p2';
+    state.properties[5].ownerId = 'p2';
     state.properties[15].ownerId = 'p2';
     expect(gl.calculateRent(state, 5, [3, 4])).toBe(50); // 2 railroads = $50
   });

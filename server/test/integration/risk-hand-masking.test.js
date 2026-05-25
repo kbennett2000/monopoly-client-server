@@ -17,8 +17,12 @@ const { connectSocket, disconnectSocket, waitFor, emitAck } = require('./helpers
 
 let server;
 
-beforeAll(async () => { server = await startServer(); }, 15_000);
-afterAll(async () => { await stopServer(server); }, 10_000);
+beforeAll(async () => {
+  server = await startServer();
+}, 15_000);
+afterAll(async () => {
+  await stopServer(server);
+}, 10_000);
 
 beforeEach(() => {
   const db = require('../../src/database');
@@ -44,9 +48,9 @@ async function connect(token) {
 
 const authed = (token) => ({ Authorization: `Bearer ${token}` });
 
-test('Risk: a player\'s hand is masked when broadcast to other players', async () => {
+test("Risk: a player's hand is masked when broadcast to other players", async () => {
   const alice = await register('alice');
-  const bob   = await register('bob');
+  const bob = await register('bob');
 
   // Create a Risk game and have both players join via REST
   const createRes = await server.api
@@ -60,13 +64,13 @@ test('Risk: a player\'s hand is masked when broadcast to other players', async (
 
   // Connect both sockets and join the room
   const aliceSock = await connect(alice.token);
-  const bobSock   = await connect(bob.token);
+  const bobSock = await connect(bob.token);
   await emitAck(aliceSock, 'join_game', gameId);
-  await emitAck(bobSock,   'join_game', gameId);
+  await emitAck(bobSock, 'join_game', gameId);
 
   // Start the game — both will receive game:update
   const aliceStart = waitFor(aliceSock, 'game:update');
-  const bobStart   = waitFor(bobSock,   'game:update');
+  const bobStart = waitFor(bobSock, 'game:update');
   aliceSock.emit('game:start');
   await aliceStart;
   await bobStart;
@@ -76,32 +80,37 @@ test('Risk: a player\'s hand is masked when broadcast to other players', async (
   // territory conquest at end of turn, which is a much longer setup.
   const gm = require('../../src/game-manager');
   const state = gm.peekGame(gameId);
-  const aliceState = state.players.find(p => p.userId === alice.user.id);
+  const aliceState = state.players.find((p) => p.userId === alice.user.id);
   aliceState.hand.push({
-    id: 'card-secret-canary-007', territoryId: 'alaska', troopType: 'infantry',
+    id: 'card-secret-canary-007',
+    territoryId: 'alaska',
+    troopType: 'infantry',
   });
 
   // Trigger any state-bearing broadcast.  placeReinforcement is the simplest:
   // it's valid for Alice in the reinforce phase of turn 1.
   // (The framework auto-assigns Alice as player 0 because she joined first.)
-  const aliceTerritory = Object.entries(state.territories)
-    .find(([, t]) => t.ownerId === alice.user.id)[0];
+  const aliceTerritory = Object.entries(state.territories).find(
+    ([, t]) => t.ownerId === alice.user.id,
+  )[0];
 
   const aliceGotUpdate = waitFor(aliceSock, 'game:update');
-  const bobGotUpdate   = waitFor(bobSock,   'game:update');
+  const bobGotUpdate = waitFor(bobSock, 'game:update');
   aliceSock.emit('game:action', {
-    action: 'placeReinforcement', territoryId: aliceTerritory, count: 1,
+    action: 'placeReinforcement',
+    territoryId: aliceTerritory,
+    count: 1,
   });
   const aliceUpd = await aliceGotUpdate;
-  const bobUpd   = await bobGotUpdate;
+  const bobUpd = await bobGotUpdate;
 
   // Alice sees her own hand intact, with the canary card
-  const aliceFromAliceView = aliceUpd.state.players.find(p => p.userId === alice.user.id);
+  const aliceFromAliceView = aliceUpd.state.players.find((p) => p.userId === alice.user.id);
   expect(aliceFromAliceView.hand).toBeDefined();
-  expect(aliceFromAliceView.hand.some(c => c.id === 'card-secret-canary-007')).toBe(true);
+  expect(aliceFromAliceView.hand.some((c) => c.id === 'card-secret-canary-007')).toBe(true);
 
   // Bob sees Alice's hand REPLACED with handCount, no hand property at all
-  const aliceFromBobView = bobUpd.state.players.find(p => p.userId === alice.user.id);
+  const aliceFromBobView = bobUpd.state.players.find((p) => p.userId === alice.user.id);
   expect(aliceFromBobView).not.toHaveProperty('hand');
   expect(aliceFromBobView.handCount).toBe(1);
 

@@ -83,13 +83,13 @@ httpServer.listen(PORT, HOST, () => {
   if (HOST === '0.0.0.0' && process.env.NODE_ENV !== 'development') {
     console.warn(
       '  ⚠  WARNING: Server is bound to all network interfaces (0.0.0.0).\n' +
-      '     This server is designed for trusted local networks only.\n' +
-      '     Do NOT expose it to the public internet without:\n' +
-      '       • HTTPS (TLS via a reverse proxy such as nginx or Caddy)\n' +
-      '       • Rate limiting on auth endpoints\n' +
-      '       • A firewall restricting inbound connections to LAN addresses\n' +
-      '     To bind to localhost only:  HOST=127.0.0.1 npm start\n' +
-      '     To suppress this warning:   NODE_ENV=development npm start\n'
+        '     This server is designed for trusted local networks only.\n' +
+        '     Do NOT expose it to the public internet without:\n' +
+        '       • HTTPS (TLS via a reverse proxy such as nginx or Caddy)\n' +
+        '       • Rate limiting on auth endpoints\n' +
+        '       • A firewall restricting inbound connections to LAN addresses\n' +
+        '     To bind to localhost only:  HOST=127.0.0.1 npm start\n' +
+        '     To suppress this warning:   NODE_ENV=development npm start\n',
     );
   }
 });

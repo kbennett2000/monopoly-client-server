@@ -7,10 +7,10 @@ const risk = require('../games/risk/game-logic');
 function makePlayers(count) {
   const users = [
     { id: 'u1', username: 'Alice' },
-    { id: 'u2', username: 'Bob'   },
+    { id: 'u2', username: 'Bob' },
     { id: 'u3', username: 'Carol' },
-    { id: 'u4', username: 'Dave'  },
-    { id: 'u5', username: 'Eve'   },
+    { id: 'u4', username: 'Dave' },
+    { id: 'u5', username: 'Eve' },
     { id: 'u6', username: 'Frank' },
   ].slice(0, count);
   const cfg = risk.getConfigCopy();
@@ -21,7 +21,7 @@ function makePlayers(count) {
 
 function makeGame(playerCount = 2) {
   const players = makePlayers(playerCount);
-  const config  = risk.getConfigCopy();
+  const config = risk.getConfigCopy();
   return risk.initGame('test-game', 'Test', players, config);
 }
 
@@ -78,22 +78,22 @@ describe('Risk — initGame', () => {
   test('distributes all 42 territories with armies to all players', () => {
     const s = makeGame(2);
     const aliceTerritories = risk.getOwnedTerritories(s, 'u1');
-    const bobTerritories   = risk.getOwnedTerritories(s, 'u2');
+    const bobTerritories = risk.getOwnedTerritories(s, 'u2');
     expect(aliceTerritories.length + bobTerritories.length).toBe(42);
     expect(Math.abs(aliceTerritories.length - bobTerritories.length)).toBeLessThanOrEqual(1);
     // No unowned territories
-    const unowned = Object.values(s.territories).filter(t => t.ownerId === null);
+    const unowned = Object.values(s.territories).filter((t) => t.ownerId === null);
     expect(unowned).toHaveLength(0);
   });
 
   test('places exactly initialArmies per player', () => {
     for (const n of [2, 3, 4, 5, 6]) {
-      const s    = makeGame(n);
-      const cfg  = risk.getConfigCopy();
+      const s = makeGame(n);
+      const cfg = risk.getConfigCopy();
       const want = cfg.settings.initialArmiesByPlayerCount[String(n)];
       for (const p of s.players) {
         const total = Object.values(s.territories)
-          .filter(t => t.ownerId === p.userId)
+          .filter((t) => t.ownerId === p.userId)
           .reduce((sum, t) => sum + t.armies, 0);
         expect(total).toBe(want);
       }
@@ -124,7 +124,7 @@ describe('Risk — initGame', () => {
 describe('Risk — createInitialPlayer', () => {
   test('assigns unique colours and starts with empty hand', () => {
     const players = makePlayers(4);
-    const colors  = players.map(p => p.color);
+    const colors = players.map((p) => p.color);
     expect(new Set(colors).size).toBe(4);
     for (const p of players) {
       expect(p.hand).toEqual([]);
@@ -145,7 +145,7 @@ describe('Risk — createInitialPlayer', () => {
 
 describe('Risk — reinforcement calculation', () => {
   test('minimum reinforcement is 3 even with few territories', () => {
-    const s    = makeGame(2);
+    const s = makeGame(2);
     // Give Alice exactly 1 territory
     Object.keys(s.territories).forEach((tid, idx) => {
       s.territories[tid] = { ownerId: idx === 0 ? 'u1' : 'u2', armies: 1 };
@@ -165,7 +165,7 @@ describe('Risk — reinforcement calculation', () => {
   });
 
   test('controlling a full continent grants its bonus', () => {
-    const s   = makeGame(2);
+    const s = makeGame(2);
     const cfg = s.config;
     // Give Alice all of Australia (4 territories, bonus 2), plus filler so base ≥ 3.
     giveAllTerritoriesTo(s, 'u2');
@@ -181,27 +181,36 @@ describe('Risk — reinforcement calculation', () => {
 
 describe('Risk — placeReinforcement', () => {
   test('places armies on an owned territory and decrements the pool', () => {
-    const s   = makeGame(2);
+    const s = makeGame(2);
     const tid = risk.getOwnedTerritories(s, s.players[s.turnState.currentPlayerIndex].userId)[0];
     const before = s.territories[tid].armies;
-    const pool   = s.turnState.armiesToPlace;
-    const result = risk.applyAction(s, s.players[0].userId, 'placeReinforcement', { territoryId: tid, count: 2 });
+    const pool = s.turnState.armiesToPlace;
+    const result = risk.applyAction(s, s.players[0].userId, 'placeReinforcement', {
+      territoryId: tid,
+      count: 2,
+    });
     expect(result.error).toBeUndefined();
     expect(result.state.territories[tid].armies).toBe(before + 2);
     expect(result.state.turnState.armiesToPlace).toBe(pool - 2);
   });
 
   test('rejects placement on a territory you do not own', () => {
-    const s    = makeGame(2);
+    const s = makeGame(2);
     const enemyTid = risk.getOwnedTerritories(s, 'u2')[0];
-    const result = risk.applyAction(s, 'u1', 'placeReinforcement', { territoryId: enemyTid, count: 1 });
+    const result = risk.applyAction(s, 'u1', 'placeReinforcement', {
+      territoryId: enemyTid,
+      count: 1,
+    });
     expect(result.error).toMatch(/do not own/);
   });
 
   test('rejects placing more armies than you have', () => {
-    const s   = makeGame(2);
+    const s = makeGame(2);
     const tid = risk.getOwnedTerritories(s, 'u1')[0];
-    const result = risk.applyAction(s, 'u1', 'placeReinforcement', { territoryId: tid, count: 9999 });
+    const result = risk.applyAction(s, 'u1', 'placeReinforcement', {
+      territoryId: tid,
+      count: 9999,
+    });
     expect(result.error).toMatch(/armies to place/);
   });
 
@@ -286,7 +295,7 @@ describe('Risk — attackTerritory action', () => {
     for (const tid of Object.keys(s.territories)) {
       s.territories[tid] = { ownerId: 'u2', armies: 1 };
     }
-    s.territories['alaska']    = { ownerId: 'u1', armies: 10 };
+    s.territories['alaska'] = { ownerId: 'u1', armies: 10 };
     s.territories['kamchatka'] = { ownerId: 'u2', armies: 1 };
     return s;
   }
@@ -294,20 +303,32 @@ describe('Risk — attackTerritory action', () => {
   test('rejects attacking your own territory', () => {
     const s = makeAttackScenario();
     s.territories['kamchatka'] = { ownerId: 'u1', armies: 1 };
-    const result = risk.applyAction(s, 'u1', 'attackTerritory', { from: 'alaska', to: 'kamchatka', attackerDice: 3 });
+    const result = risk.applyAction(s, 'u1', 'attackTerritory', {
+      from: 'alaska',
+      to: 'kamchatka',
+      attackerDice: 3,
+    });
     expect(result.error).toMatch(/own territory/);
   });
 
   test('rejects attacking a non-adjacent territory', () => {
     const s = makeAttackScenario();
-    const result = risk.applyAction(s, 'u1', 'attackTerritory', { from: 'alaska', to: 'argentina', attackerDice: 3 });
+    const result = risk.applyAction(s, 'u1', 'attackTerritory', {
+      from: 'alaska',
+      to: 'argentina',
+      attackerDice: 3,
+    });
     expect(result.error).toMatch(/not adjacent/);
   });
 
   test('rejects attacking with fewer than 2 armies in source', () => {
     const s = makeAttackScenario();
     s.territories['alaska'].armies = 1;
-    const result = risk.applyAction(s, 'u1', 'attackTerritory', { from: 'alaska', to: 'kamchatka', attackerDice: 1 });
+    const result = risk.applyAction(s, 'u1', 'attackTerritory', {
+      from: 'alaska',
+      to: 'kamchatka',
+      attackerDice: 1,
+    });
     expect(result.error).toMatch(/at least 2 armies/);
   });
 
@@ -322,16 +343,20 @@ describe('Risk — attackTerritory action', () => {
       return v;
     };
     try {
-      const result = risk.applyAction(s, 'u1', 'attackTerritory', { from: 'alaska', to: 'kamchatka', attackerDice: 3 });
+      const result = risk.applyAction(s, 'u1', 'attackTerritory', {
+        from: 'alaska',
+        to: 'kamchatka',
+        attackerDice: 3,
+      });
       expect(result.error).toBeUndefined();
       expect(result.state.territories['kamchatka'].ownerId).toBe('u1');
       // attacker moved 3 armies in (= attackerDice per D4)
       expect(result.state.territories['kamchatka'].armies).toBe(3);
       expect(result.state.territories['alaska'].armies).toBe(7); // 10 - 3 moved in - 0 losses
       // marked conqueredThisTurn for end-of-turn card draw
-      expect(result.state.players.find(p => p.userId === 'u1').conqueredThisTurn).toBe(true);
+      expect(result.state.players.find((p) => p.userId === 'u1').conqueredThisTurn).toBe(true);
       // events fired
-      const types = result.events.map(e => e.type);
+      const types = result.events.map((e) => e.type);
       expect(types).toContain('ATTACK_DECLARED');
       expect(types).toContain('DICE_ROLLED');
       expect(types).toContain('TERRITORY_CONQUERED');
@@ -348,23 +373,31 @@ describe('Risk — attackTerritory action', () => {
         s.territories[tid] = { ownerId: 'u1', armies: 1 };
       }
     }
-    s.players.find(p => p.userId === 'u2').hand = [
+    s.players.find((p) => p.userId === 'u2').hand = [
       { id: 'card-x', territoryId: 'venezuela', troopType: 'infantry' },
     ];
     const original = Math.random;
     let calls = 0;
-    Math.random = () => { const v = calls < 3 ? 0.99 : 0; calls++; return v; };
+    Math.random = () => {
+      const v = calls < 3 ? 0.99 : 0;
+      calls++;
+      return v;
+    };
     try {
-      const result = risk.applyAction(s, 'u1', 'attackTerritory', { from: 'alaska', to: 'kamchatka', attackerDice: 3 });
+      const result = risk.applyAction(s, 'u1', 'attackTerritory', {
+        from: 'alaska',
+        to: 'kamchatka',
+        attackerDice: 3,
+      });
       expect(result.error).toBeUndefined();
-      const u2 = result.state.players.find(p => p.userId === 'u2');
-      const u1 = result.state.players.find(p => p.userId === 'u1');
+      const u2 = result.state.players.find((p) => p.userId === 'u2');
+      const u1 = result.state.players.find((p) => p.userId === 'u1');
       expect(u2.eliminated).toBe(true);
       expect(u2.hand).toEqual([]);
       expect(u1.hand).toHaveLength(1);
       expect(u1.hand[0].id).toBe('card-x');
       // GAME_OVER fired because u1 now owns all territories
-      const types = result.events.map(e => e.type);
+      const types = result.events.map((e) => e.type);
       expect(types).toContain('PLAYER_ELIMINATED');
       expect(types).toContain('GAME_OVER');
       expect(result.state.status).toBe('finished');
@@ -405,10 +438,10 @@ describe('Risk — fortify connectivity (canFortifyPath)', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Risk — card-set validation', () => {
-  const inf = (id) => ({ id, territoryId: 't', troopType: 'infantry'  });
-  const cav = (id) => ({ id, territoryId: 't', troopType: 'cavalry'   });
+  const inf = (id) => ({ id, territoryId: 't', troopType: 'infantry' });
+  const cav = (id) => ({ id, territoryId: 't', troopType: 'cavalry' });
   const art = (id) => ({ id, territoryId: 't', troopType: 'artillery' });
-  const wld = (id) => ({ id, territoryId: null, troopType: 'wild'     });
+  const wld = (id) => ({ id, territoryId: null, troopType: 'wild' });
 
   test('three of the same troop type', () => {
     expect(risk.isValidCardSet([inf('1'), inf('2'), inf('3')])).toBe(true);
@@ -439,14 +472,22 @@ describe('Risk — card-set validation', () => {
 describe('Risk — escalating card bonuses', () => {
   test('matches the classic 4, 6, 8, 10, 12, 15, 20, 25 sequence', () => {
     const s = makeGame(2);
-    s.cardSetsTraded = 0; expect(risk.nextSetBonus(s)).toBe(4);
-    s.cardSetsTraded = 1; expect(risk.nextSetBonus(s)).toBe(6);
-    s.cardSetsTraded = 2; expect(risk.nextSetBonus(s)).toBe(8);
-    s.cardSetsTraded = 3; expect(risk.nextSetBonus(s)).toBe(10);
-    s.cardSetsTraded = 4; expect(risk.nextSetBonus(s)).toBe(12);
-    s.cardSetsTraded = 5; expect(risk.nextSetBonus(s)).toBe(15);
-    s.cardSetsTraded = 6; expect(risk.nextSetBonus(s)).toBe(20);
-    s.cardSetsTraded = 7; expect(risk.nextSetBonus(s)).toBe(25);
+    s.cardSetsTraded = 0;
+    expect(risk.nextSetBonus(s)).toBe(4);
+    s.cardSetsTraded = 1;
+    expect(risk.nextSetBonus(s)).toBe(6);
+    s.cardSetsTraded = 2;
+    expect(risk.nextSetBonus(s)).toBe(8);
+    s.cardSetsTraded = 3;
+    expect(risk.nextSetBonus(s)).toBe(10);
+    s.cardSetsTraded = 4;
+    expect(risk.nextSetBonus(s)).toBe(12);
+    s.cardSetsTraded = 5;
+    expect(risk.nextSetBonus(s)).toBe(15);
+    s.cardSetsTraded = 6;
+    expect(risk.nextSetBonus(s)).toBe(20);
+    s.cardSetsTraded = 7;
+    expect(risk.nextSetBonus(s)).toBe(25);
   });
 });
 
@@ -455,23 +496,23 @@ describe('Risk — escalating card bonuses', () => {
 describe('Risk — getStateForPlayer (SECURITY-CRITICAL)', () => {
   test('the calling player sees their own hand', () => {
     const s = makeGame(2);
-    s.players.find(p => p.userId === 'u1').hand = [
+    s.players.find((p) => p.userId === 'u1').hand = [
       { id: 'c1', territoryId: 'alaska', troopType: 'infantry' },
     ];
     const view = risk.getStateForPlayer(s, 'u1');
-    const u1 = view.players.find(p => p.userId === 'u1');
+    const u1 = view.players.find((p) => p.userId === 'u1');
     expect(u1.hand).toEqual([{ id: 'c1', territoryId: 'alaska', troopType: 'infantry' }]);
   });
 
   test('OTHER players hands are stripped and replaced with handCount', () => {
     const s = makeGame(2);
-    s.players.find(p => p.userId === 'u2').hand = [
-      { id: 'c1', territoryId: 'brazil',   troopType: 'cavalry' },
-      { id: 'c2', territoryId: 'egypt',    troopType: 'infantry' },
-      { id: 'c3', territoryId: null,       troopType: 'wild' },
+    s.players.find((p) => p.userId === 'u2').hand = [
+      { id: 'c1', territoryId: 'brazil', troopType: 'cavalry' },
+      { id: 'c2', territoryId: 'egypt', troopType: 'infantry' },
+      { id: 'c3', territoryId: null, troopType: 'wild' },
     ];
     const view = risk.getStateForPlayer(s, 'u1');
-    const u2 = view.players.find(p => p.userId === 'u2');
+    const u2 = view.players.find((p) => p.userId === 'u2');
     expect(u2).not.toHaveProperty('hand');
     expect(u2.handCount).toBe(3);
   });
@@ -485,7 +526,7 @@ describe('Risk — getStateForPlayer (SECURITY-CRITICAL)', () => {
 
   test('does not mutate the input state', () => {
     const s = makeGame(2);
-    s.players.find(p => p.userId === 'u2').hand = [
+    s.players.find((p) => p.userId === 'u2').hand = [
       { id: 'c1', territoryId: 'brazil', troopType: 'cavalry' },
     ];
     const snapshot = JSON.stringify(s);
@@ -498,14 +539,14 @@ describe('Risk — getStateForPlayer (SECURITY-CRITICAL)', () => {
     // there is no `hand` property to read.  We probe with a uniquely-named
     // card id that wouldn't legitimately appear elsewhere in the state.
     const s = makeGame(2);
-    s.players.find(p => p.userId === 'u2').hand = [
+    s.players.find((p) => p.userId === 'u2').hand = [
       { id: 'card-secret-canary-xyz', territoryId: 'china', troopType: 'cavalry' },
     ];
     const view = risk.getStateForPlayer(s, 'u1');
     const serialized = JSON.stringify(view);
     expect(serialized).not.toContain('card-secret-canary-xyz');
     // And the masked player has no hand property at all.
-    const u2 = view.players.find(p => p.userId === 'u2');
+    const u2 = view.players.find((p) => p.userId === 'u2');
     expect(u2).not.toHaveProperty('hand');
   });
 });
@@ -537,7 +578,7 @@ describe('Risk — endTurn and turn rotation', () => {
     const before = s.players[0].hand.length;
     const result = risk.applyAction(s, 'u1', 'endTurn');
     expect(result.state.players[0].hand.length).toBe(before + 1);
-    expect(result.events.map(e => e.type)).toContain('CARD_DRAWN');
+    expect(result.events.map((e) => e.type)).toContain('CARD_DRAWN');
   });
 
   test('does NOT draw a card if no territory was conquered', () => {
@@ -559,7 +600,7 @@ describe('Risk — skipTurn (AFK)', () => {
     const result = risk.skipTurn(s, 'u1');
     expect(result.state.turnState.currentPlayerIndex).toBe(1);
     expect(result.state.turnState.phase).toBe('reinforce');
-    expect(result.events.map(e => e.type)).toContain('TURN_SKIPPED');
+    expect(result.events.map((e) => e.type)).toContain('TURN_SKIPPED');
   });
 
   test('isTurnTimerBlocked is always false', () => {
@@ -615,12 +656,12 @@ describe('Risk — distributeArmies helper', () => {
   test('sum equals total armies', () => {
     const ids = ['a', 'b', 'c', 'd', 'e'];
     const dist = risk.distributeArmies(ids, 17);
-    const sum  = Object.values(dist).reduce((s, n) => s + n, 0);
+    const sum = Object.values(dist).reduce((s, n) => s + n, 0);
     expect(sum).toBe(17);
   });
 
   test('max difference between any two counts is at most 1', () => {
-    const ids  = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
     const dist = risk.distributeArmies(ids, 25);
     const counts = Object.values(dist);
     expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);

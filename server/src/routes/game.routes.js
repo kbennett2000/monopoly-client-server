@@ -20,9 +20,9 @@
 
 'use strict';
 
-const express       = require('express');
-const auth          = require('../auth');
-const gameManager   = require('../game-manager');
+const express = require('express');
+const auth = require('../auth');
+const gameManager = require('../game-manager');
 
 // ── admin gate for config-reload ────────────────────────────────────────────
 // Config reload mutates server-wide state (the cached config used for new
@@ -30,12 +30,15 @@ const gameManager   = require('../game-manager');
 //   1. ADMIN_USER_IDS set  → comma-separated allow-list of user ids
 //   2. ADMIN_USER_IDS unset → fall back to localhost-only (127.0.0.1 / ::1)
 const ADMIN_USER_IDS = new Set(
-  (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean),
+  (process.env.ADMIN_USER_IDS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
 );
 if (ADMIN_USER_IDS.size === 0) {
   console.warn(
     '[config-reload] ADMIN_USER_IDS is unset — config-reload endpoint is ' +
-    'restricted to localhost (127.0.0.1 / ::1) requests only.',
+      'restricted to localhost (127.0.0.1 / ::1) requests only.',
   );
 }
 const LOCAL_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -43,7 +46,7 @@ function isAdminRequest(req) {
   if (ADMIN_USER_IDS.size > 0) return ADMIN_USER_IDS.has(req.user.sub);
   return LOCAL_IPS.has(req.ip);
 }
-const gameRegistry  = require('../game-registry');
+const gameRegistry = require('../game-registry');
 const socketHandler = require('../socket-handler');
 
 const router = express.Router();
@@ -91,7 +94,7 @@ router.get('/mine', (req, res) => {
 
 router.get('/types', (req, res) => {
   try {
-    const types = gameRegistry.listGameTypes().map(key => ({
+    const types = gameRegistry.listGameTypes().map((key) => ({
       key,
       ...gameRegistry.getGameLogic(key).getGameMetadata(),
     }));
@@ -126,7 +129,7 @@ router.post('/types/:type/config/reload', (req, res) => {
     return res.status(403).json({ error: 'Config reload is restricted to admins' });
   }
   try {
-    const logic  = gameRegistry.getGameLogic(req.params.type);
+    const logic = gameRegistry.getGameLogic(req.params.type);
     const config = logic.loadConfig();
     res.json({ success: true, config });
   } catch (err) {
@@ -171,7 +174,12 @@ router.post('/', (req, res) => {
   }
 
   try {
-    const { gameId, state } = gameManager.createGame(name.trim(), req.user.sub, gameType, configOverrides || {});
+    const { gameId, state } = gameManager.createGame(
+      name.trim(),
+      req.user.sub,
+      gameType,
+      configOverrides || {},
+    );
     socketHandler.broadcastLobbyUpdate();
     res.status(201).json({ gameId, state });
   } catch (err) {
@@ -193,7 +201,10 @@ router.get('/:id', (req, res) => {
 // ── POST /api/games/:id/join ─────────────────────────────────────────────────
 
 router.post('/:id/join', (req, res) => {
-  const result = gameManager.addPlayerToLobby(req.params.id, { id: req.user.sub, username: req.user.username });
+  const result = gameManager.addPlayerToLobby(req.params.id, {
+    id: req.user.sub,
+    username: req.user.username,
+  });
   if (result.error) return res.status(400).json({ error: result.error });
   res.json({ state: result.state });
 });

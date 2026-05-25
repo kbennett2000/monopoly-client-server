@@ -13,7 +13,7 @@
 'use strict';
 
 const path = require('path');
-const fs   = require('fs');
+const fs = require('fs');
 
 const CONFIG_DIR = path.join(__dirname, 'config');
 
@@ -60,7 +60,7 @@ function validateBoard(board) {
       if (!territoryIds.has(adj)) {
         throw new Error(`board.json: territory "${t.id}" has unknown neighbour "${adj}"`);
       }
-      const other = board.territories.find(x => x.id === adj);
+      const other = board.territories.find((x) => x.id === adj);
       if (!other.adjacent.includes(t.id)) {
         throw new Error(`board.json: adjacency between "${t.id}" and "${adj}" is not symmetric`);
       }
@@ -80,7 +80,7 @@ function validateBoard(board) {
     if (cont.territories.length !== (byContinent[key] || 0)) {
       throw new Error(
         `board.json: continent "${key}" lists ${cont.territories.length} territories ` +
-        `but ${byContinent[key] || 0} territories claim membership`,
+          `but ${byContinent[key] || 0} territories claim membership`,
       );
     }
     for (const tid of cont.territories) {
@@ -95,13 +95,15 @@ function validateCards(cards) {
   if (!Array.isArray(cards.cards) || cards.cards.length !== 44) {
     throw new Error('cards.json: must contain exactly 44 cards (42 territory + 2 wild)');
   }
-  const wilds = cards.cards.filter(c => c.troopType === 'wild');
+  const wilds = cards.cards.filter((c) => c.troopType === 'wild');
   if (wilds.length !== 2) {
     throw new Error(`cards.json: must contain exactly 2 wild cards (found ${wilds.length})`);
   }
-  const territoryCards = cards.cards.filter(c => c.troopType !== 'wild');
+  const territoryCards = cards.cards.filter((c) => c.troopType !== 'wild');
   if (territoryCards.length !== 42) {
-    throw new Error(`cards.json: must contain exactly 42 territory cards (found ${territoryCards.length})`);
+    throw new Error(
+      `cards.json: must contain exactly 42 territory cards (found ${territoryCards.length})`,
+    );
   }
   for (const c of cards.cards) {
     if (!c.id) throw new Error('cards.json: every card needs an id');
@@ -116,23 +118,31 @@ function validateCards(cards) {
 
 function validateSettings(settings) {
   const required = [
-    'reinforcementMinimum', 'reinforcementDivisor',
-    'attackerMaxDice', 'defenderMaxDice',
-    'minPlayers', 'maxPlayers',
+    'reinforcementMinimum',
+    'reinforcementDivisor',
+    'attackerMaxDice',
+    'defenderMaxDice',
+    'minPlayers',
+    'maxPlayers',
   ];
   for (const key of required) {
     if (typeof settings[key] !== 'number') {
       throw new Error(`settings.json: "${key}" must be a number`);
     }
   }
-  if (!settings.initialArmiesByPlayerCount || typeof settings.initialArmiesByPlayerCount !== 'object') {
+  if (
+    !settings.initialArmiesByPlayerCount ||
+    typeof settings.initialArmiesByPlayerCount !== 'object'
+  ) {
     throw new Error('settings.json: initialArmiesByPlayerCount must be an object');
   }
   if (!Array.isArray(settings.cardTradeBonuses) || settings.cardTradeBonuses.length === 0) {
     throw new Error('settings.json: cardTradeBonuses must be a non-empty array');
   }
   if (!Array.isArray(settings.playerColors) || settings.playerColors.length < settings.maxPlayers) {
-    throw new Error(`settings.json: playerColors must contain at least ${settings.maxPlayers} entries`);
+    throw new Error(
+      `settings.json: playerColors must contain at least ${settings.maxPlayers} entries`,
+    );
   }
 }
 
@@ -157,8 +167,8 @@ let _cachedConfig = null;
 function loadConfig(force = false) {
   if (_cachedConfig && !force) return _cachedConfig;
 
-  const board    = readJSON('board.json');
-  const cards    = readJSON('cards.json');
+  const board = readJSON('board.json');
+  const cards = readJSON('cards.json');
   const settings = readJSON('settings.json');
 
   validateBoard(board);
@@ -167,9 +177,9 @@ function loadConfig(force = false) {
 
   _cachedConfig = {
     board,
-    cards:    cards.cards,
+    cards: cards.cards,
     settings,
-    territoryById:   buildTerritoryIndex(board),
+    territoryById: buildTerritoryIndex(board),
     continentByTerritory: buildContinentIndex(board),
   };
   return _cachedConfig;

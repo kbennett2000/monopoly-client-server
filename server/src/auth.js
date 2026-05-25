@@ -8,14 +8,14 @@
 'use strict';
 
 const bcrypt = require('bcrypt');
-const jwt    = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 
 // ── configuration ─────────────────────────────────────────────────────────────
 
 // JWT_SECRET is guaranteed to be set by the startup pre-flight check in index.js.
 // There is intentionally no fallback — an undefined secret causes jwt.sign/verify
 // to throw immediately, ensuring misconfiguration is never silently tolerated.
-const JWT_SECRET  = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 // BCRYPT_ROUNDS can be lowered (e.g. to 4) in integration tests for faster hashing.
 const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 12;
@@ -47,11 +47,9 @@ async function verifyPassword(password, hash) {
  * @returns {string} signed JWT
  */
 function generateToken(user) {
-  return jwt.sign(
-    { sub: user.id, username: user.username },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES }
-  );
+  return jwt.sign({ sub: user.id, username: user.username }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES,
+  });
 }
 
 /**
@@ -75,7 +73,7 @@ function verifyToken(token) {
  */
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
   if (!token) {
     return res.status(401).json({ error: 'Authorization token required' });
@@ -97,7 +95,7 @@ function requireAuth(req, res, next) {
  */
 function optionalAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
   if (!token) {
     req.user = null;

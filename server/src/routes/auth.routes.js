@@ -10,9 +10,9 @@
 
 'use strict';
 
-const express  = require('express');
+const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const auth     = require('../auth');
+const auth = require('../auth');
 const database = require('../database');
 
 const router = express.Router();
@@ -32,7 +32,9 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'username must be 2–24 characters' });
   }
   if (!/^[a-zA-Z0-9_\- ]+$/.test(username)) {
-    return res.status(400).json({ error: 'username may only contain letters, numbers, spaces, hyphens, and underscores' });
+    return res.status(400).json({
+      error: 'username may only contain letters, numbers, spaces, hyphens, and underscores',
+    });
   }
   if (password.length < 4) {
     return res.status(400).json({ error: 'password must be at least 4 characters' });
@@ -43,7 +45,7 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    const id           = uuidv4();
+    const id = uuidv4();
     const passwordHash = await auth.hashPassword(password);
     database.createUser(id, username, passwordHash);
 

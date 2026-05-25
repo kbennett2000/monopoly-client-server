@@ -27,16 +27,16 @@ function makeContainer() {
 function makeState(overrides = {}) {
   return {
     gameType: 'test-game',
-    status:   'playing',
-    players:  [],
+    status: 'playing',
+    players: [],
     ...overrides,
   };
 }
 
 /** A renderer stub that does nothing — the minimal valid implementation. */
 const noopRenderer = {
-  init:    () => {},
-  update:  () => {},
+  init: () => {},
+  update: () => {},
   destroy: () => {},
 };
 
@@ -66,16 +66,12 @@ describe('validateRenderer', () => {
     test(`throws when required method "${method}" is missing`, () => {
       const incomplete = { ...noopRenderer };
       delete incomplete[method];
-      expect(() => validateRenderer(incomplete, 'test-game')).toThrow(
-        new RegExp(method)
-      );
+      expect(() => validateRenderer(incomplete, 'test-game')).toThrow(new RegExp(method));
     });
 
     test(`throws when required method "${method}" is not a function`, () => {
       const broken = { ...noopRenderer, [method]: 'not-a-function' };
-      expect(() => validateRenderer(broken, 'test-game')).toThrow(
-        new RegExp(method)
-      );
+      expect(() => validateRenderer(broken, 'test-game')).toThrow(new RegExp(method));
     });
   }
 
@@ -89,7 +85,7 @@ describe('validateRenderer', () => {
 
   test('RENDERER_REQUIRED_METHODS contains exactly init, update, destroy', () => {
     expect(RENDERER_REQUIRED_METHODS).toEqual(
-      expect.arrayContaining(['init', 'update', 'destroy'])
+      expect.arrayContaining(['init', 'update', 'destroy']),
     );
     expect(RENDERER_REQUIRED_METHODS).toHaveLength(3);
   });
@@ -127,16 +123,16 @@ describe('no-op stub renderer', () => {
 
 describe('tracking stub renderer', () => {
   let _container = null;
-  let _myUserId  = null;
-  let _emit      = null;
+  let _myUserId = null;
+  let _emit = null;
 
   const INNER_HTML = '<div class="game-board">stub content</div>';
 
   const trackingRenderer = {
     init(container, state, myUserId, emitAction) {
       _container = container;
-      _myUserId  = myUserId;
-      _emit      = emitAction;
+      _myUserId = myUserId;
+      _emit = emitAction;
       container.innerHTML = INNER_HTML;
     },
 
@@ -150,8 +146,8 @@ describe('tracking stub renderer', () => {
         _container.innerHTML = '';
       }
       _container = null;
-      _myUserId  = null;
-      _emit      = null;
+      _myUserId = null;
+      _emit = null;
     },
   };
 
@@ -162,7 +158,7 @@ describe('tracking stub renderer', () => {
   test('init populates the container', () => {
     const container = makeContainer();
     const state = makeState({ turn: 0 });
-    const emit  = jest.fn();
+    const emit = jest.fn();
 
     trackingRenderer.init(container, state, 'player-42', emit);
     expect(container.innerHTML).toBe(INNER_HTML);

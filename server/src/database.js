@@ -8,8 +8,8 @@
 
 'use strict';
 
-const path    = require('path');
-const fs      = require('fs');
+const path = require('path');
+const fs = require('fs');
 const Database = require('better-sqlite3');
 
 // ── path setup ───────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ db.exec(`
 // is a no-op.
 
 {
-  const gameColumns = db.pragma('table_info(games)').map(c => c.name);
+  const gameColumns = db.pragma('table_info(games)').map((c) => c.name);
   if (!gameColumns.includes('game_type')) {
     db.exec(`ALTER TABLE games ADD COLUMN game_type TEXT NOT NULL DEFAULT 'monopoly'`);
   }
@@ -85,8 +85,10 @@ db.exec(`
 
 const stmts = {
   // Users
-  insertUser:    db.prepare('INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)'),
-  getUserById:   db.prepare('SELECT * FROM users WHERE id = ?'),
+  insertUser: db.prepare(
+    'INSERT INTO users (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)',
+  ),
+  getUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
   getUserByName: db.prepare('SELECT * FROM users WHERE username = ?'),
 
   // Games
@@ -134,9 +136,11 @@ const stmts = {
   deleteGame: db.prepare('DELETE FROM games WHERE id = ?'),
 
   // Game players
-  addPlayerToGame:      db.prepare('INSERT OR IGNORE INTO game_players (game_id, user_id, joined_at) VALUES (?, ?, ?)'),
+  addPlayerToGame: db.prepare(
+    'INSERT OR IGNORE INTO game_players (game_id, user_id, joined_at) VALUES (?, ?, ?)',
+  ),
   removePlayerFromGame: db.prepare('DELETE FROM game_players WHERE game_id = ? AND user_id = ?'),
-  getPlayersForGame:    db.prepare(`
+  getPlayersForGame: db.prepare(`
     SELECT gp.user_id, u.username, gp.joined_at
     FROM   game_players gp
     JOIN   users u ON u.id = gp.user_id
@@ -169,7 +173,17 @@ module.exports = {
 
   createGame(id, name, createdBy, state, config, gameType = 'monopoly') {
     const now = Date.now();
-    stmts.insertGame.run(id, name, gameType, 'waiting', createdBy, now, now, JSON.stringify(state), JSON.stringify(config));
+    stmts.insertGame.run(
+      id,
+      name,
+      gameType,
+      'waiting',
+      createdBy,
+      now,
+      now,
+      JSON.stringify(state),
+      JSON.stringify(config),
+    );
   },
 
   updateGame(id, status, state) {
@@ -181,7 +195,7 @@ module.exports = {
     if (!row) return null;
     return {
       ...row,
-      state:  JSON.parse(row.state),
+      state: JSON.parse(row.state),
       config: JSON.parse(row.config),
     };
   },

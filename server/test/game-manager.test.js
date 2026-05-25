@@ -20,15 +20,18 @@ jest.mock('../src/database', () => {
       store.set(id, {
         id,
         created_by: createdBy,
-        game_type:  gameType || 'monopoly',
-        status:     'waiting',
-        state:      JSON.parse(JSON.stringify(state)),
-        config:     JSON.parse(JSON.stringify(config)),
+        game_type: gameType || 'monopoly',
+        status: 'waiting',
+        state: JSON.parse(JSON.stringify(state)),
+        config: JSON.parse(JSON.stringify(config)),
       });
     },
     updateGame(id, status, stateObj) {
       const row = store.get(id);
-      if (row) { row.status = status; row.state = JSON.parse(JSON.stringify(stateObj)); }
+      if (row) {
+        row.status = status;
+        row.state = JSON.parse(JSON.stringify(stateObj));
+      }
     },
     getGameById(id) {
       const row = store.get(id);
@@ -37,20 +40,22 @@ jest.mock('../src/database', () => {
     },
     addPlayerToGame() {},
     removePlayerFromGame() {},
-    listOpenGames() { return []; },
+    listOpenGames() {
+      return [];
+    },
     db: {},
   };
 });
 
 // ── module imports (after mock registration) ──────────────────────────────────
 
-const database    = require('../src/database');
+const database = require('../src/database');
 const gameManager = require('../src/game-manager');
 
 // ── test helpers ──────────────────────────────────────────────────────────────
 
 const HOST = { id: 'host-001', username: 'Alice' };
-const P2   = { id: 'plyr-002', username: 'Bob'   };
+const P2 = { id: 'plyr-002', username: 'Bob' };
 
 /**
  * Create a game, add two players, start it, and return the gameId.
@@ -80,34 +85,29 @@ afterEach(() => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('per-game action queue', () => {
-
   // ── basic liveness ──────────────────────────────────────────────────────────
 
   test('N concurrent applyAction calls all resolve (no deadlock)', async () => {
-    const gameId  = createAndStartGame();
-    const N       = 10;
+    const gameId = createAndStartGame();
+    const N = 10;
     const results = await Promise.all(
-      Array.from({ length: N }, () =>
-        gameManager.applyAction(gameId, HOST.id, 'rollDice', {}),
-      ),
+      Array.from({ length: N }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
     );
     expect(results).toHaveLength(N);
-    expect(results.every(r => r !== undefined && r !== null)).toBe(true);
+    expect(results.every((r) => r !== undefined && r !== null)).toBe(true);
   });
 
   // ── state consistency ───────────────────────────────────────────────────────
 
   test('exactly one rollDice succeeds when N calls fire concurrently', async () => {
-    const gameId  = createAndStartGame();
-    const N       = 10;
+    const gameId = createAndStartGame();
+    const N = 10;
     const results = await Promise.all(
-      Array.from({ length: N }, () =>
-        gameManager.applyAction(gameId, HOST.id, 'rollDice', {}),
-      ),
+      Array.from({ length: N }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
     );
 
-    const successes = results.filter(r => !r.error);
-    const errors    = results.filter(r =>  r.error);
+    const successes = results.filter((r) => !r.error);
+    const errors = results.filter((r) => r.error);
 
     // Only the first call in the queue can succeed — the game logic rejects
     // subsequent rolls because the turn phase has already advanced.
@@ -118,9 +118,7 @@ describe('per-game action queue', () => {
   test('final state reflects exactly one roll after N concurrent calls', async () => {
     const gameId = createAndStartGame();
     await Promise.all(
-      Array.from({ length: 10 }, () =>
-        gameManager.applyAction(gameId, HOST.id, 'rollDice', {}),
-      ),
+      Array.from({ length: 10 }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
     );
 
     const final = gameManager.peekGame(gameId);
@@ -133,14 +131,12 @@ describe('per-game action queue', () => {
   // ── high-concurrency stress ─────────────────────────────────────────────────
 
   test('no deadlock under high concurrency (50 calls)', async () => {
-    const gameId  = createAndStartGame();
+    const gameId = createAndStartGame();
     const results = await Promise.allSettled(
-      Array.from({ length: 50 }, () =>
-        gameManager.applyAction(gameId, HOST.id, 'rollDice', {}),
-      ),
+      Array.from({ length: 50 }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
     );
     // Every promise must settle — if any hang the test times out
-    expect(results.every(r => r.status === 'fulfilled')).toBe(true);
+    expect(results.every((r) => r.status === 'fulfilled')).toBe(true);
   });
 
   // ── game isolation ──────────────────────────────────────────────────────────
@@ -159,8 +155,12 @@ describe('per-game action queue', () => {
     // moves it to buying, etc.  Dice being set proves the roll ran.
     expect(r1.error).toBeUndefined();
     expect(r2.error).toBeUndefined();
-    expect(gameManager.peekGame(g1).turnState.dice[0] + gameManager.peekGame(g1).turnState.dice[1]).toBeGreaterThan(0);
-    expect(gameManager.peekGame(g2).turnState.dice[0] + gameManager.peekGame(g2).turnState.dice[1]).toBeGreaterThan(0);
+    expect(
+      gameManager.peekGame(g1).turnState.dice[0] + gameManager.peekGame(g1).turnState.dice[1],
+    ).toBeGreaterThan(0);
+    expect(
+      gameManager.peekGame(g2).turnState.dice[0] + gameManager.peekGame(g2).turnState.dice[1],
+    ).toBeGreaterThan(0);
   });
 
   // ── saveGame shares the same queue ─────────────────────────────────────────
@@ -224,19 +224,20 @@ describe('per-game action queue', () => {
 
     // Drain the queue with a batch of calls
     await Promise.allSettled(
-      Array.from({ length: 10 }, () =>
-        gameManager.applyAction(gameId, HOST.id, 'rollDice', {}),
-      ),
+      Array.from({ length: 10 }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
     );
 
     // A follow-up call that does not depend on game phase must resolve promptly.
     // setPlayerConnected always succeeds regardless of turn state.
     await gameManager.setPlayerConnected(gameId, HOST.id, false);
-    expect(gameManager.peekGame(gameId).players.find(p => p.userId === HOST.id).connected).toBe(false);
+    expect(gameManager.peekGame(gameId).players.find((p) => p.userId === HOST.id).connected).toBe(
+      false,
+    );
 
     // And a further call proves the queue is still accepting work
     await gameManager.setPlayerConnected(gameId, HOST.id, true);
-    expect(gameManager.peekGame(gameId).players.find(p => p.userId === HOST.id).connected).toBe(true);
+    expect(gameManager.peekGame(gameId).players.find((p) => p.userId === HOST.id).connected).toBe(
+      true,
+    );
   });
-
 });

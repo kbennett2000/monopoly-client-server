@@ -31,8 +31,8 @@
 'use strict';
 
 const { authenticateSocket } = require('./auth');
-const gameManager             = require('./game-manager');
-const gameRegistry            = require('./game-registry');
+const gameManager = require('./game-manager');
+const gameRegistry = require('./game-registry');
 
 // Track which socket is in which game room: Map<socketId, gameId>
 const socketGameMap = new Map();
@@ -50,9 +50,8 @@ const userSocketMap = new Map();
 function filteredFor(state, userId) {
   if (!state) return state;
   const logic = gameRegistry.getGameLogic(state.gameType);
-  const view  = typeof logic.getStateForPlayer === 'function'
-    ? logic.getStateForPlayer(state, userId)
-    : state;
+  const view =
+    typeof logic.getStateForPlayer === 'function' ? logic.getStateForPlayer(state, userId) : state;
   // Attach the per-player valid-actions list so clients can drive button
   // enablement without re-implementing the rules.  Wraps the filtered view
   // (not the canonical state) so hidden-information filters take effect first.
@@ -103,23 +102,26 @@ function scheduleTurnTimeout(io, gameId, userId, username) {
     username,
     deadlineTimestamp: Date.now() + TURN_TIMEOUT_MS,
   });
-  turnTimers.set(key, setTimeout(async () => {
-    turnTimers.delete(key);
-    // Snapshot — we hand `state` to game-logic functions below.
-    const state = gameManager.getGameSnapshot(gameId);
-    if (!state || state.status !== 'playing') return;
-    const logic = gameRegistry.getGameLogic(state.gameType);
-    const cur   = logic.getCurrentPlayer(state);
-    // Only fire if it's still this player's turn and they're still disconnected
-    if (!cur || cur.userId !== userId) return;
-    const player = state.players.find(p => p.userId === userId);
-    if (player?.connected) return;
-    if (logic.isTurnTimerBlocked(state)) return;
-    const result = await gameManager.applyAction(gameId, userId, 'skipTurn', {});
-    if (!result.error) {
-      emitToRoom(io, gameId, 'game:update', result.state, { events: result.events });
-    }
-  }, TURN_TIMEOUT_MS));
+  turnTimers.set(
+    key,
+    setTimeout(async () => {
+      turnTimers.delete(key);
+      // Snapshot — we hand `state` to game-logic functions below.
+      const state = gameManager.getGameSnapshot(gameId);
+      if (!state || state.status !== 'playing') return;
+      const logic = gameRegistry.getGameLogic(state.gameType);
+      const cur = logic.getCurrentPlayer(state);
+      // Only fire if it's still this player's turn and they're still disconnected
+      if (!cur || cur.userId !== userId) return;
+      const player = state.players.find((p) => p.userId === userId);
+      if (player?.connected) return;
+      if (logic.isTurnTimerBlocked(state)) return;
+      const result = await gameManager.applyAction(gameId, userId, 'skipTurn', {});
+      if (!result.error) {
+        emitToRoom(io, gameId, 'game:update', result.state, { events: result.events });
+      }
+    }, TURN_TIMEOUT_MS),
+  );
 }
 
 function clearTurnTimeout(key) {
@@ -148,7 +150,6 @@ function registerHandlers(io) {
   _io = io;
 
   io.on('connection', (socket) => {
-
     // ── authenticate ────────────────────────────────────────────────────────
 
     let currentUser = null;
@@ -190,7 +191,10 @@ function registerHandlers(io) {
       // joining via REST + socket (the normal flow) always results in a
       // consistent player list broadcast to everyone already in the room.
       if (state.status === 'waiting') {
-        gameManager.addPlayerToLobby(gameId, { id: currentUser.sub, username: currentUser.username });
+        gameManager.addPlayerToLobby(gameId, {
+          id: currentUser.sub,
+          username: currentUser.username,
+        });
       }
 
       await gameManager.setPlayerConnected(gameId, currentUser.sub, true);
@@ -210,9 +214,22 @@ function registerHandlers(io) {
       emitToSocket(socket, 'game:state', latestState);
 
       // Notify everyone else in the room with the updated player list
-      emitToRoom(io, gameId, 'game:update', latestState, {
-        events: [{ type: 'PLAYER_JOINED_LOBBY', data: { username: currentUser.username }, timestamp: Date.now() }],
-      }, socket);
+      emitToRoom(
+        io,
+        gameId,
+        'game:update',
+        latestState,
+        {
+          events: [
+            {
+              type: 'PLAYER_JOINED_LOBBY',
+              data: { username: currentUser.username },
+              timestamp: Date.now(),
+            },
+          ],
+        },
+        socket,
+      );
 
       // Update lobby lists on all connected clients (player count changed)
       broadcastLobbyUpdate();
@@ -232,7 +249,13 @@ function registerHandlers(io) {
       await gameManager.setPlayerConnected(gameId, currentUser.sub, false);
 
       emitToRoom(io, gameId, 'game:update', gameManager.getGameSnapshot(gameId), {
-        events: [{ type: 'PLAYER_DISCONNECTED', data: { username: currentUser.username }, timestamp: Date.now() }],
+        events: [
+          {
+            type: 'PLAYER_DISCONNECTED',
+            data: { username: currentUser.username },
+            timestamp: Date.now(),
+          },
+        ],
       });
     });
 
@@ -256,13 +279,19 @@ function registerHandlers(io) {
         // (getCurrentPlayer / isTurnTimerBlocked) below.
         const state = gameManager.getGameSnapshot(gameId);
         emitToRoom(io, gameId, 'game:update', state, {
-          events: [{ type: 'PLAYER_DISCONNECTED', data: { username: currentUser.username }, timestamp: Date.now() }],
+          events: [
+            {
+              type: 'PLAYER_DISCONNECTED',
+              data: { username: currentUser.username },
+              timestamp: Date.now(),
+            },
+          ],
         });
 
         // If it was this player's turn, start the auto-skip countdown
         if (state && state.status === 'playing') {
           const logic = gameRegistry.getGameLogic(state.gameType);
-          const cur   = logic.getCurrentPlayer(state);
+          const cur = logic.getCurrentPlayer(state);
           if (cur?.userId === currentUser.sub && !logic.isTurnTimerBlocked(state)) {
             scheduleTurnTimeout(io, gameId, currentUser.sub, currentUser.username);
           }
@@ -288,14 +317,23 @@ function registerHandlers(io) {
     // ── join lobby ───────────────────────────────────────────────────────────
 
     socket.on('lobby:join', (gameId, ack) => {
-      const result = gameManager.addPlayerToLobby(gameId, { id: currentUser.sub, username: currentUser.username });
+      const result = gameManager.addPlayerToLobby(gameId, {
+        id: currentUser.sub,
+        username: currentUser.username,
+      });
       if (result.error) return ack?.({ error: result.error });
 
       socket.join(gameId);
       socketGameMap.set(socket.id, gameId);
 
       emitToRoom(io, gameId, 'game:update', result.state, {
-        events: [{ type: 'PLAYER_JOINED_LOBBY', data: { username: currentUser.username }, timestamp: Date.now() }],
+        events: [
+          {
+            type: 'PLAYER_JOINED_LOBBY',
+            data: { username: currentUser.username },
+            timestamp: Date.now(),
+          },
+        ],
       });
 
       // ack is delivered to the joining socket; filter the state for them too
@@ -327,7 +365,7 @@ function registerHandlers(io) {
       emitToRoom(io, gameId, 'game:update', result.state, { events: result.events });
 
       // If the action resulted in a trade offer, notify the recipient directly
-      const tradeEvent = result.events?.find(e => e.type === 'TRADE_OFFERED');
+      const tradeEvent = result.events?.find((e) => e.type === 'TRADE_OFFERED');
       if (tradeEvent && data.toUserId) {
         const recipientSid = userSocketMap.get(data.toUserId);
         if (recipientSid) {
@@ -363,14 +401,12 @@ function registerHandlers(io) {
       if (!gameId) return;
 
       io.to(gameId).emit('chat:message', {
-        username:  currentUser.username,
-        text:      trimmed,
+        username: currentUser.username,
+        text: trimmed,
         timestamp: Date.now(),
       });
     });
-
   }); // end io.on('connection')
-
 }
 
 module.exports = { registerHandlers, broadcastLobbyUpdate };

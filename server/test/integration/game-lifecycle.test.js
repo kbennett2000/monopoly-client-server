@@ -21,12 +21,12 @@
 
 'use strict';
 
-const { startServer, stopServer }               = require('./helpers/server');
+const { startServer, stopServer } = require('./helpers/server');
 const { connectSocket, disconnectSocket, waitFor, emitAck } = require('./helpers/socket');
 
 // ── shared server state ────────────────────────────────────────────────────────
 
-let server;   // { httpServer, io, url, api }
+let server; // { httpServer, io, url, api }
 
 beforeAll(async () => {
   server = await startServer();
@@ -47,18 +47,12 @@ beforeEach(() => {
 // ── REST auth helpers ──────────────────────────────────────────────────────────
 
 async function register(username, password = 'pass1234') {
-  const res = await server.api
-    .post('/api/auth/register')
-    .send({ username, password })
-    .expect(201);
+  const res = await server.api.post('/api/auth/register').send({ username, password }).expect(201);
   return res.body; // { token, user: { id, username } }
 }
 
 async function login(username, password = 'pass1234') {
-  const res = await server.api
-    .post('/api/auth/login')
-    .send({ username, password })
-    .expect(200);
+  const res = await server.api.post('/api/auth/login').send({ username, password }).expect(200);
   return res.body; // { token, user }
 }
 
@@ -79,7 +73,7 @@ async function connect(token) {
 
 afterEach(async () => {
   // Close any sockets that the test left open (e.g. after an assertion failure).
-  await Promise.all(_openSockets.map(s => disconnectSocket(s)));
+  await Promise.all(_openSockets.map((s) => disconnectSocket(s)));
   _openSockets = [];
 });
 
@@ -88,7 +82,6 @@ afterEach(async () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('routing', () => {
-
   test('unknown /api/* path returns JSON 404 (not the SPA HTML)', async () => {
     const res = await server.api
       .get('/api/this-route-does-not-exist')
@@ -106,7 +99,6 @@ describe('routing', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('auth', () => {
-
   test('register returns a JWT and user object', async () => {
     const { token, user } = await register('Alice');
     expect(typeof token).toBe('string');
@@ -138,10 +130,7 @@ describe('auth', () => {
 
   test('GET /api/auth/me returns current user', async () => {
     const { token, user } = await register('Dave');
-    const res = await server.api
-      .get('/api/auth/me')
-      .set(authed(token))
-      .expect(200);
+    const res = await server.api.get('/api/auth/me').set(authed(token)).expect(200);
     expect(res.body.id).toBe(user.id);
     expect(res.body.username).toBe('Dave');
   });
@@ -149,7 +138,6 @@ describe('auth', () => {
   test('GET /api/auth/me without token returns 401', async () => {
     await server.api.get('/api/auth/me').expect(401);
   });
-
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -157,7 +145,6 @@ describe('auth', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('lobby (REST)', () => {
-
   test('create game returns gameId and waiting state', async () => {
     const { token } = await register('Host');
     const res = await server.api
@@ -171,10 +158,12 @@ describe('lobby (REST)', () => {
   });
 
   test('second player can join a waiting game', async () => {
-    const { token: hostToken, user: host }    = await register('Host2');
-    const { token: guestToken, user: guest }  = await register('Guest2');
+    const { token: hostToken, user: host } = await register('Host2');
+    const { token: guestToken, user: guest } = await register('Guest2');
 
-    const { body: { gameId } } = await server.api
+    const {
+      body: { gameId },
+    } = await server.api
       .post('/api/games')
       .set(authed(hostToken))
       .send({ name: 'Test', gameType: 'connect-four' })
@@ -189,7 +178,7 @@ describe('lobby (REST)', () => {
       .set(authed(guestToken))
       .expect(200);
 
-    const playerIds = joinRes.body.state.players.map(p => p.userId);
+    const playerIds = joinRes.body.state.players.map((p) => p.userId);
     expect(playerIds).toContain(host.id);
     expect(playerIds).toContain(guest.id);
   });
@@ -202,25 +191,18 @@ describe('lobby (REST)', () => {
       .send({ name: 'Listed', gameType: 'connect-four' })
       .expect(201);
 
-    const res = await server.api
-      .get('/api/games')
-      .set(authed(token))
-      .expect(200);
+    const res = await server.api.get('/api/games').set(authed(token)).expect(200);
     expect(Array.isArray(res.body.games)).toBe(true);
-    expect(res.body.games.some(g => g.name === 'Listed')).toBe(true);
+    expect(res.body.games.some((g) => g.name === 'Listed')).toBe(true);
   });
 
   test('GET /api/games/types returns connect-four and monopoly', async () => {
     const { token } = await register('TypeChecker');
-    const res = await server.api
-      .get('/api/games/types')
-      .set(authed(token))
-      .expect(200);
-    const keys = res.body.types.map(t => t.key);
+    const res = await server.api.get('/api/games/types').set(authed(token)).expect(200);
+    const keys = res.body.types.map((t) => t.key);
     expect(keys).toContain('connect-four');
     expect(keys).toContain('monopoly');
   });
-
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -238,14 +220,13 @@ describe('lobby (REST)', () => {
 //   Alice  col 3  →  board[5][3] = Alice  →  4-in-a-row  →  GAME OVER
 
 describe('full Connect Four game via sockets', () => {
-
   // Shared across this suite's single test
-  let alice, bob;          // { token, user }
+  let alice, bob; // { token, user }
   let gameId;
 
   beforeEach(async () => {
     alice = await register('Alice');
-    bob   = await register('Bob');
+    bob = await register('Bob');
 
     // Alice creates the game via REST
     const { body } = await server.api
@@ -265,19 +246,22 @@ describe('full Connect Four game via sockets', () => {
   test('register → login → create → join → start → play → game over', async () => {
     // Connect both players' sockets
     const aliceSock = await connect(alice.token);
-    const bobSock   = await connect(bob.token);
+    const bobSock = await connect(bob.token);
 
     // Both join the socket room
     await Promise.all([
       emitAck(aliceSock, 'join_game', gameId),
-      emitAck(bobSock,   'join_game', gameId),
+      emitAck(bobSock, 'join_game', gameId),
     ]);
 
     // Alice starts the game — everyone in the room receives game:update
     const [aliceUpdate, bobUpdate] = await Promise.all([
       waitFor(aliceSock, 'game:update'),
-      waitFor(bobSock,   'game:update'),
-      new Promise(resolve => { aliceSock.emit('game:start'); resolve(); }),
+      waitFor(bobSock, 'game:update'),
+      new Promise((resolve) => {
+        aliceSock.emit('game:start');
+        resolve();
+      }),
     ]);
 
     expect(aliceUpdate.state.status).toBe('playing');
@@ -295,7 +279,7 @@ describe('full Connect Four game via sockets', () => {
       const [actorUpd, otherUpd] = await Promise.all([
         waitFor(actorSock, 'game:update'),
         waitFor(otherSock, 'game:update'),
-        new Promise(resolve => {
+        new Promise((resolve) => {
           actorSock.emit('game:action', { action: 'dropPiece', column });
           resolve();
         }),
@@ -305,30 +289,30 @@ describe('full Connect Four game via sockets', () => {
       return actorUpd; // return the update received by the actor
     }
 
-    const m1 = await drop(aliceSock, bobSock, 0);   // Alice col 0
+    const m1 = await drop(aliceSock, bobSock, 0); // Alice col 0
     expect(m1.state.status).toBe('playing');
 
-    const m2 = await drop(bobSock, aliceSock, 4);   // Bob   col 4
+    const m2 = await drop(bobSock, aliceSock, 4); // Bob   col 4
     expect(m2.state.status).toBe('playing');
 
-    const m3 = await drop(aliceSock, bobSock, 1);   // Alice col 1
+    const m3 = await drop(aliceSock, bobSock, 1); // Alice col 1
     expect(m3.state.status).toBe('playing');
 
-    const m4 = await drop(bobSock, aliceSock, 5);   // Bob   col 5
+    const m4 = await drop(bobSock, aliceSock, 5); // Bob   col 5
     expect(m4.state.status).toBe('playing');
 
-    const m5 = await drop(aliceSock, bobSock, 2);   // Alice col 2
+    const m5 = await drop(aliceSock, bobSock, 2); // Alice col 2
     expect(m5.state.status).toBe('playing');
 
-    const m6 = await drop(bobSock, aliceSock, 6);   // Bob   col 6
+    const m6 = await drop(bobSock, aliceSock, 6); // Bob   col 6
     expect(m6.state.status).toBe('playing');
 
-    const m7 = await drop(aliceSock, bobSock, 3);   // Alice col 3 — WIN
+    const m7 = await drop(aliceSock, bobSock, 3); // Alice col 3 — WIN
     expect(m7.state.status).toBe('finished');
     expect(m7.state.winner).toBe(alice.user.id);
 
     // GAME_OVER event must be in the last update's event list
-    expect(m7.events.some(e => e.type === 'GAME_OVER')).toBe(true);
+    expect(m7.events.some((e) => e.type === 'GAME_OVER')).toBe(true);
 
     // The winning row: bottom row (row 5), cols 0–3 should all be Alice's userId
     const board = m7.state.board;
@@ -338,27 +322,29 @@ describe('full Connect Four game via sockets', () => {
     expect(board[5][3]).toBe(alice.user.id);
 
     // GET the game from the REST API and verify persistence
-    const { body: { state: persisted } } = await server.api
-      .get(`/api/games/${gameId}`)
-      .set(authed(alice.token))
-      .expect(200);
+    const {
+      body: { state: persisted },
+    } = await server.api.get(`/api/games/${gameId}`).set(authed(alice.token)).expect(200);
     expect(persisted.status).toBe('finished');
     expect(persisted.winner).toBe(alice.user.id);
   });
 
   test('game:error is emitted for an out-of-turn action', async () => {
     const aliceSock = await connect(alice.token);
-    const bobSock   = await connect(bob.token);
+    const bobSock = await connect(bob.token);
 
     await Promise.all([
       emitAck(aliceSock, 'join_game', gameId),
-      emitAck(bobSock,   'join_game', gameId),
+      emitAck(bobSock, 'join_game', gameId),
     ]);
 
     await Promise.all([
       waitFor(aliceSock, 'game:update'),
-      waitFor(bobSock,   'game:update'),
-      new Promise(resolve => { aliceSock.emit('game:start'); resolve(); }),
+      waitFor(bobSock, 'game:update'),
+      new Promise((resolve) => {
+        aliceSock.emit('game:start');
+        resolve();
+      }),
     ]);
 
     // Bob tries to act when it's Alice's turn — should receive game:error
@@ -368,7 +354,6 @@ describe('full Connect Four game via sockets', () => {
     expect(typeof err.message).toBe('string');
     expect(err.message).toBeTruthy();
   });
-
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -376,13 +361,14 @@ describe('full Connect Four game via sockets', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('save, disconnect, reconnect, and resume', () => {
-
   test('paused game auto-resumes when host reconnects via socket', async () => {
     // ── setup ──────────────────────────────────────────────────────────────
     const charlie = await register('Charlie');
-    const dave    = await register('Dave');
+    const dave = await register('Dave');
 
-    const { body: { gameId } } = await server.api
+    const {
+      body: { gameId },
+    } = await server.api
       .post('/api/games')
       .set(authed(charlie.token))
       .send({ name: 'SaveTest', gameType: 'connect-four' })
@@ -394,25 +380,28 @@ describe('save, disconnect, reconnect, and resume', () => {
 
     // Both connect and join room
     const charlSock = await connect(charlie.token);
-    const daveSock  = await connect(dave.token);
+    const daveSock = await connect(dave.token);
 
     await Promise.all([
       emitAck(charlSock, 'join_game', gameId),
-      emitAck(daveSock,  'join_game', gameId),
+      emitAck(daveSock, 'join_game', gameId),
     ]);
 
     // Start game
     await Promise.all([
       waitFor(charlSock, 'game:update'),
-      waitFor(daveSock,  'game:update'),
-      new Promise(resolve => { charlSock.emit('game:start'); resolve(); }),
+      waitFor(daveSock, 'game:update'),
+      new Promise((resolve) => {
+        charlSock.emit('game:start');
+        resolve();
+      }),
     ]);
 
     // Charlie (player 0) makes one move
     await Promise.all([
       waitFor(charlSock, 'game:update'),
-      waitFor(daveSock,  'game:update'),
-      new Promise(resolve => {
+      waitFor(daveSock, 'game:update'),
+      new Promise((resolve) => {
         charlSock.emit('game:action', { action: 'dropPiece', column: 0 });
         resolve();
       }),
@@ -421,31 +410,27 @@ describe('save, disconnect, reconnect, and resume', () => {
     // Dave makes one move
     await Promise.all([
       waitFor(charlSock, 'game:update'),
-      waitFor(daveSock,  'game:update'),
-      new Promise(resolve => {
+      waitFor(daveSock, 'game:update'),
+      new Promise((resolve) => {
         daveSock.emit('game:action', { action: 'dropPiece', column: 1 });
         resolve();
       }),
     ]);
 
     // ── save via REST (host only) ───────────────────────────────────────────
-    await server.api
-      .post(`/api/games/${gameId}/save`)
-      .set(authed(charlie.token))
-      .expect(200);
+    await server.api.post(`/api/games/${gameId}/save`).set(authed(charlie.token)).expect(200);
 
     // Verify the game is now paused
-    const { body: { state: savedState } } = await server.api
-      .get(`/api/games/${gameId}`)
-      .set(authed(charlie.token))
-      .expect(200);
+    const {
+      body: { state: savedState },
+    } = await server.api.get(`/api/games/${gameId}`).set(authed(charlie.token)).expect(200);
     expect(savedState.status).toBe('paused');
 
     // ── both players disconnect ────────────────────────────────────────────
     await disconnectSocket(charlSock);
     await disconnectSocket(daveSock);
     // Remove from _openSockets (already disconnected)
-    _openSockets = _openSockets.filter(s => s !== charlSock && s !== daveSock);
+    _openSockets = _openSockets.filter((s) => s !== charlSock && s !== daveSock);
 
     // ── Charlie reconnects and rejoins the room ────────────────────────────
     const charlSock2 = await connect(charlie.token);
@@ -461,7 +446,7 @@ describe('save, disconnect, reconnect, and resume', () => {
     // Board state preserved: col 0 and col 1 have one piece each
     const board = resumedState.board;
     const charlieId = charlie.user.id;
-    const daveId    = dave.user.id;
+    const daveId = dave.user.id;
     // Bottom row: Charlie dropped in col 0, Dave in col 1
     expect(board[5][0]).toBe(charlieId);
     expect(board[5][1]).toBe(daveId);
@@ -479,8 +464,8 @@ describe('save, disconnect, reconnect, and resume', () => {
     // It is now Charlie's turn (player 0 — turnState from before the save was preserved)
     const [upd] = await Promise.all([
       waitFor(charlSock2, 'game:update'),
-      waitFor(daveSock2,  'game:update'),
-      new Promise(resolve => {
+      waitFor(daveSock2, 'game:update'),
+      new Promise((resolve) => {
         charlSock2.emit('game:action', { action: 'dropPiece', column: 2 });
         resolve();
       }),
@@ -492,10 +477,12 @@ describe('save, disconnect, reconnect, and resume', () => {
   });
 
   test('only the host can save the game', async () => {
-    const eve  = await register('Eve');
+    const eve = await register('Eve');
     const fred = await register('Fred');
 
-    const { body: { gameId } } = await server.api
+    const {
+      body: { gameId },
+    } = await server.api
       .post('/api/games')
       .set(authed(eve.token))
       .send({ name: 'HostSaveTest', gameType: 'connect-four' })
@@ -504,31 +491,27 @@ describe('save, disconnect, reconnect, and resume', () => {
     await server.api.post(`/api/games/${gameId}/join`).set(authed(eve.token)).expect(200);
     await server.api.post(`/api/games/${gameId}/join`).set(authed(fred.token)).expect(200);
 
-    const eveSock  = await connect(eve.token);
+    const eveSock = await connect(eve.token);
     const fredSock = await connect(fred.token);
 
     await Promise.all([
-      emitAck(eveSock,  'join_game', gameId),
+      emitAck(eveSock, 'join_game', gameId),
       emitAck(fredSock, 'join_game', gameId),
     ]);
 
     await Promise.all([
-      waitFor(eveSock,  'game:update'),
+      waitFor(eveSock, 'game:update'),
       waitFor(fredSock, 'game:update'),
-      new Promise(resolve => { eveSock.emit('game:start'); resolve(); }),
+      new Promise((resolve) => {
+        eveSock.emit('game:start');
+        resolve();
+      }),
     ]);
 
     // Fred (non-host) tries to save via REST — must be rejected
-    await server.api
-      .post(`/api/games/${gameId}/save`)
-      .set(authed(fred.token))
-      .expect(400);
+    await server.api.post(`/api/games/${gameId}/save`).set(authed(fred.token)).expect(400);
 
     // Eve (host) can save
-    await server.api
-      .post(`/api/games/${gameId}/save`)
-      .set(authed(eve.token))
-      .expect(200);
+    await server.api.post(`/api/games/${gameId}/save`).set(authed(eve.token)).expect(200);
   });
-
 });

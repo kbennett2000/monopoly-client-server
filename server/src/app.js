@@ -12,16 +12,16 @@
 
 'use strict';
 
-const path    = require('path');
-const http    = require('http');
+const path = require('path');
+const http = require('http');
 const express = require('express');
-const cors    = require('cors');
+const cors = require('cors');
 const { Server: SocketIO } = require('socket.io');
 
-const authRoutes    = require('./routes/auth.routes');
-const gameRoutes    = require('./routes/game.routes');
+const authRoutes = require('./routes/auth.routes');
+const gameRoutes = require('./routes/game.routes');
 const socketHandler = require('./socket-handler');
-const gameRegistry  = require('./game-registry');
+const gameRegistry = require('./game-registry');
 
 /**
  * Build the Express app and Socket.io server.
@@ -35,7 +35,7 @@ function createServer() {
   app.use(express.json({ limit: '100kb' }));
   app.use(cors({ origin: '*', credentials: true }));
 
-  app.use('/api/auth',  authRoutes);
+  app.use('/api/auth', authRoutes);
   app.use('/api/games', gameRoutes);
 
   app.get('/api/config', (req, res) => {
@@ -69,7 +69,7 @@ function createServer() {
 
   const io = new SocketIO(httpServer, {
     cors: { origin: '*', methods: ['GET', 'POST'] },
-    pingTimeout:  60_000,
+    pingTimeout: 60_000,
     pingInterval: 25_000,
     // Chat is capped at 300 chars and game-action payloads are tiny; reject
     // anything larger before parsing to cap the DoS surface.

@@ -21,15 +21,12 @@ const TIMEOUT_MS = 8_000;
  */
 function connectSocket(url, token) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error('Socket connect timeout')),
-      TIMEOUT_MS,
-    );
+    const timer = setTimeout(() => reject(new Error('Socket connect timeout')), TIMEOUT_MS);
 
     const socket = ioClient(url, {
-      auth:         { token },
-      transports:   ['websocket'], // skip HTTP polling upgrade
-      reconnection: false,         // tests manage reconnection explicitly
+      auth: { token },
+      transports: ['websocket'], // skip HTTP polling upgrade
+      reconnection: false, // tests manage reconnection explicitly
     });
 
     socket.once('connect', () => {
@@ -50,8 +47,11 @@ function connectSocket(url, token) {
  * @param {import('socket.io-client').Socket} socket
  */
 function disconnectSocket(socket) {
-  return new Promise(resolve => {
-    if (!socket.connected) { resolve(); return; }
+  return new Promise((resolve) => {
+    if (!socket.connected) {
+      resolve();
+      return;
+    }
     socket.once('disconnect', resolve);
     socket.disconnect();
   });
@@ -95,7 +95,7 @@ function emitAck(socket, event, ...args) {
     socket.emit(event, ...args, (ack) => {
       clearTimeout(timer);
       if (ack?.error) reject(new Error(`Socket ack error on '${event}': ${ack.error}`));
-      else            resolve(ack);
+      else resolve(ack);
     });
   });
 }

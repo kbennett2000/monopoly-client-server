@@ -25,13 +25,13 @@ async function startServer() {
   await new Promise((resolve, reject) => {
     httpServer.listen(0, '127.0.0.1', (err) => {
       if (err) reject(err);
-      else     resolve();
+      else resolve();
     });
   });
 
   const { port } = httpServer.address();
-  const url      = `http://127.0.0.1:${port}`;
-  const api      = supertest(httpServer);
+  const url = `http://127.0.0.1:${port}`;
+  const api = supertest(httpServer);
 
   return { app, httpServer, io, url, api };
 }
@@ -42,8 +42,8 @@ async function startServer() {
  * @param {{ httpServer, io }} server — object returned by startServer()
  */
 async function stopServer({ httpServer, io }) {
-  await new Promise(resolve => io.close(resolve));
-  await new Promise(resolve => httpServer.close(resolve));
+  await new Promise((resolve) => io.close(resolve));
+  await new Promise((resolve) => httpServer.close(resolve));
 }
 
 module.exports = { startServer, stopServer };

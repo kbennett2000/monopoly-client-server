@@ -16,7 +16,7 @@
 'use strict';
 
 const path = require('path');
-const fs   = require('fs');
+const fs = require('fs');
 
 const CONFIG_DIR = path.join(__dirname, 'config');
 
@@ -41,7 +41,9 @@ function validateBoard(board) {
   for (let i = 0; i < board.length; i++) {
     const sq = board[i];
     if (sq.position !== i) {
-      throw new Error(`board.json: square at index ${i} has position ${sq.position} (expected ${i})`);
+      throw new Error(
+        `board.json: square at index ${i} has position ${sq.position} (expected ${i})`,
+      );
     }
     if (!sq.type || !sq.name) {
       throw new Error(`board.json: square at position ${i} is missing type or name`);
@@ -59,7 +61,14 @@ function validateCards(cards) {
 }
 
 function validateSettings(settings) {
-  const required = ['startingMoney', 'goSalary', 'jailFine', 'jailMaxTurns', 'maxHousesInBank', 'maxHotelsInBank'];
+  const required = [
+    'startingMoney',
+    'goSalary',
+    'jailFine',
+    'jailMaxTurns',
+    'maxHousesInBank',
+    'maxHotelsInBank',
+  ];
   for (const key of required) {
     if (typeof settings[key] !== 'number') {
       throw new Error(`settings.json: "${key}" must be a number`);
@@ -92,7 +101,7 @@ function buildTypePositions(board) {
   const utilities = [];
   for (const sq of board) {
     if (sq.type === 'railroad') railroads.push(sq.position);
-    if (sq.type === 'utility')  utilities.push(sq.position);
+    if (sq.type === 'utility') utilities.push(sq.position);
   }
   return { railroads, utilities };
 }
@@ -112,28 +121,28 @@ let _cachedConfig = null;
 function loadConfig(force = false) {
   if (_cachedConfig && !force) return _cachedConfig;
 
-  const board    = readJSON('board.json');
-  const cards    = readJSON('cards.json');
+  const board = readJSON('board.json');
+  const cards = readJSON('cards.json');
   const settings = readJSON('settings.json');
 
   validateBoard(board);
   validateCards(cards);
   validateSettings(settings);
 
-  const colorGroups   = buildColorGroupMap(board);
+  const colorGroups = buildColorGroupMap(board);
   const typePositions = buildTypePositions(board);
 
   _cachedConfig = {
     board,
     cards: {
-      chance:        cards.chance,
+      chance: cards.chance,
       communityChest: cards.communityChest,
     },
     settings,
     // Derived/indexed data for quick lookup during game logic
     colorGroups,
     railroadPositions: typePositions.railroads,
-    utilityPositions:  typePositions.utilities,
+    utilityPositions: typePositions.utilities,
   };
 
   return _cachedConfig;
