@@ -70,17 +70,28 @@ const RiskRenderer = (() => {
           svgEl.style.width  = '100%';
           svgEl.style.height = '100%';
 
-          // The Wikimedia SVG renders the map THREE times via <use> overlays
-          // (blue rim stroke, white inner stroke, textured pass).  Those
-          // overlays sit on top of the original <path> elements and intercept
-          // clicks before they reach our handler, plus they hide the
-          // per-territory ownership fills we set in update().  Remove them.
+          // Structural rewrite of the Wikimedia SVG:
+          //
+          // 1. <g id="map"> (which contains the 42 territory <path>s) lives
+          //    inside <defs>.  Elements in <defs> are NOT directly rendered
+          //    and are NOT clickable — they only appear via <use> references.
+          //    Move the group out of <defs> and into the SVG body so the
+          //    paths render directly and our click handlers can reach them.
+          //
+          // 2. The source SVG then renders the map THREE times via <use>
+          //    overlays (blue rim, white inner stroke, textured pass).  Now
+          //    that the map is already in the main tree we remove the <use>
+          //    duplicates — otherwise the map would render twice.
+          //
+          // 3. The source hardcodes 42 territory labels with example army
+          //    counts ("1 Alaska", "6 Northwest Territory", …) that have
+          //    nothing to do with our game state.  Strip every <text> so
+          //    only our overlay markers (real army counts) appear.
+          const mapGroup = svgEl.querySelector('defs > g#map');
+          if (mapGroup) {
+            svgEl.appendChild(mapGroup); // re-parent to SVG root
+          }
           svgEl.querySelectorAll('use').forEach(u => u.remove());
-
-          // The source SVG hardcodes 42 territory labels with example army
-          // counts ("1 Alaska", "6 Northwest Territory", …) that have nothing
-          // to do with our actual game state.  Strip every <text> so only
-          // our overlay markers (real army counts) appear on the map.
           svgEl.querySelectorAll('text').forEach(t => t.remove());
         }
         _wrapper.appendChild(mapHost);
