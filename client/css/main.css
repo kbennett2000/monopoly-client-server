@@ -897,42 +897,20 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 .risk-map-host path.risk-mine {
   stroke:       #ffffff;
-  stroke-width: 2.4;
+  stroke-width: 3.5;
+  filter:       drop-shadow(0 0 4px rgba(255,255,255,0.55));
 }
 
 .risk-map-host path:hover {
   stroke:       #fff;
-  stroke-width: 2.8;
-  filter:       brightness(1.18);
+  stroke-width: 3.2;
+  filter:       brightness(1.22);
 }
 
 .risk-map-host path.risk-selected {
   stroke:       #ffeb3b;
-  stroke-width: 3.5;
-  filter:       drop-shadow(0 0 6px rgba(255, 235, 59, 0.7)) brightness(1.18);
-}
-
-.risk-overlay {
-  position:        absolute;
-  pointer-events:  none;
-}
-
-.risk-army-marker {
-  position:   absolute;
-  transform:  translate(-50%, -50%);
-  min-width:  22px;
-  height:     22px;
-  padding:    0 6px;
-  border-radius: 11px;
-  border:     2px solid rgba(255,255,255,0.85);
-  color:      #fff;
-  font-size:  12px;
-  font-weight: 700;
-  line-height: 18px;
-  text-align:  center;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
-  box-shadow:  0 2px 4px rgba(0,0,0,0.4);
-  font-family: var(--font-mono, monospace);
+  stroke-width: 4;
+  filter:       drop-shadow(0 0 8px rgba(255, 235, 59, 0.85)) brightness(1.2);
 }
 
 .risk-loading {

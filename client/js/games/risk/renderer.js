@@ -95,12 +95,6 @@ const RiskRenderer = (() => {
           svgEl.querySelectorAll('text').forEach(t => t.remove());
         }
         _wrapper.appendChild(mapHost);
-
-        // Overlay layer for army count badges (positioned absolutely over the SVG)
-        const overlay = document.createElement('div');
-        overlay.className = 'risk-overlay';
-        _wrapper.appendChild(overlay);
-
         wireTerritoryHandlers(state);
         _svgLoaded = true;
         // Repaint with the freshest state we've received (which may be newer
@@ -264,7 +258,11 @@ const RiskRenderer = (() => {
           const el    = svg.querySelector(`#${cssEscape(t.id)}`);
           const owner = state.players.find(p => p.userId === ts?.ownerId);
           if (el) {
-            el.style.fill       = owner?.colorHex || '#666';
+            const fill = owner?.colorHex || '#777';
+            // Belt-and-suspenders: setAttribute overrides the SVG's original
+            // fill="..." presentation attribute; style.fill wins over any CSS.
+            el.setAttribute('fill', fill);
+            el.style.fill       = fill;
             el.style.cursor     = 'pointer';
             el.style.transition = 'fill 0.2s, stroke 0.15s, stroke-width 0.15s';
             // Highlight your own territories with a bold stroke so you can
@@ -272,8 +270,8 @@ const RiskRenderer = (() => {
             el.classList.toggle('risk-mine', owner?.userId === _myUserId);
           }
         }
+        paintArmyMarkers(svg, state);
       }
-      paintArmyMarkers(state);
     }
 
     // Maintain selection highlight
@@ -283,21 +281,24 @@ const RiskRenderer = (() => {
     paintSelection();
   }
 
-  function paintArmyMarkers(state) {
-    const svg = _wrapper.querySelector('svg');
-    const overlay = _wrapper.querySelector('.risk-overlay');
-    if (!svg || !overlay) return;
+  /**
+   * Paint army-count badges directly inside the SVG using native <circle> +
+   * <text> elements.  Coordinates use the SVG's own user-space, so the badges
+   * stay correctly aligned no matter how the SVG is scaled by CSS — no
+   * getBoundingClientRect / matrixTransform math needed.
+   */
+  function paintArmyMarkers(svg, state) {
+    const SVG_NS = 'http://www.w3.org/2000/svg';
 
-    // Match the overlay to the SVG's rendered position
-    const svgRect     = svg.getBoundingClientRect();
-    const wrapperRect = _wrapper.getBoundingClientRect();
-    overlay.style.position = 'absolute';
-    overlay.style.left     = `${svgRect.left - wrapperRect.left}px`;
-    overlay.style.top      = `${svgRect.top  - wrapperRect.top}px`;
-    overlay.style.width    = `${svgRect.width}px`;
-    overlay.style.height   = `${svgRect.height}px`;
-    overlay.style.pointerEvents = 'none';
-    overlay.innerHTML = '';
+    // Find or create the labels group (sibling of the map paths).
+    let labels = svg.querySelector('#risk-army-labels');
+    if (!labels) {
+      labels = document.createElementNS(SVG_NS, 'g');
+      labels.setAttribute('id', 'risk-army-labels');
+      labels.setAttribute('pointer-events', 'none');
+      svg.appendChild(labels); // append last so it renders on top
+    }
+    while (labels.firstChild) labels.removeChild(labels.firstChild);
 
     for (const t of state.config.board.territories) {
       const ts = state.territories[t.id];
@@ -306,25 +307,42 @@ const RiskRenderer = (() => {
       if (!path) continue;
       let bbox;
       try { bbox = path.getBBox(); } catch (_) { continue; }
-      // Convert SVG user units to pixel coordinates within the overlay
-      const ctm = path.getScreenCTM();
-      if (!ctm) continue;
-      const pt = svg.createSVGPoint();
-      pt.x = bbox.x + bbox.width  / 2;
-      pt.y = bbox.y + bbox.height / 2;
-      const screen = pt.matrixTransform(ctm);
-      const left = screen.x - svgRect.left;
-      const top  = screen.y - svgRect.top;
+      if (!bbox || (bbox.width === 0 && bbox.height === 0)) continue;
 
+      const cx = bbox.x + bbox.width  / 2;
+      const cy = bbox.y + bbox.height / 2;
       const owner = state.players.find(p => p.userId === ts.ownerId);
-      const marker = document.createElement('div');
-      marker.className = 'risk-army-marker';
-      marker.style.left = `${left}px`;
-      marker.style.top  = `${top}px`;
-      marker.style.background = owner?.colorHex || '#333';
-      marker.textContent = String(ts.armies);
-      marker.title = `${t.name}: ${owner?.username || 'unowned'} (${ts.armies} armies)`;
-      overlay.appendChild(marker);
+      const fill  = owner?.colorHex || '#333';
+
+      const g = document.createElementNS(SVG_NS, 'g');
+      g.setAttribute('transform', `translate(${cx},${cy})`);
+
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('r',            '11');
+      circle.setAttribute('fill',         fill);
+      circle.setAttribute('stroke',       '#ffffff');
+      circle.setAttribute('stroke-width', '1.6');
+      g.appendChild(circle);
+
+      const text = document.createElementNS(SVG_NS, 'text');
+      text.setAttribute('text-anchor',  'middle');
+      text.setAttribute('dy',           '0.35em');
+      text.setAttribute('fill',         '#ffffff');
+      text.setAttribute('font-size',    '14');
+      text.setAttribute('font-weight',  '700');
+      text.setAttribute('font-family',  'system-ui, sans-serif');
+      text.style.paintOrder            = 'stroke';
+      text.setAttribute('stroke',       'rgba(0,0,0,0.5)');
+      text.setAttribute('stroke-width', '2');
+      text.textContent = String(ts.armies);
+      g.appendChild(text);
+
+      // Native SVG tooltip
+      const title = document.createElementNS(SVG_NS, 'title');
+      title.textContent = `${t.name}: ${owner?.username || 'unowned'} (${ts.armies} armies)`;
+      g.appendChild(title);
+
+      labels.appendChild(g);
     }
   }
 
