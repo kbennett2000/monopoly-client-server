@@ -102,9 +102,24 @@ describe('per-game action queue', () => {
   test('exactly one rollDice succeeds when N calls fire concurrently', async () => {
     const gameId = createAndStartGame();
     const N = 10;
-    const results = await Promise.all(
-      Array.from({ length: N }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
-    );
+
+    // Force non-doubles dice for the only roll that should succeed.  Doubles
+    // would leave the phase at pre-roll and let a second concurrent roll
+    // legitimately succeed (Monopoly rule: doubles → roll again) — correct
+    // behaviour, but not what this test is about.  Math.random alternates
+    // 0.1 / 0.5 → dice [1, 4] for the first (and only) successful roll.
+    const original = Math.random;
+    let call = 0;
+    Math.random = () => (call++ % 2 === 0 ? 0.1 : 0.5);
+
+    let results;
+    try {
+      results = await Promise.all(
+        Array.from({ length: N }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
+      );
+    } finally {
+      Math.random = original;
+    }
 
     const successes = results.filter((r) => !r.error);
     const errors = results.filter((r) => r.error);
