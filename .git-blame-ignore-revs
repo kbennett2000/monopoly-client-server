@@ -1,0 +1,7 @@
+# Commits listed here are skipped by `git blame` (and GitHub's blame UI)
+# so mechanical reformat passes don't pollute history for real changes.
+# Use with:  git blame --ignore-revs-file .git-blame-ignore-revs <path>
+# (Or configure globally: git config blame.ignoreRevsFile .git-blame-ignore-revs)
+
+# chore: apply Prettier formatting
+0edd1745b4c11922b902e90494a5d79363fce6d3
