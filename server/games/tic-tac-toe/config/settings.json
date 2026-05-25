@@ -1,0 +1,9 @@
+{
+  "boardSize":  3,
+  "winLength":  3,
+  "playerColors": [
+    { "id": "x", "hex": "#3a86ff" },
+    { "id": "o", "hex": "#e63946" }
+  ],
+  "playerTokens": ["✕", "◯"]
+}
