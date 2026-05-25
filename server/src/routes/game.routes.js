@@ -23,6 +23,26 @@
 const express       = require('express');
 const auth          = require('../auth');
 const gameManager   = require('../game-manager');
+
+// ── admin gate for config-reload ────────────────────────────────────────────
+// Config reload mutates server-wide state (the cached config used for new
+// games), so it can't be open to every authenticated user.  Two modes:
+//   1. ADMIN_USER_IDS set  → comma-separated allow-list of user ids
+//   2. ADMIN_USER_IDS unset → fall back to localhost-only (127.0.0.1 / ::1)
+const ADMIN_USER_IDS = new Set(
+  (process.env.ADMIN_USER_IDS || '').split(',').map(s => s.trim()).filter(Boolean),
+);
+if (ADMIN_USER_IDS.size === 0) {
+  console.warn(
+    '[config-reload] ADMIN_USER_IDS is unset — config-reload endpoint is ' +
+    'restricted to localhost (127.0.0.1 / ::1) requests only.',
+  );
+}
+const LOCAL_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+function isAdminRequest(req) {
+  if (ADMIN_USER_IDS.size > 0) return ADMIN_USER_IDS.has(req.user.sub);
+  return LOCAL_IPS.has(req.ip);
+}
 const gameRegistry  = require('../game-registry');
 const socketHandler = require('../socket-handler');
 
@@ -102,6 +122,9 @@ router.get('/types/:type/config', (req, res) => {
 // Re-read config files from disk for the given game type.
 
 router.post('/types/:type/config/reload', (req, res) => {
+  if (!isAdminRequest(req)) {
+    return res.status(403).json({ error: 'Config reload is restricted to admins' });
+  }
   try {
     const logic  = gameRegistry.getGameLogic(req.params.type);
     const config = logic.loadConfig();
@@ -161,7 +184,8 @@ router.post('/', (req, res) => {
 // NOTE: all static routes above must be defined before this pattern.
 
 router.get('/:id', (req, res) => {
-  const state = gameManager.getGame(req.params.id);
+  // Snapshot — returned over the wire; the client may mutate it freely.
+  const state = gameManager.getGameSnapshot(req.params.id);
   if (!state) return res.status(404).json({ error: 'Game not found' });
   res.json({ state });
 });

@@ -64,7 +64,7 @@ const STATE_VERSION = 1;
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
+  return structuredClone(obj);
 }
 
 function rollDie() {
@@ -109,6 +109,9 @@ function getGameMetadata() {
 // ── player creation ──────────────────────────────────────────────────────────
 
 function createInitialPlayer(user, existingPlayers, config) {
+  if (!config?.settings?.playerColors || !config?.settings?.playerTokens) {
+    throw new Error('createInitialPlayer requires a config with settings.playerColors and settings.playerTokens');
+  }
   const used  = new Set(existingPlayers.map(p => p.color));
   const slot  = config.settings.playerColors.find(c => !used.has(c.id))
              || config.settings.playerColors[existingPlayers.length % config.settings.playerColors.length];
@@ -802,17 +805,22 @@ function skipTurn(state, userId) {
 // every player's full hand to every opponent.
 
 function getStateForPlayer(state, userId) {
-  return {
+  const view = {
     ...state,
     players: state.players.map(p => {
       if (p.userId === userId) return p;
-      const { hand, ...rest } = p;
+      // Players in waiting-room state haven't been through initGame() yet so
+      // their hand may be absent — treat as empty.
+      const hand = p.hand || [];
+      const { hand: _h, ...rest } = p;
       return { ...rest, handCount: hand.length };
     }),
-    // Strip the global deck/discard contents too — clients only need counts.
-    deck:        { count: state.deck.length },
-    discardPile: { count: state.discardPile.length },
   };
+  // Strip the global deck/discard contents too — clients only need counts.
+  // Waiting-room states predate initGame() and have no deck at all.
+  if (Array.isArray(state.deck))        view.deck        = { count: state.deck.length };
+  if (Array.isArray(state.discardPile)) view.discardPile = { count: state.discardPile.length };
+  return view;
 }
 
 // ── interface: migrate ───────────────────────────────────────────────────────

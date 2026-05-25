@@ -97,6 +97,14 @@ describe('initGame', () => {
   });
 });
 
+describe('createInitialPlayer', () => {
+  test('throws when called without a config that has playerColors/playerTokens', () => {
+    const user = { id: 'u', username: 'X' };
+    expect(() => gl.createInitialPlayer(user, [], null)).toThrow(/playerColors/);
+    expect(() => gl.createInitialPlayer(user, [], { settings: {} })).toThrow(/playerColors/);
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  dropPiece — basic mechanics
 // ═══════════════════════════════════════════════════════════════════════════════

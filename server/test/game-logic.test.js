@@ -25,6 +25,14 @@ function postRoll(base) {
 //  initGame
 // ═══════════════════════════════════════════════════════════════════════════════
 
+describe('createInitialPlayer', () => {
+  test('throws when called without a config that has playerColors/playerTokens', () => {
+    const user = { id: 'u', username: 'X' };
+    expect(() => gl.createInitialPlayer(user, [], null)).toThrow(/playerColors/);
+    expect(() => gl.createInitialPlayer(user, [], { settings: {} })).toThrow(/playerColors/);
+  });
+});
+
 describe('initGame', () => {
   const { makeConfig } = require('./fixtures');
   const config   = makeConfig();
@@ -455,6 +463,54 @@ describe('offerTrade', () => {
     expect(s.trade).not.toBeNull();
     expect(s.trade.status).toBe('pending');
     expect(s.trade.fromUserId).toBe('p1');
+  });
+
+  // ── input-validation contract ──
+  // Trade payloads come straight off a socket message; the validator rejects
+  // anything that isn't shape-correct rather than relying on the recipient
+  // to refuse a malicious offer at acceptance time.
+
+  test('rejects negative offerMoney', () => {
+    const { error } = gl.offerTrade(makeState(), 'p1', 'p2', -100, [], 0, 0, [], 0);
+    expect(error).toMatch(/offerMoney/);
+  });
+
+  test('rejects negative requestMoney', () => {
+    const { error } = gl.offerTrade(makeState(), 'p1', 'p2', 0, [], 0, -50, [], 0);
+    expect(error).toMatch(/requestMoney/);
+  });
+
+  test('rejects negative offerCards or requestCards', () => {
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], -1, 0, [], 0).error).toMatch(/offerCards/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], 0,  0, [], -1).error).toMatch(/requestCards/);
+  });
+
+  test('rejects fractional money', () => {
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 1.5, [], 0, 0, [], 0).error).toMatch(/offerMoney/);
+  });
+
+  test('rejects NaN and Infinity money', () => {
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', NaN, [], 0, 0, [], 0).error).toMatch(/offerMoney/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', Infinity, [], 0, 0, [], 0).error).toMatch(/offerMoney/);
+  });
+
+  test('rejects duplicate props in offerProps', () => {
+    const { error } = gl.offerTrade(makeState(), 'p1', 'p2', 0, [1, 1], 0, 0, [], 0);
+    expect(error).toMatch(/duplicate/);
+  });
+
+  test('rejects out-of-range board positions', () => {
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [40], 0, 0, [], 0).error).toMatch(/invalid position/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [-1], 0, 0, [], 0).error).toMatch(/invalid position/);
+  });
+
+  test('rejects non-array offerProps/requestProps', () => {
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, 'not an array', 0, 0, [], 0).error).toMatch(/offerProps/);
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [], 0, 0, 42,             0).error).toMatch(/requestProps/);
+  });
+
+  test('rejects fractional position', () => {
+    expect(gl.offerTrade(makeState(), 'p1', 'p2', 0, [1.5], 0, 0, [], 0).error).toMatch(/invalid position/);
   });
 });
 

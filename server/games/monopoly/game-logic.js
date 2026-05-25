@@ -93,7 +93,7 @@ const STATE_VERSION = 1;
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
+  return structuredClone(obj);
 }
 
 /** Roll a single six-sided die. */
@@ -1189,6 +1189,31 @@ function endTurn(state, userId) {
 function offerTrade(state, fromUserId, toUserId, offerMoney, offerProps, offerCards, requestMoney, requestProps, requestCards) {
   const events = [];
 
+  // ── shape validation — never trust client payloads ────────────────────────
+  // Each numeric field must be a non-negative integer; each props array must
+  // be an array of unique, in-range board positions.
+  const isNonNegInt = (n) => Number.isInteger(n) && n >= 0;
+  if (!isNonNegInt(offerMoney))   return { state, events, error: 'offerMoney must be a non-negative integer' };
+  if (!isNonNegInt(requestMoney)) return { state, events, error: 'requestMoney must be a non-negative integer' };
+  if (!isNonNegInt(offerCards))   return { state, events, error: 'offerCards must be a non-negative integer' };
+  if (!isNonNegInt(requestCards)) return { state, events, error: 'requestCards must be a non-negative integer' };
+
+  const boardSize = state.config.board.length;
+  const validateProps = (arr, label) => {
+    if (!Array.isArray(arr)) return `${label} must be an array`;
+    const seen = new Set();
+    for (const pos of arr) {
+      if (!Number.isInteger(pos) || pos < 0 || pos >= boardSize) return `${label} contains invalid position ${pos}`;
+      if (seen.has(pos)) return `${label} contains duplicate position ${pos}`;
+      seen.add(pos);
+    }
+    return null;
+  };
+  const offerErr   = validateProps(offerProps,   'offerProps');
+  if (offerErr)   return { state, events, error: offerErr };
+  const requestErr = validateProps(requestProps, 'requestProps');
+  if (requestErr) return { state, events, error: requestErr };
+
   if (!state.config.settings.tradeEnabled) return { state, events, error: 'Trading is disabled' };
   if (fromUserId === toUserId)              return { state, events, error: 'Cannot trade with yourself' };
 
@@ -1444,14 +1469,14 @@ function skipTurn(state, userId) {
  *   settings.playerTokens).  Falls back to sensible defaults when omitted.
  */
 function createInitialPlayer(user, existingPlayers = [], config = null) {
-  let color = 'gray', colorHex = '#888888', token = '🎲';
-
-  if (config?.settings) {
-    const usedColors = new Set(existingPlayers.map(p => p.color));
-    const colorObj   = config.settings.playerColors?.find(c => !usedColors.has(c.id));
-    if (colorObj) { color = colorObj.id; colorHex = colorObj.hex; }
-    token = config.settings.playerTokens?.[existingPlayers.length] ?? '🎲';
+  if (!config?.settings?.playerColors || !config?.settings?.playerTokens) {
+    throw new Error('createInitialPlayer requires a config with settings.playerColors and settings.playerTokens');
   }
+  const usedColors = new Set(existingPlayers.map(p => p.color));
+  const colorObj   = config.settings.playerColors.find(c => !usedColors.has(c.id)) ?? config.settings.playerColors[0];
+  const color      = colorObj.id;
+  const colorHex   = colorObj.hex;
+  const token      = config.settings.playerTokens[existingPlayers.length] ?? config.settings.playerTokens[0];
 
   return {
     userId:     user.id,

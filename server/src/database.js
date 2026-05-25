@@ -74,6 +74,11 @@ db.exec(`
   if (!gameColumns.includes('game_type')) {
     db.exec(`ALTER TABLE games ADD COLUMN game_type TEXT NOT NULL DEFAULT 'monopoly'`);
   }
+  // Backfill any rows that pre-date the NOT NULL constraint (e.g. an old
+  // ALTER TABLE that allowed NULL).  Idempotent — runs every startup but
+  // touches zero rows on a clean DB.  After this, the runtime code can
+  // trust that game_type is always populated.
+  db.exec(`UPDATE games SET game_type = 'monopoly' WHERE game_type IS NULL`);
 }
 
 // ── prepared statements ──────────────────────────────────────────────────────

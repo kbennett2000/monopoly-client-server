@@ -189,34 +189,12 @@
   <div class="game-layout">
 
     <!-- ── board ─────────────────────────────────────────────────────────── -->
-    <div class="board-wrapper">
-      <!-- Connect Four board — shown only when gameType === 'connect-four' -->
-      <div id="connect-four-wrapper" class="connect-four-wrapper" style="display:none"></div>
-
-      <!-- Risk board — shown only when gameType === 'risk' -->
-      <div id="risk-wrapper" class="risk-wrapper" style="display:none"></div>
-
-      <div id="board" class="board">
-        <!-- squares inserted by board-renderer.js -->
-        <div class="board-center">
-          <div class="board-logo">🎲 MONOPOLY</div>
-          <div id="free-parking-pot" class="free-parking-pot" style="display:none">
-            <span class="pot-label">Free Parking</span>
-            <span id="free-parking-amount" class="pot-amount">$0</span>
-          </div>
-          <div id="dice-display" class="dice-display">
-            <span class="die" id="die1">—</span>
-            <span class="die" id="die2">—</span>
-          </div>
-          <div id="auction-center" class="auction-center" style="display:none">
-            <h4>AUCTION</h4>
-            <p id="auction-property-name"></p>
-            <p>Current bid: <strong id="auction-high-bid">$0</strong></p>
-            <p>by <strong id="auction-high-bidder">—</strong></p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!--
+      Game-specific board DOM is created by each game's renderer in its
+      init() and removed in destroy().  Nothing inside .board-wrapper at
+      page-load time; the framework empties it before each renderer.init().
+    -->
+    <div class="board-wrapper"></div>
 
     <!-- ── right sidebar ─────────────────────────────────────────────────── -->
     <aside class="game-sidebar">
@@ -400,7 +378,7 @@
 <script src="/js/games/renderer-registry.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/game-state.js"></script>
-<script src="/js/board-renderer.js"></script>
+<script src="/js/games/monopoly/board-grid.js"></script>
 <script src="/js/ui-manager.js"></script>
 <script src="/js/games/connect-four/renderer.js"></script>
 <script src="/js/games/monopoly/renderer.js"></script>

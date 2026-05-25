@@ -21,14 +21,12 @@ const ConnectFourRenderer = (() => {
 
     const { boardWidth, boardHeight } = state.config.settings;
 
-    // Switch board visibility: hide Monopoly board, show CF wrapper.
-    const monoBoard = document.getElementById('board');
-    if (monoBoard) monoBoard.style.display = 'none';
-
-    const wrapper = document.getElementById('connect-four-wrapper');
-    if (!wrapper) return;
-    wrapper.style.display = 'flex';
-    wrapper.innerHTML = '';
+    // Build the entire Connect Four DOM inside the framework-owned container.
+    // destroy() removes it; the framework empties the container between game
+    // changes as a safety net.
+    const wrapper = document.createElement('div');
+    wrapper.id        = 'connect-four-wrapper';
+    wrapper.className = 'connect-four-wrapper';
 
     // Column drop buttons (▼ one per column, sits above the grid)
     const colBtns = document.createElement('div');
@@ -62,6 +60,7 @@ const ConnectFourRenderer = (() => {
       }
     }
     wrapper.appendChild(grid);
+    container.appendChild(wrapper);
   }
 
   // ── update ──────────────────────────────────────────────────────────────────
@@ -141,10 +140,7 @@ const ConnectFourRenderer = (() => {
   // ── destroy ─────────────────────────────────────────────────────────────────
 
   function destroy() {
-    const monoBoard = document.getElementById('board');
-    const wrapper   = document.getElementById('connect-four-wrapper');
-    if (monoBoard) monoBoard.style.display = '';
-    if (wrapper)   { wrapper.style.display = 'none'; wrapper.innerHTML = ''; }
+    document.getElementById('connect-four-wrapper')?.remove();
     _myUserId = null;
     _emit     = null;
   }

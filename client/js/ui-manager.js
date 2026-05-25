@@ -198,6 +198,12 @@ const UIManager = (() => {
     const myPlayer      = state.players.find(p => p.userId === myUserId);
     const isMyTurn      = currentPlayer?.userId === myUserId;
 
+    // Prefer the server-supplied validActions list; fall back to local rule
+    // re-derivation if the server didn't send one.
+    // TODO: remove fallback once validActions is fully trusted (one release).
+    const va = Array.isArray(state.validActions) ? state.validActions : null;
+    const allowed = (action, fallback) => va ? va.includes(action) : fallback;
+
     if (titleEl) {
       titleEl.textContent = isMyTurn ? 'Your Actions' : `Waiting for ${currentPlayer?.username || ''}…`;
     }
@@ -226,7 +232,7 @@ const UIManager = (() => {
 
     if (!isMyTurn) {
       // Non-active players can still trade
-      if (state.config.settings.tradeEnabled) {
+      if (allowed('offerTrade', state.config.settings.tradeEnabled)) {
         addBtn(buttonsEl, '🤝 Propose Trade', 'btn-outline', handlers.openTradeModal);
       }
       return;
@@ -234,37 +240,37 @@ const UIManager = (() => {
 
     // ── Active player buttons ────────────────────────────────────────────────
 
-    if (phase === 'pre-roll') {
-      if (myPlayer.inJail) {
-        addBtn(buttonsEl, '🎲 Roll Dice (try for doubles)', 'btn-primary', handlers.rollDice);
-        addBtn(buttonsEl, `💸 Pay $${state.config.settings.jailFine} Fine`, 'btn-outline',
-          handlers.payJailFine, myPlayer.money < state.config.settings.jailFine);
-        if (myPlayer.jailCards > 0) {
-          addBtn(buttonsEl, '🃏 Use Get Out of Jail Card', 'btn-outline', handlers.useJailCard);
-        }
-      } else {
-        addBtn(buttonsEl, '🎲 Roll Dice', 'btn-primary', handlers.rollDice);
-      }
+    if (allowed('rollDice', phase === 'pre-roll')) {
+      const label = myPlayer.inJail ? '🎲 Roll Dice (try for doubles)' : '🎲 Roll Dice';
+      addBtn(buttonsEl, label, 'btn-primary', handlers.rollDice);
+    }
+    if (allowed('payJailFine', phase === 'pre-roll' && myPlayer.inJail && myPlayer.money >= state.config.settings.jailFine)) {
+      addBtn(buttonsEl, `💸 Pay $${state.config.settings.jailFine} Fine`, 'btn-outline', handlers.payJailFine);
+    }
+    if (allowed('useJailCard', phase === 'pre-roll' && myPlayer.inJail && myPlayer.jailCards > 0)) {
+      addBtn(buttonsEl, '🃏 Use Get Out of Jail Card', 'btn-outline', handlers.useJailCard);
     }
 
-    if (phase === 'buying') {
-      const position = myPlayer.position;
-      const sq       = state.config.board[position];
-      addBtn(buttonsEl, `🏠 Buy ${sq?.name} ($${sq?.price})`, 'btn-primary',
-        handlers.buyProperty, myPlayer.money < sq?.price);
+    if (allowed('buyProperty', phase === 'buying' && myPlayer.money >= (state.config.board[myPlayer.position]?.price ?? Infinity))) {
+      const sq = state.config.board[myPlayer.position];
+      addBtn(buttonsEl, `🏠 Buy ${sq?.name} ($${sq?.price})`, 'btn-primary', handlers.buyProperty);
+    }
+    if (allowed('declinePurchase', phase === 'buying')) {
       addBtn(buttonsEl, '❌ Decline', 'btn-outline', handlers.declinePurchase);
     }
 
-    if (phase === 'post-roll') {
+    if (allowed('endTurn', phase === 'post-roll')) {
       addBtn(buttonsEl, '✅ End Turn', 'btn-primary', handlers.endTurn);
     }
 
-    // Always-available actions during pre-roll and post-roll
+    // Property management is allowed in pre-roll and post-roll
     if (phase === 'pre-roll' || phase === 'post-roll') {
       addBtn(buttonsEl, '🏘 Manage Properties', 'btn-outline', handlers.openPropertyModal);
-      if (state.config.settings.tradeEnabled) {
-        addBtn(buttonsEl, '🤝 Propose Trade', 'btn-outline', handlers.openTradeModal);
-      }
+    }
+    if (allowed('offerTrade', (phase === 'pre-roll' || phase === 'post-roll') && state.config.settings.tradeEnabled)) {
+      addBtn(buttonsEl, '🤝 Propose Trade', 'btn-outline', handlers.openTradeModal);
+    }
+    if (allowed('declareBankruptcy', phase === 'pre-roll' || phase === 'post-roll')) {
       addBtn(buttonsEl, '💔 Declare Bankruptcy', 'btn-outline btn-danger', handlers.declareBankruptcy);
     }
   }

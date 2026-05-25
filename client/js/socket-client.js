@@ -129,8 +129,9 @@ const SocketClient = (() => {
       if (_onLobbyUpdate) _onLobbyUpdate();
     });
 
-    socket.on('game:turn_warning', ({ username, secondsRemaining }) => {
-      UIManager.appendLog(`⏱ ${username} disconnected — turn auto-skips in ${secondsRemaining}s`, 'info');
+    socket.on('game:turn_warning', ({ username, deadlineTimestamp }) => {
+      const seconds = Math.max(0, Math.round((deadlineTimestamp - Date.now()) / 1000));
+      UIManager.appendLog(`⏱ ${username} disconnected — turn auto-skips in ${seconds}s`, 'info');
     });
 
   } // end connect()

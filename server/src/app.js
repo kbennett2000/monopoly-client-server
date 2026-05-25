@@ -30,7 +30,9 @@ const gameRegistry  = require('./game-registry');
 function createServer() {
   const app = express();
 
-  app.use(express.json({ limit: '1mb' }));
+  // No endpoint legitimately receives more than a few kilobytes; cap the parse
+  // budget to reject oversized bodies before they hit a route.
+  app.use(express.json({ limit: '100kb' }));
   app.use(cors({ origin: '*', credentials: true }));
 
   app.use('/api/auth',  authRoutes);
@@ -44,10 +46,21 @@ function createServer() {
     }
   });
 
+  // /api/* falls through to a JSON 404 (must come AFTER the routers above so
+  // matched routes win).  Without this, the SPA catch-all below would happily
+  // return index.html for typos like /api/gmaes and mask client bugs.
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'Not found' });
+  });
+
   // Serve static client files (no-op if the client directory doesn't exist,
   // which is the case during integration tests running from server/).
   const CLIENT_DIR = path.join(__dirname, '..', '..', 'client');
   app.use(express.static(CLIENT_DIR));
+
+  // SPA catch-all: every non-/api route returns the SPA shell so the client
+  // can handle deep links.  Express 4's wildcard syntax is `*`; the /api guard
+  // above ensures API typos don't reach this handler.
   app.get('*', (_req, res) => {
     res.sendFile(path.join(CLIENT_DIR, 'index.html'));
   });
@@ -58,6 +71,9 @@ function createServer() {
     cors: { origin: '*', methods: ['GET', 'POST'] },
     pingTimeout:  60_000,
     pingInterval: 25_000,
+    // Chat is capped at 300 chars and game-action payloads are tiny; reject
+    // anything larger before parsing to cap the DoS surface.
+    maxHttpBufferSize: 32_768,
   });
 
   socketHandler.registerHandlers(io);

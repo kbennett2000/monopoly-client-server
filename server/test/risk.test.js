@@ -132,6 +132,13 @@ describe('Risk — createInitialPlayer', () => {
       expect(p.active).toBe(true);
     }
   });
+
+  test('throws when called without a config that has playerColors/playerTokens', () => {
+    const user = { id: 'u', username: 'X' };
+    expect(() => risk.createInitialPlayer(user, [], null)).toThrow(/playerColors/);
+    expect(() => risk.createInitialPlayer(user, [], {})).toThrow(/playerColors/);
+    expect(() => risk.createInitialPlayer(user, [], { settings: {} })).toThrow(/playerColors/);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

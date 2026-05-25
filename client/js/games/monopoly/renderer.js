@@ -75,6 +75,33 @@ const MonopolyRenderer = (() => {
     _myUserId = myUserId;
     _emit     = emitAction;
 
+    // Build the entire Monopoly board structure inside the framework-owned
+    // container.  destroy() removes it.  These inner ids (free-parking-pot,
+    // dice-display, auction-center, …) are referenced by UIManager from
+    // Monopoly-specific update paths, so they must exist when BoardRenderer
+    // and UIManager run their first updates.
+    container.insertAdjacentHTML('beforeend', `
+      <div id="board" class="board">
+        <div class="board-center">
+          <div class="board-logo">🎲 MONOPOLY</div>
+          <div id="free-parking-pot" class="free-parking-pot" style="display:none">
+            <span class="pot-label">Free Parking</span>
+            <span id="free-parking-amount" class="pot-amount">$0</span>
+          </div>
+          <div id="dice-display" class="dice-display">
+            <span class="die" id="die1">—</span>
+            <span class="die" id="die2">—</span>
+          </div>
+          <div id="auction-center" class="auction-center" style="display:none">
+            <h4>AUCTION</h4>
+            <p id="auction-property-name"></p>
+            <p>Current bid: <strong id="auction-high-bid">$0</strong></p>
+            <p>by <strong id="auction-high-bidder">—</strong></p>
+          </div>
+        </div>
+      </div>
+    `);
+
     BoardRenderer.buildBoard(state.config.board, (pos) => {
       UIManager.showPropertyModal(pos, GameState.getState(), _myUserId, _propertyHandlers());
     });
@@ -256,6 +283,9 @@ const MonopolyRenderer = (() => {
     document.getElementById('send-trade-btn')?.removeEventListener('click', _onSendTrade);
     document.getElementById('accept-trade-btn')?.removeEventListener('click', _onAcceptTrade);
     document.getElementById('reject-trade-btn')?.removeEventListener('click', _onRejectTrade);
+
+    // Remove the board DOM we created in init().
+    document.getElementById('board')?.remove();
 
     _myUserId             = null;
     _emit                 = null;

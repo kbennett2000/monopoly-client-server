@@ -56,9 +56,11 @@ function getGameMetadata() {
 // ── player creation ───────────────────────────────────────────────────────────
 
 function createInitialPlayer(user, existingPlayers = [], config = null) {
-  const cfg    = config || getConfigCopy();
-  const colors = cfg.settings.playerColors;
-  const tokens = cfg.settings.playerTokens || ['🔴', '🟡'];
+  if (!config?.settings?.playerColors || !config?.settings?.playerTokens) {
+    throw new Error('createInitialPlayer requires a config with settings.playerColors and settings.playerTokens');
+  }
+  const colors = config.settings.playerColors;
+  const tokens = config.settings.playerTokens;
   const idx    = existingPlayers.length;
   const colorObj = colors[idx] || colors[0];
   return {

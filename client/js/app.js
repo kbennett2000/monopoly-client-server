@@ -289,17 +289,16 @@
     UIManager.showScreen('game-screen');
     document.getElementById('game-title').textContent = state.name;
 
-    // Destroy the previous renderer (if any) and reset the board area.
+    // Destroy the previous renderer (if any) and clear the board area.
+    // Renderers own ALL game-specific DOM inside .board-wrapper; we only
+    // empty the container as a safety net in case destroy() leaked nodes.
     const prevRenderer = GameRendererRegistry.getActive();
     if (prevRenderer) {
       prevRenderer.destroy();
       GameRendererRegistry.clearActive();
     }
-    // Restore neutral board state (safety net for first join and game-type switches).
-    const monoBoard = document.getElementById('board');
-    const cfWrapper = document.getElementById('connect-four-wrapper');
-    if (monoBoard) monoBoard.style.display = '';
-    if (cfWrapper) { cfWrapper.style.display = 'none'; cfWrapper.innerHTML = ''; }
+    const boardWrapper = document.querySelector('.board-wrapper');
+    boardWrapper.innerHTML = '';
 
     GameState.setState(state);
 
@@ -309,7 +308,7 @@
     const renderer = GameRendererRegistry.get(state.gameType);
     if (renderer) {
       GameRendererRegistry.setActive(renderer);
-      renderer.init(document.querySelector('.board-wrapper'), state, myUserId, emitAction);
+      renderer.init(boardWrapper, state, myUserId, emitAction);
       renderer.update(state);
     }
     UIManager.updatePlayerPanels(state);

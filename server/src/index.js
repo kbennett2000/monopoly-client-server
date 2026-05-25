@@ -8,11 +8,15 @@
  *
  * Environment variables
  * ─────────────────────
- *   PORT        TCP port to listen on (default: 3000)
- *   HOST        Bind address (default: 0.0.0.0 — all interfaces)
- *   JWT_SECRET  Secret for signing JWTs  (REQUIRED — no default)
- *   JWT_EXPIRES Token lifetime          (default: 7d)
- *   NODE_ENV    Set to 'development' to suppress the LAN-binding warning
+ *   PORT             TCP port to listen on (default: 3000)
+ *   HOST             Bind address (default: 0.0.0.0 — all interfaces)
+ *   JWT_SECRET       Secret for signing JWTs  (REQUIRED — no default)
+ *   JWT_EXPIRES      Token lifetime          (default: 7d)
+ *   NODE_ENV         Set to 'development' to suppress the LAN-binding warning
+ *   ADMIN_USER_IDS   Comma-separated user ids allowed to invoke server-wide
+ *                    admin endpoints (currently only POST /api/games/types/
+ *                    :type/config/reload).  Unset → those endpoints fall
+ *                    back to localhost-only access.
  */
 
 'use strict';

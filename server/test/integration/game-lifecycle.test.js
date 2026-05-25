@@ -87,6 +87,24 @@ afterEach(async () => {
 //  1. Authentication
 // ═══════════════════════════════════════════════════════════════════════════════
 
+describe('routing', () => {
+
+  test('unknown /api/* path returns JSON 404 (not the SPA HTML)', async () => {
+    const res = await server.api
+      .get('/api/this-route-does-not-exist')
+      .expect(404)
+      .expect('Content-Type', /json/);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  test('unknown non-API path returns the SPA shell (HTML)', async () => {
+    const res = await server.api.get('/some-spa-route').expect(200);
+    expect(res.text).toMatch(/<html/i);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
 describe('auth', () => {
 
   test('register returns a JWT and user object', async () => {

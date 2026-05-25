@@ -123,7 +123,7 @@ describe('per-game action queue', () => {
       ),
     );
 
-    const final = gameManager.getGame(gameId);
+    const final = gameManager.peekGame(gameId);
     // Dice were set to non-zero values — exactly one roll happened.
     // Phase is not checked here: it depends on what the player landed on
     // (pre-roll if doubles, buying if unowned property, post-roll otherwise).
@@ -159,8 +159,8 @@ describe('per-game action queue', () => {
     // moves it to buying, etc.  Dice being set proves the roll ran.
     expect(r1.error).toBeUndefined();
     expect(r2.error).toBeUndefined();
-    expect(gameManager.getGame(g1).turnState.dice[0] + gameManager.getGame(g1).turnState.dice[1]).toBeGreaterThan(0);
-    expect(gameManager.getGame(g2).turnState.dice[0] + gameManager.getGame(g2).turnState.dice[1]).toBeGreaterThan(0);
+    expect(gameManager.peekGame(g1).turnState.dice[0] + gameManager.peekGame(g1).turnState.dice[1]).toBeGreaterThan(0);
+    expect(gameManager.peekGame(g2).turnState.dice[0] + gameManager.peekGame(g2).turnState.dice[1]).toBeGreaterThan(0);
   });
 
   // ── saveGame shares the same queue ─────────────────────────────────────────
@@ -180,7 +180,7 @@ describe('per-game action queue', () => {
     expect(actionResult).toBeDefined();
     expect(saveResult).toBeDefined();
 
-    const final = gameManager.getGame(gameId);
+    const final = gameManager.peekGame(gameId);
     // Whatever order ran: status must be a valid value, not undefined/corrupt
     expect(['playing', 'paused']).toContain(final.status);
   });
@@ -190,13 +190,13 @@ describe('per-game action queue', () => {
 
     // Save first (sequential, not concurrent) so the game is definitively paused
     await gameManager.saveGame(gameId, HOST.id);
-    expect(gameManager.getGame(gameId).status).toBe('paused');
+    expect(gameManager.peekGame(gameId).status).toBe('paused');
 
     // Any action against a paused game must be rejected
     const result = await gameManager.applyAction(gameId, HOST.id, 'rollDice', {});
     expect(result.error).toBe('Game is not in playing state');
     // State must not have been mutated
-    expect(gameManager.getGame(gameId).status).toBe('paused');
+    expect(gameManager.peekGame(gameId).status).toBe('paused');
   });
 
   // ── setPlayerConnected shares the same queue ────────────────────────────────
@@ -212,7 +212,7 @@ describe('per-game action queue', () => {
     // The action result must be defined (not lost due to a race)
     expect(actionResult).toBeDefined();
     // Final state must be self-consistent
-    expect(gameManager.getGame(gameId)).not.toBeNull();
+    expect(gameManager.peekGame(gameId)).not.toBeNull();
   });
 
   // ── lock cleanup ────────────────────────────────────────────────────────────
@@ -232,11 +232,11 @@ describe('per-game action queue', () => {
     // A follow-up call that does not depend on game phase must resolve promptly.
     // setPlayerConnected always succeeds regardless of turn state.
     await gameManager.setPlayerConnected(gameId, HOST.id, false);
-    expect(gameManager.getGame(gameId).players.find(p => p.userId === HOST.id).connected).toBe(false);
+    expect(gameManager.peekGame(gameId).players.find(p => p.userId === HOST.id).connected).toBe(false);
 
     // And a further call proves the queue is still accepting work
     await gameManager.setPlayerConnected(gameId, HOST.id, true);
-    expect(gameManager.getGame(gameId).players.find(p => p.userId === HOST.id).connected).toBe(true);
+    expect(gameManager.peekGame(gameId).players.find(p => p.userId === HOST.id).connected).toBe(true);
   });
 
 });

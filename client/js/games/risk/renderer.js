@@ -32,22 +32,11 @@ const RiskRenderer = (() => {
     _emit         = emitAction;
     _selectedFrom = null;
 
-    // Hide the Monopoly and Connect Four board areas
-    const monoBoard = document.getElementById('board');
-    if (monoBoard) monoBoard.style.display = 'none';
-    const cfWrap = document.getElementById('connect-four-wrapper');
-    if (cfWrap)   cfWrap.style.display = 'none';
-
-    // Ensure the Risk wrapper exists
-    _wrapper = document.getElementById('risk-wrapper');
-    if (!_wrapper) {
-      _wrapper = document.createElement('div');
-      _wrapper.id        = 'risk-wrapper';
-      _wrapper.className = 'risk-wrapper';
-      container.appendChild(_wrapper);
-    }
-    _wrapper.style.display = 'flex';
-    _wrapper.innerHTML = '';
+    // Create our wrapper fresh inside the framework-owned container.
+    _wrapper = document.createElement('div');
+    _wrapper.id        = 'risk-wrapper';
+    _wrapper.className = 'risk-wrapper';
+    container.appendChild(_wrapper);
 
     // Inject loading message until SVG arrives
     const loading = document.createElement('div');
@@ -328,20 +317,26 @@ const RiskRenderer = (() => {
 
     // It IS my turn
     const me = state.players.find(p => p.userId === _myUserId);
+    // Prefer the server-supplied validActions list; fall back to local rule
+    // re-derivation if the server didn't send one.
+    // TODO: remove fallback once validActions is fully trusted (one release).
+    const allowed = (action, fallback) => (
+      Array.isArray(state.validActions) ? state.validActions.includes(action) : fallback
+    );
+
     if (phase === 'reinforce') {
       const remaining = state.turnState.armiesToPlace;
       if (titleEl) {
         titleEl.textContent = `Reinforce — ${remaining} armies to place`;
       }
 
-      // Trade-cards button (only if hand has a valid set)
-      if (me && hasAnyValidCardSet(me.hand || [])) {
+      if (allowed('tradeCards', me && hasAnyValidCardSet(me.hand || []))) {
         const tradeBtn = button('Trade cards', () => openTradeDialog(me.hand || []));
         buttonsEl.appendChild(tradeBtn);
       }
 
       const endBtn = button('End reinforce phase', () => _emit('endReinforcePhase', {}));
-      endBtn.disabled = remaining > 0;
+      endBtn.disabled = !allowed('endReinforcePhase', remaining === 0);
       buttonsEl.appendChild(endBtn);
 
       const help = document.createElement('p');
@@ -494,16 +489,7 @@ const RiskRenderer = (() => {
     if (_wrapper && _onTerritoryClick) {
       _wrapper.removeEventListener('click', _onTerritoryClick);
     }
-    if (_wrapper) {
-      _wrapper.style.display = 'none';
-      _wrapper.innerHTML = '';
-    }
-    // Restore the other boards' visibility (init() hid both of them).
-    const monoBoard = document.getElementById('board');
-    if (monoBoard) monoBoard.style.display = '';
-    const cfWrap = document.getElementById('connect-four-wrapper');
-    if (cfWrap) cfWrap.style.display = '';
-
+    _wrapper?.remove();
     _wrapper          = null;
     _myUserId         = null;
     _emit             = null;

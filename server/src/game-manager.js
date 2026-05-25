@@ -7,11 +7,22 @@
  *
  * This module is intentionally game-agnostic: all game-specific behaviour is
  * delegated to the appropriate game-logic module via game-registry.js.
- * The only Monopoly-specific string that appears here is the default value
- * 'monopoly' used when a game record predates the gameType column.
  *
  * The singleton pattern is intentional — Node.js modules are cached after
  * the first require(), so all parts of the server share the same instance.
+ *
+ * ─── IMPORTANT: read APIs ───────────────────────────────────────────────────
+ *
+ * peekGame(id)         → returns the LIVE, MUTABLE in-memory state reference.
+ *                        Mutating the returned object mutates the canonical
+ *                        copy.  Use ONLY for read paths that immediately
+ *                        serialize (persist, length checks, etc.) and ONLY
+ *                        from inside a withGameLock callback.
+ *
+ * getGameSnapshot(id)  → returns a deep clone via structuredClone().  Use
+ *                        whenever the state is handed to game-logic code or
+ *                        returned over the wire — anything that could
+ *                        accidentally write back to the caller's local copy.
  */
 
 'use strict';
@@ -20,9 +31,9 @@ const { v4: uuidv4 }  = require('uuid');
 const database        = require('./database');
 const gameRegistry    = require('./game-registry');
 
-/** Return the game-logic module for a given state (falls back to monopoly). */
+/** Return the game-logic module for a given state. */
 function getLogic(state) {
-  return gameRegistry.getGameLogic(state?.gameType || 'monopoly');
+  return gameRegistry.getGameLogic(state.gameType);
 }
 
 // ── in-memory store ──────────────────────────────────────────────────────────
@@ -165,10 +176,21 @@ function loadGame(gameId) {
 }
 
 /**
- * Get the in-memory state for a running game, or load it from DB.
+ * Return the LIVE in-memory state for a running game (loading from DB if
+ * needed).  The returned object is the canonical mutable reference —
+ * mutating it mutates the cached game.  See module header for usage rules.
  */
-function getGame(gameId) {
+function peekGame(gameId) {
   return activeGames.get(gameId) || loadGame(gameId);
+}
+
+/**
+ * Return a structuredClone() of the game's state, safe to hand to game-logic
+ * code or to return over the wire.  Returns null if the game doesn't exist.
+ */
+function getGameSnapshot(gameId) {
+  const live = peekGame(gameId);
+  return live ? structuredClone(live) : null;
 }
 
 /**
@@ -185,7 +207,7 @@ function listOpenGames() {
  * @param {Object} user   - { id, username } from the auth system
  */
 function addPlayerToLobby(gameId, user) {
-  const state = getGame(gameId);
+  const state = peekGame(gameId);
   if (!state) return { error: 'Game not found' };
   if (state.status !== 'waiting') return { error: 'Game already in progress' };
 
@@ -210,7 +232,7 @@ function addPlayerToLobby(gameId, user) {
  * Remove a player from a waiting-room lobby.
  */
 function removePlayerFromLobby(gameId, userId) {
-  const state = getGame(gameId);
+  const state = peekGame(gameId);
   if (!state || state.status !== 'waiting') return;
 
   state.players = state.players.filter(p => p.userId !== userId);
@@ -226,7 +248,7 @@ function removePlayerFromLobby(gameId, userId) {
  * @returns {{ state, events, error? }}
  */
 function startGame(gameId, hostUserId) {
-  const state = getGame(gameId);
+  const state = peekGame(gameId);
   if (!state)                    return { error: 'Game not found' };
   if (state.status !== 'waiting') return { error: 'Game is not in waiting state' };
 
@@ -241,7 +263,7 @@ function startGame(gameId, hostUserId) {
 
   const newState = logic.initGame(gameId, state.name, state.players, state.config);
   newState.createdBy = state.createdBy || hostUserId;
-  newState.gameType  = state.gameType  || 'monopoly';
+  newState.gameType  = state.gameType;
   activeGames.set(gameId, newState);
   persist(newState);
 
@@ -261,7 +283,7 @@ function startGame(gameId, hostUserId) {
  */
 async function applyAction(gameId, userId, action, payload = {}) {
   return withGameLock(gameId, () => {
-    const state = getGame(gameId);
+    const state = peekGame(gameId);
     if (!state) return { state: null, events: [], error: 'Game not found' };
     if (state.status !== 'playing') return { state, events: [], error: 'Game is not in playing state' };
 
@@ -296,7 +318,7 @@ function deleteGame(gameId, userId) {
  */
 async function resumeGame(gameId) {
   return withGameLock(gameId, () => {
-    const state = getGame(gameId);
+    const state = peekGame(gameId);
     if (!state || state.status !== 'paused') return;
     state.status = 'playing';
     persist(state);
@@ -308,7 +330,7 @@ async function resumeGame(gameId) {
  */
 async function saveGame(gameId, userId) {
   return withGameLock(gameId, () => {
-    const state = getGame(gameId);
+    const state = peekGame(gameId);
     if (!state) return { error: 'Game not found' };
 
     const dbGame = database.getGameById(gameId);
@@ -327,7 +349,7 @@ async function saveGame(gameId, userId) {
  */
 async function setPlayerConnected(gameId, userId, connected) {
   return withGameLock(gameId, () => {
-    const state = getGame(gameId);
+    const state = peekGame(gameId);
     if (!state) return;
     const player = state.players.find(p => p.userId === userId);
     if (player) player.connected = connected;
@@ -345,7 +367,8 @@ function evictGame(gameId) {
 module.exports = {
   createGame,
   loadGame,
-  getGame,
+  peekGame,
+  getGameSnapshot,
   listOpenGames,
   addPlayerToLobby,
   removePlayerFromLobby,
