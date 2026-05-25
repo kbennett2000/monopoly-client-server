@@ -139,7 +139,9 @@
       const section = document.getElementById('my-games-section');
       if (mine && mine.length > 0) {
         if (section) section.style.display = 'block';
-        UIManager.renderGameList(mine, 'my-games-list', handleRejoinGame, { allowRejoin: true });
+        UIManager.renderGameList(mine, 'my-games-list', handleRejoinGame, {
+          allowRejoin: true, ...deleteOpts,
+        });
       } else {
         if (section) section.style.display = 'none';
       }
@@ -223,9 +225,13 @@
     }
   }
 
-  // Delete a game (host only, waiting or paused)
-  async function handleDeleteGame(gameId, gameName) {
-    if (!confirm(`Delete "${gameName}"? This cannot be undone.`)) return;
+  // Delete a game (host only).  In-progress games warn more loudly because
+  // other players currently in the game will be kicked.
+  async function handleDeleteGame(gameId, gameName, status) {
+    const msg = status === 'playing'
+      ? `Delete "${gameName}" while it's IN PROGRESS?\n\nAll other players will be kicked. This cannot be undone.`
+      : `Delete "${gameName}"? This cannot be undone.`;
+    if (!confirm(msg)) return;
     try {
       await API.deleteGame(gameId);
       await refreshGameList();

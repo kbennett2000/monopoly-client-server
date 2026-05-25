@@ -11,11 +11,6 @@
  * Implements: init / update / onEvent / destroy
  */
 
-// Diagnostic: log on file load so we can confirm the LATEST renderer is running
-// rather than a stale browser-cached version.  Look for "[risk-renderer] v3"
-// in the browser console.
-console.log('[risk-renderer] v3 loaded at', new Date().toISOString());
-
 const RiskRenderer = (() => {
 
   // ── module-private state ───────────────────────────────────────────────────
@@ -60,14 +55,11 @@ const RiskRenderer = (() => {
     loading.textContent = 'Loading map…';
     _wrapper.appendChild(loading);
 
-    console.log('[risk-renderer] init() called, status=', state?.status, 'myUserId=', myUserId, 'gameType=', state?.gameType);
-
     // Fetch and inject the SVG inline (so per-path click handlers work)
     fetch(SVG_URL)
-      .then(r => { console.log('[risk-renderer] SVG fetch status:', r.status); return r.text(); })
+      .then(r => r.text())
       .then(svgText => {
-        if (_wrapper === null) { console.warn('[risk-renderer] wrapper gone, aborting'); return; }
-        console.log('[risk-renderer] SVG bytes:', svgText.length);
+        if (_wrapper === null) return; // destroy() ran while loading
         _wrapper.innerHTML = '';
         const mapHost = document.createElement('div');
         mapHost.className = 'risk-map-host';
@@ -78,34 +70,17 @@ const RiskRenderer = (() => {
           svgEl.style.width  = '100%';
           svgEl.style.height = '100%';
 
-          // Structural rewrite of the Wikimedia SVG:
-          //
-          // 1. <g id="map"> (which contains the 42 territory <path>s) lives
-          //    inside <defs>.  Elements in <defs> are NOT directly rendered
-          //    and are NOT clickable — they only appear via <use> references.
-          //    Move the group out of <defs> and into the SVG body so the
-          //    paths render directly and our click handlers can reach them.
-          //
-          // 2. The source SVG then renders the map THREE times via <use>
-          //    overlays (blue rim, white inner stroke, textured pass).  Now
-          //    that the map is already in the main tree we remove the <use>
-          //    duplicates — otherwise the map would render twice.
-          //
-          // 3. The source hardcodes 42 territory labels with example army
-          //    counts ("1 Alaska", "6 Northwest Territory", …) that have
-          //    nothing to do with our game state.  Strip every <text> so
-          //    only our overlay markers (real army counts) appear.
+          // Wikimedia SVG hides #map inside <defs>; re-parent so the paths
+          // render directly and click handlers can reach them.  Then strip
+          // the source's <use> overlays (duplicate render) and <text> labels
+          // (hardcoded example army counts unrelated to our game state).
           const mapGroup = svgEl.querySelector('defs > g#map');
-          if (mapGroup) {
-            svgEl.appendChild(mapGroup); // re-parent to SVG root
-          }
+          if (mapGroup) svgEl.appendChild(mapGroup);
           svgEl.querySelectorAll('use').forEach(u => u.remove());
           svgEl.querySelectorAll('text').forEach(t => t.remove());
-          console.log('[risk-renderer] after cleanup — paths:', svgEl.querySelectorAll('path[id]').length,
-                      'g#map in defs:', !!svgEl.querySelector('defs > g#map'));
         }
         _wrapper.appendChild(mapHost);
-        wireTerritoryHandlers(state);
+        wireTerritoryHandlers();
         _svgLoaded = true;
         // Repaint with the freshest state we've received (which may be newer
         // than the one captured by this closure if game:updates arrived during
@@ -121,7 +96,6 @@ const RiskRenderer = (() => {
     // the user sees their phase / buttons without waiting for the SVG fetch.
     _latestState = state;
     renderActionPanel(state, isMyTurn(state), state.turnState?.phase || 'reinforce');
-    stashTurnMeta(state);
   }
 
   /** Tiny helper: am I the current player? */
@@ -130,29 +104,15 @@ const RiskRenderer = (() => {
     return cur?.userId === _myUserId;
   }
 
-  /** Cache decision-affecting data on the wrapper so the click handler can read it. */
-  function stashTurnMeta(state) {
-    if (!_wrapper) return;
-    _wrapper.dataset.phase       = state.turnState?.phase || '';
-    _wrapper.dataset.isMyTurn    = String(isMyTurn(state));
-    _wrapper.dataset.fortifyUsed = String(!!state.turnState?.fortifyUsed);
-    for (const t of state.config.board.territories) {
-      const ts = state.territories[t.id];
-      _wrapper.dataset[`owner_${t.id}`]  = ts?.ownerId || '';
-      _wrapper.dataset[`armies_${t.id}`] = String(ts?.armies || 0);
-    }
-  }
-
-  function wireTerritoryHandlers(state) {
+  function wireTerritoryHandlers() {
     _onTerritoryClick = (ev) => {
       const path = ev.target.closest('path[id]');
       if (!path) return;
       const territoryId = path.id;
+      const s = _latestState;
+      if (!s) return;
       // Ignore non-territory paths (e.g. filter elements)
-      if (!state.territories[territoryId] &&
-          !(state.config?.board?.territories || []).some(t => t.id === territoryId)) {
-        return;
-      }
+      if (!s.territories?.[territoryId]) return;
       handleTerritoryClick(territoryId);
     };
     _wrapper.addEventListener('click', _onTerritoryClick);
@@ -161,27 +121,26 @@ const RiskRenderer = (() => {
   // ── click handling (phase-aware) ────────────────────────────────────────────
 
   function handleTerritoryClick(territoryId) {
-    // Read the most recent state from the renderer's last-known cache via a
-    // synthetic re-read of the DOM-attached app state would be ideal; for v1
-    // we re-read the current selection logic from data attributes painted by
-    // update().  For simplicity, dispatch by reading current phase off the DOM.
-    const phase = _wrapper?.dataset?.phase;
-    if (!phase) return;
+    if (!_emit) return; // destroy() ran between click delivery and dispatch
+    const s = _latestState;
+    if (!s || !isMyTurn(s)) return;
+
+    const phase     = s.turnState?.phase;
+    const territory = s.territories[territoryId];
+    if (!phase || !territory) return;
 
     if (phase === 'reinforce') {
-      // Click your own territory → place 1 army.  Shift-click for +5.
-      if (_wrapper.dataset.isMyTurn !== 'true') return;
-      if (_wrapper.dataset[`owner_${territoryId}`] !== _myUserId) return;
+      // Click your own territory → place 1 army.
+      if (territory.ownerId !== _myUserId) return;
       _emit('placeReinforcement', { territoryId, count: 1 });
       return;
     }
 
     if (phase === 'attack') {
-      if (_wrapper.dataset.isMyTurn !== 'true') return;
       if (_selectedFrom === null) {
         // Pick attacker territory
-        if (_wrapper.dataset[`owner_${territoryId}`] !== _myUserId) return;
-        if (parseInt(_wrapper.dataset[`armies_${territoryId}`] || '0', 10) < 2) return;
+        if (territory.ownerId !== _myUserId) return;
+        if (territory.armies < 2) return;
         _selectedFrom = territoryId;
         paintSelection();
         return;
@@ -192,20 +151,22 @@ const RiskRenderer = (() => {
         paintSelection();
         return;
       }
-      // Click target → attack with max dice
-      const armies = parseInt(_wrapper.dataset[`armies_${_selectedFrom}`] || '0', 10);
-      const dice   = Math.min(3, armies - 1);
+      // Click target → attack with max dice.  update()'s auto-clear of
+      // _selectedFrom on ownership change guarantees the territory still
+      // exists and is still ours.
+      const fromArmies = s.territories[_selectedFrom].armies;
+      const dice = Math.min(3, fromArmies - 1);
+      if (dice < 1) { _selectedFrom = null; paintSelection(); return; }
       _emit('attackTerritory', { from: _selectedFrom, to: territoryId, attackerDice: dice });
       // Keep _selectedFrom so the user can chain attacks
       return;
     }
 
     if (phase === 'fortify') {
-      if (_wrapper.dataset.isMyTurn !== 'true') return;
-      if (_wrapper.dataset.fortifyUsed === 'true') return;
-      if (_wrapper.dataset[`owner_${territoryId}`] !== _myUserId) return;
+      if (s.turnState?.fortifyUsed) return;
+      if (territory.ownerId !== _myUserId) return;
       if (_selectedFrom === null) {
-        if (parseInt(_wrapper.dataset[`armies_${territoryId}`] || '0', 10) < 2) return;
+        if (territory.armies < 2) return;
         _selectedFrom = territoryId;
         paintSelection();
         return;
@@ -215,8 +176,8 @@ const RiskRenderer = (() => {
         paintSelection();
         return;
       }
-      const armies = parseInt(_wrapper.dataset[`armies_${_selectedFrom}`] || '0', 10);
-      const max    = armies - 1;
+      const fromArmies = s.territories[_selectedFrom].armies;
+      const max    = fromArmies - 1;
       const raw    = prompt(`Move how many armies (1–${max})?`, String(max));
       const count  = parseInt(raw, 10);
       if (!Number.isFinite(count) || count < 1 || count > max) {
@@ -240,9 +201,7 @@ const RiskRenderer = (() => {
   }
 
   function cssEscape(id) {
-    // CSS.escape may not be available in some environments; fall back manually.
-    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(id);
-    return id.replace(/[^a-zA-Z0-9_-]/g, c => '\\' + c);
+    return CSS.escape(id);
   }
 
   // ── update ──────────────────────────────────────────────────────────────────
@@ -254,44 +213,28 @@ const RiskRenderer = (() => {
     const myTurn  = isMyTurn(state);
     const phase   = state.turnState?.phase || 'reinforce';
 
-    // Always-runs: stash turn meta + render action panel.  These don't depend
-    // on the SVG being loaded, so the user sees their controls immediately.
-    stashTurnMeta(state);
+    // Always-runs: render action panel.  Doesn't depend on the SVG being
+    // loaded, so the user sees their controls immediately.
     renderActionPanel(state, myTurn, phase);
 
     // SVG-dependent: paint territory ownership colours + army markers.
     if (_svgLoaded) {
       const svg = _wrapper.querySelector('svg');
       if (svg) {
-        let painted = 0;
-        let foundPaths = 0;
         for (const t of state.config.board.territories) {
           const ts    = state.territories[t.id];
           const el    = svg.querySelector(`#${cssEscape(t.id)}`);
-          if (el) foundPaths++;
+          if (!el) continue;
           const owner = state.players.find(p => p.userId === ts?.ownerId);
-          if (el) {
-            const fill = owner?.colorHex || '#777';
-            // Belt-and-suspenders: setAttribute overrides the SVG's original
-            // fill="..." presentation attribute; style.fill wins over any CSS.
-            el.setAttribute('fill', fill);
-            el.style.fill       = fill;
-            el.style.cursor     = 'pointer';
-            el.style.transition = 'fill 0.2s, stroke 0.15s, stroke-width 0.15s';
-            // Highlight your own territories with a bold stroke so you can
-            // identify them at a glance during the reinforce/attack phases.
-            el.classList.toggle('risk-mine', owner?.userId === _myUserId);
-            painted++;
-          }
+          el.style.fill       = owner?.colorHex || '#777';
+          el.style.cursor     = 'pointer';
+          el.style.transition = 'fill 0.2s, stroke 0.15s, stroke-width 0.15s';
+          // Highlight your own territories with a bold stroke so you can
+          // identify them at a glance during the reinforce/attack phases.
+          el.classList.toggle('risk-mine', owner?.userId === _myUserId);
         }
-        console.log('[risk-renderer] update() painted',  painted, '/', foundPaths, 'paths found out of',
-                    state.config.board.territories.length, 'territories in state');
         paintArmyMarkers(svg, state);
-      } else {
-        console.warn('[risk-renderer] update() — _svgLoaded true but no <svg> in wrapper');
       }
-    } else {
-      console.log('[risk-renderer] update() — SVG not loaded yet, skipping map paint');
     }
 
     // Maintain selection highlight
@@ -325,10 +268,7 @@ const RiskRenderer = (() => {
       if (!ts || ts.armies === 0) continue;
       const path = svg.querySelector(`#${cssEscape(t.id)}`);
       if (!path) continue;
-      let bbox;
-      try { bbox = path.getBBox(); } catch (_) { continue; }
-      if (!bbox || (bbox.width === 0 && bbox.height === 0)) continue;
-
+      const bbox = path.getBBox();
       const cx = bbox.x + bbox.width  / 2;
       const cy = bbox.y + bbox.height / 2;
       const owner = state.players.find(p => p.userId === ts.ownerId);
@@ -447,7 +387,6 @@ const RiskRenderer = (() => {
   // ── card trading dialog ────────────────────────────────────────────────────
 
   function openTradeDialog(hand) {
-    if (!hand.length) return;
     // Simple text-based trade picker — UX placeholder for v1.
     const list = hand.map((c, i) =>
       `${i + 1}. ${c.troopType.toUpperCase()}${c.territoryId ? ` (${c.territoryId})` : ''}`
@@ -514,7 +453,7 @@ const RiskRenderer = (() => {
       case 'TERRITORY_CONQUERED':
         SoundManager.playConquest();
         UIManager.appendLog(
-          `🏴 ${event.data.username} conquered ${event.data.to}`,
+          `🏴 ${event.data.username} conquered ${territoryName(_latestState, event.data.to)}`,
           'game',
         );
         break;
@@ -558,12 +497,12 @@ const RiskRenderer = (() => {
     if (_wrapper) {
       _wrapper.style.display = 'none';
       _wrapper.innerHTML = '';
-      // Clear all painted data attributes
-      Object.keys(_wrapper.dataset).forEach(k => { delete _wrapper.dataset[k]; });
     }
-    // Restore other boards' visibility so the next renderer can take over
+    // Restore the other boards' visibility (init() hid both of them).
     const monoBoard = document.getElementById('board');
     if (monoBoard) monoBoard.style.display = '';
+    const cfWrap = document.getElementById('connect-four-wrapper');
+    if (cfWrap) cfWrap.style.display = '';
 
     _wrapper          = null;
     _myUserId         = null;

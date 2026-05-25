@@ -254,8 +254,8 @@ function getCurrentPlayer(state) {
   return state.players[state.turnState.currentPlayerIndex] || null;
 }
 
-// Per design D6 (auto-max defender dice) there is no interactive moment that
-// requires blocking the AFK timer.  Attack resolution is atomic.
+// Attack resolution is atomic (defender auto-rolls), so no phase ever
+// requires us to pause the AFK timer.
 function isTurnTimerBlocked(_state) {
   return false;
 }
@@ -271,8 +271,6 @@ function getValidActions(state, userId) {
       if (state.turnState.armiesToPlace === 0) actions.push('endReinforcePhase');
       const player = state.players.find(p => p.userId === userId);
       if (player && hasAnyValidCardSet(player.hand)) actions.push('tradeCards');
-      // Players with ≥5 cards MUST trade — but the validity check above already
-      // covers having a valid set, which any 5+ hand always contains.
       return actions;
     }
     case 'attack':
@@ -340,9 +338,7 @@ function canFortifyPath(state, from, to, userId) {
   if (state.territories[from].ownerId !== userId) return false;
   if (state.territories[to].ownerId   !== userId) return false;
 
-  const territoryById = state.config.territoryById ||
-    state.config.board.territories.reduce((acc, t) => { acc[t.id] = t; return acc; }, {});
-
+  const territoryById = state.config.territoryById;
   const visited = new Set([from]);
   const queue   = [from];
   while (queue.length) {
@@ -379,6 +375,8 @@ function resolveCombat(attackerDieCount, defenderDieCount) {
 
 // ── deck management ──────────────────────────────────────────────────────────
 
+// Mutates state.deck, state.discardPile, and state.log in place — caller
+// must have cloned state before invoking.
 function drawCard(state) {
   if (state.deck.length === 0 && state.discardPile.length > 0) {
     state.deck        = shuffle(state.discardPile);
@@ -399,7 +397,7 @@ function placeReinforcement(state, userId, payload) {
   if (state.turnState.phase !== 'reinforce') return { state, events, error: 'You are not in the reinforce phase' };
 
   const { territoryId, count } = payload || {};
-  if (!territoryId || typeof count !== 'number' || count <= 0) {
+  if (!territoryId || !Number.isInteger(count) || count <= 0) {
     return { state, events, error: 'Invalid reinforcement payload' };
   }
   const territory = state.territories[territoryId];
@@ -503,9 +501,7 @@ function attackTerritory(state, userId, payload) {
   if (fromT.ownerId !== userId) return { state, events, error: 'You do not own the attacking territory' };
   if (toT.ownerId   === userId) return { state, events, error: 'You cannot attack your own territory' };
 
-  const tFrom = state.config.territoryById?.[from]
-             || state.config.board.territories.find(t => t.id === from);
-  if (!tFrom.adjacent.includes(to)) {
+  if (!state.config.territoryById[from].adjacent.includes(to)) {
     return { state, events, error: 'Those territories are not adjacent' };
   }
 
@@ -580,8 +576,7 @@ function attackTerritory(state, userId, payload) {
       const defenderLeft = getOwnedTerritories(state, defender.userId);
       if (defenderLeft.length === 0 && !defender.eliminated) {
         // Transfer all of defender's cards to the attacker
-        const attackerPlayer = state.players.find(p => p.userId === userId);
-        attackerPlayer.hand  = attackerPlayer.hand.concat(defender.hand);
+        attacker.hand        = attacker.hand.concat(defender.hand);
         defender.hand        = [];
         defender.eliminated  = true;
         defender.active      = false;
@@ -626,7 +621,7 @@ function fortify(state, userId, payload) {
   if (state.turnState.fortifyUsed)         return { state, events, error: 'You have already fortified this turn' };
 
   const { from, to, count } = payload || {};
-  if (!from || !to || typeof count !== 'number' || count <= 0) {
+  if (!from || !to || !Number.isInteger(count) || count <= 0) {
     return { state, events, error: 'Invalid fortify payload' };
   }
   const fromT = state.territories[from];
@@ -669,39 +664,10 @@ function endTurn(state, userId) {
       events.push(event('CARD_DRAWN', { username: player.username }));
     }
   }
-
-  // Reset per-turn flags on this player
   player.conqueredThisTurn = false;
 
-  // Advance to the next non-eliminated player
-  const playerCount = state.players.length;
-  let nextIdx = state.turnState.currentPlayerIndex;
-  for (let i = 0; i < playerCount; i++) {
-    nextIdx = (nextIdx + 1) % playerCount;
-    if (!state.players[nextIdx].eliminated) break;
-  }
-  state.turnState.currentPlayerIndex = nextIdx;
-  state.turnState.phase              = 'reinforce';
-  state.turnState.fortifyUsed        = false;
-  state.turnState.attackedThisTurn   = false;
-  state.turnState.lastDiceRoll       = null;
-  state.turnState.armiesToPlace      = computeReinforcements(state, state.players[nextIdx].userId);
-
-  // Inform players if any continents earn a bonus this round
-  const nextPlayer = state.players[nextIdx];
-  const owned      = getContinentsOwned(state, nextPlayer.userId);
-  for (const key of owned) {
-    events.push(event('CONTINENT_HELD', {
-      username:  nextPlayer.username,
-      continent: key,
-      bonus:     state.config.board.continents[key].bonus,
-    }));
-  }
-
-  log(state, `${nextPlayer.username}'s turn — ${state.turnState.armiesToPlace} armies to place.`, 'turn');
-  events.push(event('PHASE_CHANGED', { phase: 'reinforce', username: nextPlayer.username }));
-
-  return { state, events };
+  const advanced = advanceToNextPlayer(state);
+  return { state: advanced.state, events: events.concat(advanced.events) };
 }
 
 function declareBankruptcy(state, userId) {
@@ -764,6 +730,15 @@ function advanceToNextPlayer(state) {
   state.turnState.lastDiceRoll       = null;
   const nextPlayer = state.players[nextIdx];
   state.turnState.armiesToPlace      = computeReinforcements(state, nextPlayer.userId);
+
+  // Surface continent bonuses contributing to this turn's reinforcement count.
+  for (const key of getContinentsOwned(state, nextPlayer.userId)) {
+    events.push(event('CONTINENT_HELD', {
+      username:  nextPlayer.username,
+      continent: key,
+      bonus:     state.config.board.continents[key].bonus,
+    }));
+  }
 
   log(state, `${nextPlayer.username}'s turn — ${state.turnState.armiesToPlace} armies to place.`, 'turn');
   events.push(event('PHASE_CHANGED', { phase: 'reinforce', username: nextPlayer.username }));
@@ -857,9 +832,7 @@ function migrate(state) {
 // ── small utility: territory name lookup for log messages ────────────────────
 
 function territoryName(state, territoryId) {
-  return state.config.territoryById?.[territoryId]?.name ||
-         state.config.board.territories.find(t => t.id === territoryId)?.name ||
-         territoryId;
+  return state.config.territoryById[territoryId].name;
 }
 
 // ── exports ──────────────────────────────────────────────────────────────────

@@ -275,14 +275,16 @@ async function applyAction(gameId, userId, action, payload = {}) {
 }
 
 /**
- * Delete a game permanently.  Only the host may delete, and only if the game
- * is in 'waiting' or 'paused' state (not actively playing).
+ * Delete a game permanently.  Only the host may delete.  Any status is fair
+ * game — the host owns the game and can nuke it at will.  Connected players
+ * in a deleted in-progress game will see their next socket action rejected
+ * with "Game not found"; the lobby will refresh and the game will disappear
+ * from their list.
  */
 function deleteGame(gameId, userId) {
   const dbGame = database.getGameById(gameId);
   if (!dbGame) return { error: 'Game not found' };
   if (dbGame.created_by !== userId) return { error: 'Only the host can delete a game' };
-  if (dbGame.status === 'playing') return { error: 'Cannot delete a game in progress — save it first' };
 
   activeGames.delete(gameId);
   database.deleteGame(gameId);

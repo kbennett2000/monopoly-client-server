@@ -332,12 +332,12 @@ const UIManager = (() => {
         card.appendChild(btn);
       }
 
-      if (onDeleteClick && currentUserId && g.created_by === currentUserId && g.status !== 'playing') {
+      if (onDeleteClick && currentUserId && g.created_by === currentUserId) {
         const del = document.createElement('button');
         del.className   = 'btn btn-sm btn-outline btn-danger';
         del.textContent = '🗑 Delete';
         del.style.marginLeft = '6px';
-        del.addEventListener('click', () => onDeleteClick(g.id, g.name));
+        del.addEventListener('click', () => onDeleteClick(g.id, g.name, g.status));
         card.appendChild(del);
       }
 
