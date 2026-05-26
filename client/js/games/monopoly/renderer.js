@@ -13,6 +13,57 @@ const MonopolyRenderer = (() => {
   let _myUserId = null;
   let _emit     = null;
 
+  // Sidebar 2d6 pip display — the framework's chrome contains the DOM
+  // (#dice-display + per-pip-slot elements like #d1-tl, #d2-mm, …) but
+  // the visual state is Monopoly-owned.  Moved out of ui-manager so the
+  // framework doesn't carry the dice geometry knowledge.
+  const DIE_PIPS = {
+    1: ['mm'],
+    2: ['tr', 'bl'],
+    3: ['tr', 'mm', 'bl'],
+    4: ['tl', 'tr', 'bl', 'br'],
+    5: ['tl', 'tr', 'mm', 'bl', 'br'],
+    6: ['tl', 'tr', 'ml', 'mr', 'bl', 'br'],
+  };
+  const ALL_PIP_SLOTS = ['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br'];
+
+  function _setSidebarDiePips(prefix, value) {
+    const active = new Set(DIE_PIPS[value] || []);
+    for (const slot of ALL_PIP_SLOTS) {
+      const el = document.getElementById(`${prefix}-${slot}`);
+      if (el) el.classList.toggle('pip', active.has(slot));
+    }
+  }
+
+  // The sidebar dice container is hidden in HTML at page load; this
+  // function flips it on/off and paints pips when Monopoly state has
+  // a non-zero dice pair.  Idempotent — safe to call on every update.
+  // index.html owns the #dice-display element used by this function (the
+  // *sidebar* one with pip slots).  Monopoly's board-center dice uses a
+  // separate, simpler element built in init() below.
+  function _updateSidebarDice(state) {
+    const diceEl = document.getElementById('dice-display');
+    const doublesEl = document.getElementById('doubles-badge');
+    if (!diceEl) return;
+    const [d1, d2] = state.turnState?.dice || [0, 0];
+    if (d1 === 0 && d2 === 0) {
+      diceEl.style.display = 'none';
+      if (doublesEl) doublesEl.style.display = 'none';
+      return;
+    }
+    _setSidebarDiePips('d1', d1);
+    _setSidebarDiePips('d2', d2);
+    if (doublesEl) doublesEl.style.display = d1 === d2 ? '' : 'none';
+    diceEl.style.display = 'flex';
+  }
+
+  function _hideSidebarDice() {
+    const diceEl = document.getElementById('dice-display');
+    const doublesEl = document.getElementById('doubles-badge');
+    if (diceEl) diceEl.style.display = 'none';
+    if (doublesEl) doublesEl.style.display = 'none';
+  }
+
   // Stored references for removeEventListener in destroy()
   let _onClosePropertyModal  = null;
   let _onCloseMyPropsModal   = null;
@@ -154,6 +205,7 @@ const MonopolyRenderer = (() => {
 
     BoardRenderer.update(state);
     UIManager.updateActionPanel(state, _myUserId, _actionHandlers());
+    _updateSidebarDice(state);
 
     // Pending incoming trade modal
     if (state.trade && state.trade.status === 'pending' && state.trade.toUserId === _myUserId) {
@@ -286,6 +338,9 @@ const MonopolyRenderer = (() => {
 
     // Remove the board DOM we created in init().
     document.getElementById('board')?.remove();
+
+    // Hide the framework-owned sidebar dice (we showed it in update()).
+    _hideSidebarDice();
 
     _myUserId             = null;
     _emit                 = null;

@@ -34,7 +34,11 @@ for the full interface and lifecycle.
 
 ### Framework owns
 
-- `#players-panel` — player list, colour swatches, status badges.
+- `#players-panel` — roster card chrome (colour swatch, username + token,
+  AFK badge, active-turn highlight, `.bankrupt`/dimmed styling). The
+  game-specific contents of each card (money/cash, status badges,
+  subtext) flow in via the optional `getPlayerCardData(player, state)`
+  renderer hook. See the "Resolved" section below.
 - `#game-turn-indicator` — whose turn it is.
 - `#chat-panel` — chat input + message stream.
 - `#game-log` — log entries for generic events.
@@ -167,6 +171,61 @@ of those will have their own opinions about action labels (bids in
 Liar's Dice are inherently numeric and stateful; Coup's actions are
 named cards). Decide once we have three data points, not one.
 
+## Resolved: getPlayerCardData hook (player roster cards)
+
+The third instance of the "framework chrome with renderer-supplied
+display content" cohering pattern resolved by extracting an optional
+renderer-side hook.
+
+Pre-refactor, `ui-manager.updatePlayerPanels` had five `state.gameType
+=== 'monopoly'` gates plus direct reads of game-specific player fields
+(`player.money`, `player.cash`, `player.inJail`, `player.isBankrupt`,
+`player.jailCards`, `player.retired`) plus a fallback chain (`money ??
+cash ?? null`) trying to unify Monopoly's and Life's naming. The
+framework was accumulating game knowledge in a place that's supposed
+to be game-agnostic.
+
+**Extraction shape.** Each renderer optionally implements:
+
+```js
+getPlayerCardData(player, state) → {
+  primaryValue?: string,    // headline number, e.g. "$1500"
+  badges?: PlayerBadge[],   // status pills like JAIL / OUT / RETIRED
+  subtext?: string,         // secondary line, e.g. "5 properties · 1 jail card"
+  dimmed?: boolean,         // apply the `.bankrupt` dimmed visual
+}
+```
+
+The framework owns the visual treatment (color dot, username, AFK
+badge, active-turn highlight) and consumes whatever the hook returns
+for the in-card game-specific content. Default fallback is
+`{ primaryValue: '', badges: [], subtext: '', dimmed: false }` — the
+right shape for games whose roster card has no game-specific content
+(Tic-Tac-Toe, Connect Four, Yahtzee, Battleship, Risk).
+
+Migrated: Monopoly, Life. The other five games degrade to the default.
+
+**Why not unify with action descriptors?** The two hooks return
+fundamentally different shapes — descriptors are per-action and carry
+action-specific `data`; player-card data is per-player and carries
+display content. A unified "describe-X" hook would over-generalize.
+Each surface gets the contract that fits it locally.
+
+**Companion cleanup.** The Monopoly-only sidebar 2d6 pip display
+(`#dice-display` with pip-slot children) also moved into the Monopoly
+renderer in the same session. ui-manager.updateTurnIndicator no longer
+gates on `gameType === 'monopoly'`; the dice element stays hidden by
+default and Monopoly's `update()` toggles its visibility.
+
+**Out of scope:** the Monopoly trade/property/auction modals still live
+in ui-manager.js (they're complete Monopoly UIs, not framework chrome —
+moving them is a larger surgery). The remaining `isMonopoly` gates in
+ui-manager.js cluster around `updateActionPanel`, `showPropertyModal`,
+`showMyPropertiesModal`, and `showTradeModal` — all functions that are
+either entirely Monopoly-specific or operate on Monopoly's auction
+panel. Acceptable for now; document if a non-Monopoly game ever wants
+to repaint any of those surfaces.
+
 ## Resolved: derived view fields stay client-side
 
 Came up in session 1 while building Yahtzee: the temptation to push
@@ -232,47 +291,46 @@ Don't pick yet. See the cohering-pattern note below.
 ## Cohering pattern: framework chrome with renderer-supplied display content
 
 The "action label contract" and "game-over modal richness" notes above
-are instances of the same shape:
+were instances of the same shape:
 
 |                          | Framework offers                          | Renderer wants                                         |
 |--------------------------|-------------------------------------------|--------------------------------------------------------|
 | **Action buttons**       | `getValidActions(state, userId) → string[]` | `{ action, label, enabled }[]` with dynamic labels    |
 | **Game-over modal**      | `showGameOver(winnerName: string)`        | Rich text — tie summary, final scores, per-player breakdown |
+| **Player roster cards**  | Hard-coded `JAIL / OUT / AFK` triad + `isMonopoly` gates for money/cash | Per-game money, badges, subtext, dimmed-state |
 
-Both fit this template:
+The pattern:
 
 > The framework owns a UI surface that exposes a scalar/thin contract.
 > The renderer needs to inject game-specific structured display content
 > through that surface. The renderer works around the gap by maintaining
 > a parallel channel — its own label map for action buttons; a log entry
-> instead of (or alongside) the modal.
+> instead of (or alongside) the modal; an `isMonopoly` gate inside the
+> framework for the player card.
 
-If extracted, the obvious shape is an optional hook that returns display
-text given context — `describeAction(state, action, userId) → string`
-for the action side, `describeGameOver(state) → string | object` for the
-modal side. Same pattern, two sites.
+The third instance arrived from the player-card direction predicted in
+the bullet list below. With three sightings the shape is settled and the
+extraction has happened — see "Resolved: getPlayerCardData hook" below.
 
-**Hold off until a third instance.** Two is enough to notice; three is
-enough to know the shape. The natural candidates for a third sighting:
+**Action-label and game-over-modal extractions still wait.** Two of the
+three instances were resolved differently:
 
-- **Liar's Dice** will exercise the action-label side hard — bids are
-  numeric, stateful, and contested ("raise to 4×5s"). If the same
-  hook-returning-a-string shape works for bids, that's three.
-- **Some future card game** (Coup, Love Letter) may exercise the modal
-  side with a "knocked out" or "reveal" moment that the current
-  one-string modal can't carry.
-- **Or a different framework surface entirely loses richness** — the
-  turn indicator (currently "{name}'s turn"), player-panel badges
-  (currently a static `JAIL` / `OUT` / `AFK` triad), the game log entry
-  formatter. Any of those could become the third instance and shift the
-  shape away from "describe-X-returns-string" toward something else.
+- The **action-label** instance got its own dedicated contract —
+  [docs/action-descriptors.md](action-descriptors.md). Implemented across
+  four of seven games. Same pattern as `getPlayerCardData` (optional
+  renderer hook returning structured display data), but each contract
+  carries game-specific fields rather than being unified into a single
+  abstract "describe-X" hook.
+- The **game-over modal** instance hasn't been extracted yet. The
+  pressure isn't strong enough — current renderers append rich game-over
+  text to the log and let the modal stay a one-string element. Revisit
+  if a future game needs richer modal content.
 
-Wait for the third sighting; don't extract from two. The action-label
-note above already says this explicitly for its own case — this section
-just acknowledges that the same caution applies across multiple notes
-because they're the same underlying pattern.
-
-**Two-instance pattern, waiting for a third before extraction.**
+Each instance got the shape that fit it locally rather than a unified
+"describe-X-returns-string" generic hook. The cohering pattern was
+real (three sightings of "framework surface needs game-specific
+content"); the resolution wasn't to write one generic hook but to write
+focused hooks per surface.
 
 ## Open question: simultaneous-actors gap
 

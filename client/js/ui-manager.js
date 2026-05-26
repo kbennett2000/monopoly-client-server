@@ -11,26 +11,35 @@
  *   - Screen transitions (auth / lobby / waiting / game)
  *   - Lobby game list
  *   - Waiting room player list
+ *
+ * ─── On the game-aware surfaces ─────────────────────────────────────────────
+ *
+ * Player roster cards (updatePlayerPanels) and the sidebar 2d6 pip display
+ * USED to gate on `state.gameType === 'monopoly'` and read game-specific
+ * fields (player.money, player.isBankrupt, player.cash, player.retired,
+ * state.properties).  Both moved out behind the optional
+ * getPlayerCardData renderer hook (see docs/renderer-contract.md);
+ * Monopoly's sidebar dice moved into monopoly/renderer.js.  The framework
+ * here is now game-agnostic for both.
+ *
+ * What stays game-aware:
+ *   • updateActionPanel — Monopoly's auction / jail / bankruptcy buttons.
+ *     Other games render their own action panels via their renderers;
+ *     this function is effectively Monopoly's action panel rendered from
+ *     framework code.  Moving it would require Monopoly to own the entire
+ *     action-panel area (it already owns part of it).
+ *   • showPropertyModal / showMyPropertiesModal / showTradeModal /
+ *     showIncomingTrade / closeTrade / closeIncomingTrade —
+ *     Monopoly-only modals.  These are complete Monopoly UIs, not
+ *     framework chrome; their presence here is historical (the
+ *     framework predates the per-game renderer split).
+ *
+ * The `isMonopoly` checks that remain in those functions are defensive
+ * `isMonopoly && player.isBankrupt` reads — guarding Monopoly-only
+ * fields with a Monopoly-only gate so the same code path doesn't blow
+ * up if it's accidentally entered for another game.  If/when those
+ * modals move into monopoly/renderer.js, the gates go with them.
  */
-
-// Pip slots active for each die face value (3×3 grid: tl tm tr / ml mm mr / bl bm br)
-const DIE_PIPS = {
-  1: ['mm'],
-  2: ['tr', 'bl'],
-  3: ['tr', 'mm', 'bl'],
-  4: ['tl', 'tr', 'bl', 'br'],
-  5: ['tl', 'tr', 'mm', 'bl', 'br'],
-  6: ['tl', 'tr', 'ml', 'mr', 'bl', 'br'],
-};
-const ALL_SLOTS = ['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br'];
-
-function setDiePips(prefix, value) {
-  const active = new Set(DIE_PIPS[value] || []);
-  for (const slot of ALL_SLOTS) {
-    const el = document.getElementById(`${prefix}-${slot}`);
-    if (el) el.classList.toggle('pip', active.has(slot));
-  }
-}
 
 const UIManager = (() => {
 
@@ -197,28 +206,12 @@ const UIManager = (() => {
     el.textContent = isMyTurn ? 'Your turn!' : `${currentPlayer.username}'s turn`;
     el.classList.toggle('my-turn', isMyTurn);
 
-    // Sidebar dice display is a Monopoly-only chrome element (2d6 pip
-    // display + doubles badge).  Yahtzee's turnState.dice is a 5-element
-    // array of its own dice and would render the first two as if they were
-    // Monopoly's, both in the sidebar and duplicated from the board area.
-    // Gate on gameType per the [[isBankrupt]] pattern.
-    const diceEl    = document.getElementById('dice-display');
-    const doublesEl = document.getElementById('doubles-badge');
-    if (!diceEl) return;
-    const isMonopoly = state.gameType === 'monopoly';
-    if (!isMonopoly) {
-      diceEl.style.display = 'none';
-      return;
-    }
-    const [d1, d2] = state.turnState.dice || [0, 0];
-    if (d1 === 0 && d2 === 0) {
-      diceEl.style.display = 'none';
-    } else {
-      setDiePips('d1', d1);
-      setDiePips('d2', d2);
-      doublesEl.style.display = (d1 === d2) ? '' : 'none';
-      diceEl.style.display = 'flex';
-    }
+    // Sidebar dice display (the 2d6 pip element) used to be driven from
+    // here behind an isMonopoly gate.  It moved into monopoly/renderer.js
+    // along with the player-card refactor — the dice are Monopoly-shaped
+    // chrome and now live with the rest of the Monopoly renderer's
+    // visual state.  Non-Monopoly games leave the #dice-display element
+    // hidden (its HTML default is `display:none`).
   }
 
   // ── action buttons ─────────────────────────────────────────────────────────
