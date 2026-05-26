@@ -1227,7 +1227,7 @@ Only games created *after* the reload will use the new config. In-progress games
 ## Roadmap
 
 - **More games** — Chess, Checkers, Scrabble, Catan, Coup, …
-- **Action descriptor migration** — Yahtzee and Risk renderers migrate to consume the optional `getActionDescriptors` contract; see [`docs/action-descriptors.md`](docs/action-descriptors.md). Battleship already migrated.
+- **Action descriptor contract** — implemented across all three pressuring games (Battleship, Risk, Yahtzee); the renderer-side rule mirrors are gone. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract and the patterns the three migrations established.
 - **Turn timer UI** — server emits absolute-deadline warnings via `game:turn_warning`; client-side countdown bar still to be built.
 - **Spectator mode** — join a game room as a read-only observer
 - **AI players** — pluggable bot interface implementing the same `applyAction` contract

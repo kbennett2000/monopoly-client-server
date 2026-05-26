@@ -366,6 +366,78 @@ This shape may not generalise — Yahtzee and Risk might want richer status
 text that doesn't fit a single descriptor's hint. Each game's renderer
 makes the call locally.
 
+## Migration status (complete)
+
+All three planned migrations have shipped without contract revisions:
+
+- **Battleship** (commit `2d0c78e`) — skeleton implementation alongside
+  the initial proposal. Established the per-action-type descriptor
+  pattern with phase-state-rich `data` fields (e.g.
+  `commitPlacement.data: { shipsPlaced, shipsRequired }`).
+- **Risk** (commit `7e7745b`) — first player-visible upgrade: the
+  Trade cards button now always appears in the reinforce phase with
+  a disabled state and a rule-hint tooltip when no valid set exists.
+  Introduced the `data.validSets: [[cardId, cardId, cardId]]` shape
+  carrying multiple action *instances* inside a single descriptor.
+  Also removed the drift-prone client-side `hasAnyValidCardSet`
+  mirror and an older `validActions`-drift-detection helper.
+- **Yahtzee** (commit `6bd1f2e`) — largest LOC change; deleted the
+  ~58-line `scoreFor` mirror in `client/js/games/yahtzee/score-sheet.js`.
+  Established the *many descriptors per action type* pattern (13
+  `scoreCategory` descriptors at the start of a turn, discriminated
+  by `data.category`).
+
+### Patterns that emerged
+
+A few patterns the three migrations established. Future descriptor
+implementations should follow them:
+
+- **Lookup helpers.** When a game emits multiple descriptors of the
+  same action type, the renderer uses
+  `state.actionDescriptors.find(d => d.action === X && d.data.Y === Z)`
+  rather than `.find(d => d.action === X)`. A small
+  `findFooDescriptor` helper at the top of the renderer module is
+  the conventional shape — see `findScoreDescriptor` in
+  `client/js/games/yahtzee/score-sheet.js` for an example.
+
+- **Renderer-side label augmentation is fine.** Yahtzee's `rollDice`
+  descriptor returns `"Roll 2 of 3"` but the renderer appends
+  `" — N held"` from local DOM state. The boundary: rule logic
+  lives in descriptors; pre-commit user-intent state stays in the
+  renderer. The contract doesn't try to push pre-commit state into
+  the descriptor — there's no way for the server to know it.
+
+- **Descriptor absence is meaningful.** Descriptors are emitted for
+  actions that are currently relevant. Game-over states emit zero
+  descriptors; opponent's-turn states emit zero descriptors;
+  Yahtzee's pre-roll state emits only `rollDice` and zero
+  `scoreCategory`. The renderer's "no descriptor" rendering path
+  (showing static status text like "Waiting for X…", or rendering
+  unscored cells as `'—'`) is normal, not a fallback.
+
+- **No defensive fallback to local rule computation.** If the server
+  doesn't emit a descriptor — or descriptors are absent for any
+  reason — the renderer renders without that affordance, full stop.
+  The renderer does NOT reimplement the server's logic as backup.
+  Two copies of authoritative logic was the bug we set out to fix;
+  "two copies but one is a fallback" is the same bug with a slower
+  drift cycle.
+
+### Things this did not become
+
+The proposal listed several open questions (whether
+`validateImplementation` should eventually require descriptors,
+whether the framework should provide a default implementation that
+wraps `getValidActions`, whether `data` should be schema-validated
+per game). After three migrations, the answer to all of them remains
+"no, and the lack hasn't bitten us."
+
+Connect Four and Tic-Tac-Toe deliberately don't implement
+`getActionDescriptors`; their action set is small enough that
+`getValidActions` covers it cleanly. This is the contract working —
+games that benefit adopt it, games that don't, don't, and there is
+no central registry forcing the choice either way.
+
 ## Do not refactor based on this note
 
 This is a proposal + skeleton. The full migration happens in the

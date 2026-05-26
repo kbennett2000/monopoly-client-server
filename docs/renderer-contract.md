@@ -122,14 +122,16 @@ Don't bundle that with the layout question.
 
 ## Open question: action label contract
 
-> **Status (resolved by proposal — migration in progress):** This question
-> is now being answered by the optional `getActionDescriptors` contract
-> proposed in [docs/action-descriptors.md](action-descriptors.md). The
-> framework wiring and Battleship implementation landed in the skeleton
-> commit; Yahtzee and Risk migrations land in separate sessions. The
-> original framing below is preserved as historical context — it documents
-> how the problem looked before the proposal, which is useful for
-> understanding why the proposal took the shape it did.
+> **Status (resolved — implementation complete):** This question is
+> answered by the optional `getActionDescriptors` contract in
+> [docs/action-descriptors.md](action-descriptors.md). All three
+> pressuring games (Battleship, Risk, Yahtzee) have migrated to consume
+> descriptors; the action-label arithmetic mirrors in their renderers
+> are gone. See the design doc's "Migration status" section for the
+> commit history and the patterns that emerged. The original framing
+> below is preserved as historical context — it documents how the
+> problem looked before the proposal, which is useful for understanding
+> why the proposal took the shape it did.
 
 Yahtzee surfaced the first real instance of a renderer needing
 human-readable labels for actions returned by `getValidActions`.
