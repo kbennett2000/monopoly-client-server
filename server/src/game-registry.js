@@ -15,6 +15,7 @@ const registry = {
   'connect-four': require('../games/connect-four/game-logic'),
   risk: require('../games/risk/game-logic'),
   'tic-tac-toe': require('../games/tic-tac-toe/game-logic'),
+  yahtzee: require('../games/yahtzee/game-logic'),
 };
 
 /**

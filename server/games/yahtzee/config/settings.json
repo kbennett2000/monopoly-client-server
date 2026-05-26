@@ -1,0 +1,24 @@
+{
+  "diceCount": 5,
+  "diceFaces": 6,
+  "rollsPerTurn": 3,
+  "upperBonusThreshold": 63,
+  "upperBonus": 35,
+  "fullHouseScore": 25,
+  "smallStraightScore": 30,
+  "largeStraightScore": 40,
+  "yahtzeeScore": 50,
+  "minPlayers": 1,
+  "maxPlayers": 8,
+  "playerColors": [
+    { "id": "red",    "hex": "#e63946" },
+    { "id": "blue",   "hex": "#3a86ff" },
+    { "id": "green",  "hex": "#2a9d8f" },
+    { "id": "yellow", "hex": "#e8c428" },
+    { "id": "purple", "hex": "#9d4edd" },
+    { "id": "orange", "hex": "#f4845f" },
+    { "id": "teal",   "hex": "#43aa8b" },
+    { "id": "pink",   "hex": "#ef476f" }
+  ],
+  "playerTokens": ["🎲", "🎯", "🎪", "🎨", "🎭", "🎰", "🎳", "🎱"]
+}
