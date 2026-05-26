@@ -608,9 +608,21 @@ function fireShot(state, userId, payload) {
   // Game over?
   const totalShips = state.config.settings.ships.length;
   if (updatedSunk.length === totalShips) {
+    // Reveal both fleets at game over. The state filter still hides opp
+    // ships at all times (status-independent for security clarity); the
+    // reveal travels through the event channel, which is broadcast
+    // identically to every player. Once the game is finished, the hidden
+    // information no longer matters by rule.
     events.push({
       type: 'GAME_OVER',
-      data: { winner: me.userId, winnerUsername: me.username },
+      data: {
+        winner: me.userId,
+        winnerUsername: me.username,
+        finalFleets: {
+          [newMe.userId]: newMe.ships,
+          [newOpp.userId]: newOpp.ships,
+        },
+      },
       timestamp: now,
     });
     logs.push({

@@ -153,11 +153,25 @@ const BattleshipFiring = (() => {
       }
       case 'GAME_OVER': {
         SoundManager.playGameOver();
+        // Reveal the opponent's full fleet from the GAME_OVER payload.
+        // For the winner this is mostly redundant with cells already in
+        // _sunkOppCells (they sank all 5), but it fills any gaps caused
+        // by mid-game rejoin (SHIP_SUNK events don't replay). For the
+        // loser this is the only source — they never received SHIP_SUNK
+        // events for the winner's still-floating ships. Static reveal,
+        // no flash class — the game's over.
+        const opp = oppPlayer();
+        const finalFleets = event.data.finalFleets;
+        if (opp && finalFleets && Array.isArray(finalFleets[opp.userId])) {
+          for (const ship of finalFleets[opp.userId]) {
+            _sunkOppCells.set(ship.id, ship.cells);
+          }
+        }
         const winnerUsername = event.data.winnerUsername;
         const iWon = event.data.winner === _myUserId;
         UIManager.appendLog(
           iWon
-            ? `🏆 You win! All of ${oppPlayer()?.username}'s ships are sunk.`
+            ? `🏆 You win! All of ${opp?.username}'s ships are sunk.`
             : `🏳 ${winnerUsername} wins.`,
           'game',
         );

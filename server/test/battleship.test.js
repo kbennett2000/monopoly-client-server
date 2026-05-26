@@ -730,6 +730,28 @@ describe('Battleship — game over', () => {
     expect(go.data.winnerUsername).toBe('Alice');
   });
 
+  test('GAME_OVER includes finalFleets with full ship arrays for both players', () => {
+    const s = nearWinState();
+    const r = gl.applyAction(s, 'p1', 'fireShot', { cell: { x: 7, y: 6 } });
+    const go = r.events.find((e) => e.type === 'GAME_OVER');
+    expect(go.data.finalFleets).toBeDefined();
+    // Both players' full fleets present, keyed by userId.
+    expect(go.data.finalFleets.p1).toBeDefined();
+    expect(go.data.finalFleets.p2).toBeDefined();
+    expect(go.data.finalFleets.p1).toHaveLength(5);
+    expect(go.data.finalFleets.p2).toHaveLength(5);
+    // Each ship has its cells populated — that's the whole reason this
+    // payload exists (loser sees winner's layout via event, not state).
+    for (const ship of go.data.finalFleets.p1) {
+      expect(Array.isArray(ship.cells)).toBe(true);
+      expect(ship.cells.length).toBe(ship.length);
+    }
+    for (const ship of go.data.finalFleets.p2) {
+      expect(Array.isArray(ship.cells)).toBe(true);
+      expect(ship.cells.length).toBe(ship.length);
+    }
+  });
+
   test('after game over, fireShot is rejected', () => {
     const s = nearWinState();
     const r1 = gl.applyAction(s, 'p1', 'fireShot', { cell: { x: 7, y: 6 } });
