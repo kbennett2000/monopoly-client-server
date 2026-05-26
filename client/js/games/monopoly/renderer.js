@@ -298,9 +298,36 @@ const MonopolyRenderer = (() => {
     _onRejectTrade        = null;
   }
 
+  // ── player-card data hook ────────────────────────────────────────────────────
+  //
+  // Replaces ui-manager.updatePlayerPanels's hand-rolled Monopoly reads
+  // (isMonopoly gate + money + jail/bankrupt badges + property count
+  // subtext) per docs/renderer-contract.md.  Framework owns the visual
+  // chrome (color dot, name, AFK badge, active-turn highlight); we own
+  // the in-card game-specific content.
+
+  function getPlayerCardData(player, state) {
+    const props = state.properties || {};
+    const owned = Object.values(props).filter((p) => p.ownerId === player.userId).length;
+
+    const badges = [];
+    if (player.inJail) badges.push({ label: 'JAIL' });
+    if (player.isBankrupt) badges.push({ label: 'OUT' });
+
+    const subtextParts = [`${owned} propert${owned === 1 ? 'y' : 'ies'}`];
+    if (player.jailCards > 0) subtextParts.push(`${player.jailCards} jail card(s)`);
+
+    return {
+      primaryValue: typeof player.money === 'number' ? `$${player.money.toLocaleString()}` : '',
+      badges,
+      subtext: subtextParts.join(' · '),
+      dimmed: !!player.isBankrupt,
+    };
+  }
+
   // ── public API ───────────────────────────────────────────────────────────────
 
-  return { init, update, onEvent, destroy };
+  return { init, update, onEvent, destroy, getPlayerCardData };
 
 })();
 

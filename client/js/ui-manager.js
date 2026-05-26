@@ -103,55 +103,82 @@ const UIManager = (() => {
 
   // ── player panels ──────────────────────────────────────────────────────────
 
+  // Default shape returned when the active renderer doesn't implement
+  // getPlayerCardData.  Yields just the framework-owned chrome (color dot,
+  // username, AFK badge, active-turn highlight) — the right shape for
+  // Tic-Tac-Toe and Connect Four, whose roster cards have no game-specific
+  // content beyond what the framework already shows.
+  const DEFAULT_PLAYER_CARD_DATA = Object.freeze({
+    primaryValue: '',
+    badges: [],
+    subtext: '',
+    dimmed: false,
+  });
+
+  function getPlayerCardData(player, state) {
+    // GameRendererRegistry is a script-loaded global; defensive check in
+    // case updatePlayerPanels is ever called outside the in-game context.
+    const renderer =
+      typeof GameRendererRegistry !== 'undefined' ? GameRendererRegistry.getActive() : null;
+    if (!renderer || typeof renderer.getPlayerCardData !== 'function') {
+      return DEFAULT_PLAYER_CARD_DATA;
+    }
+    try {
+      const data = renderer.getPlayerCardData(player, state);
+      // Merge against defaults so an under-populated return doesn't trip
+      // the renderer below — every field always has a safe value.
+      return { ...DEFAULT_PLAYER_CARD_DATA, ...(data || {}) };
+    } catch (err) {
+      console.error('[ui-manager] getPlayerCardData threw:', err);
+      return DEFAULT_PLAYER_CARD_DATA;
+    }
+  }
+
+  function renderBadge({ label, color }) {
+    const style = color ? ` style="background:${color}"` : '';
+    return `<span class="player-jail-badge"${style}>${escHtml(label)}</span>`;
+  }
+
   function updatePlayerPanels(state) {
     const panel = document.getElementById('players-panel');
     if (!panel || !state) return;
 
-    // Build a card per player
     const currentPlayerIdx = state.turnState?.currentPlayerIndex ?? -1;
-    // isBankrupt is a Monopoly-only concept; gate reads on gameType so other
-    // games' player records don't need to set the field at all.
-    const isMonopoly = state.gameType === 'monopoly';
 
     panel.innerHTML = '';
     state.players.forEach((player, idx) => {
       const card = document.createElement('div');
       card.className = 'player-card';
-      if (idx === currentPlayerIdx)            card.classList.add('active-turn');
-      if (isMonopoly && player.isBankrupt)     card.classList.add('bankrupt');
+      if (idx === currentPlayerIdx) card.classList.add('active-turn');
 
-      const colorHex   = getPlayerColorHex(state, player);
-      const props       = state.properties || {};
-      const ownedCount  = Object.values(props).filter(ps => ps.ownerId === player.userId).length;
+      const data = getPlayerCardData(player, state);
+      if (data.dimmed) card.classList.add('bankrupt');
 
-      let badges = '';
-      if (player.inJail)                       badges += `<span class="player-jail-badge">JAIL</span>`;
-      if (isMonopoly && player.isBankrupt)     badges += `<span class="player-jail-badge">OUT</span>`;
-      // Life: retired players stay in the panel but visually mark them as done.
-      if (player.retired)                      badges += `<span class="player-jail-badge" style="background:#48bb78">RETIRED</span>`;
-      if (!player.connected)                   badges += `<span class="player-jail-badge" style="background:#666">AFK</span>`;
+      const colorHex = getPlayerColorHex(state, player);
 
-      // Money field falls back to Life's `cash` field — same purpose,
-      // different name.  No gameType gate needed: the !== undefined check
-      // ensures games without either field render no money chip.
-      const moneyValue = player.money !== undefined ? player.money
-                       : player.cash  !== undefined ? player.cash
-                       : null;
-      const moneyHtml = moneyValue !== null
-        ? `<span class="player-card-money">$${moneyValue.toLocaleString()}</span>`
+      // Framework-owned badges (currently just AFK) plus game-specific
+      // badges from the renderer.  Game badges render first, AFK last —
+      // matches the previous visual order.
+      const gameBadges = (data.badges || []).map(renderBadge).join('');
+      const afkBadge = player.connected
+        ? ''
+        : `<span class="player-jail-badge" style="background:#666">AFK</span>`;
+
+      const primaryHtml = data.primaryValue
+        ? `<span class="player-card-money">${escHtml(data.primaryValue)}</span>`
         : '';
-      const propsHtml = state.properties
-        ? `<div class="player-card-props">${ownedCount} propert${ownedCount === 1 ? 'y' : 'ies'}${player.jailCards > 0 ? ` · ${player.jailCards} jail card(s)` : ''}</div>`
+      const subtextHtml = data.subtext
+        ? `<div class="player-card-props">${escHtml(data.subtext)}</div>`
         : '';
 
       card.innerHTML = `
         <div class="player-card-header">
           <div class="player-color-dot" style="background:${colorHex}"></div>
           <span class="player-card-name">${escHtml(player.username)} ${player.token || ''}</span>
-          ${badges}
-          ${moneyHtml}
+          ${gameBadges}${afkBadge}
+          ${primaryHtml}
         </div>
-        ${propsHtml}
+        ${subtextHtml}
       `;
       panel.appendChild(card);
     });

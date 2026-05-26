@@ -167,7 +167,21 @@ const LifeRenderer = (() => {
     if (auctionEl) auctionEl.style.display = 'none';
   }
 
-  return { init, update, onEvent, destroy };
+  // Player-card data hook.  Replaces ui-manager's hand-rolled `player.cash`
+  // fallback and `player.retired` badge with a Life-owned implementation.
+  // See docs/renderer-contract.md.
+  function getPlayerCardData(player, _state) {
+    const badges = [];
+    if (player.retired) badges.push({ label: 'RETIRED', color: '#48bb78' });
+    return {
+      primaryValue: typeof player.cash === 'number' ? `$${player.cash.toLocaleString()}` : '',
+      badges,
+      subtext: '',
+      dimmed: false,
+    };
+  }
+
+  return { init, update, onEvent, destroy, getPlayerCardData };
 })();
 
 GameRendererRegistry.register('life', LifeRenderer);
