@@ -1,0 +1,19 @@
+{
+  "gridWidth": 10,
+  "gridHeight": 10,
+  "ships": [
+    { "id": "carrier",    "name": "Carrier",    "length": 5 },
+    { "id": "battleship", "name": "Battleship", "length": 4 },
+    { "id": "cruiser",    "name": "Cruiser",    "length": 3 },
+    { "id": "submarine",  "name": "Submarine",  "length": 3 },
+    { "id": "destroyer",  "name": "Destroyer",  "length": 2 }
+  ],
+  "firstPlayerSelection": "random",
+  "minPlayers": 2,
+  "maxPlayers": 2,
+  "playerColors": [
+    { "id": "blue", "hex": "#3b82f6" },
+    { "id": "red",  "hex": "#ef4444" }
+  ],
+  "playerTokens": ["⚓", "🚢"]
+}
