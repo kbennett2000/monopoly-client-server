@@ -1,0 +1,12 @@
+{
+  "_comment": "Salary cards. amount is the base salary paid on PAY DAY squares (career.paydayBonus is added on top). taxDue is debited on pay-tax squares — varies by salary tier so higher earners owe more.",
+
+  "cards": [
+    { "id": "salary-30", "amount": 30000, "taxDue": 3000 },
+    { "id": "salary-40", "amount": 40000, "taxDue": 4000 },
+    { "id": "salary-50", "amount": 50000, "taxDue": 5000 },
+    { "id": "salary-60", "amount": 60000, "taxDue": 6000 },
+    { "id": "salary-70", "amount": 70000, "taxDue": 7000 },
+    { "id": "salary-80", "amount": 80000, "taxDue": 8000 }
+  ]
+}

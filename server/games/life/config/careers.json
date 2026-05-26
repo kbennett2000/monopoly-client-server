@@ -1,0 +1,78 @@
+{
+  "_comment": "Career cards. degreeRequired=true cards are only drawn for players who took the college path; degreeRequired=false cards are only drawn for players who took the career path. paydayBonus is added on top of the salary on PAY DAY squares. 6 of each kind covers the 6-player maximum even when every player takes the same path.",
+
+  "cards": [
+    {
+      "id": "career-doctor",
+      "name": "Doctor",
+      "degreeRequired": true,
+      "paydayBonus": 10000
+    },
+    {
+      "id": "career-lawyer",
+      "name": "Lawyer",
+      "degreeRequired": true,
+      "paydayBonus": 8000
+    },
+    {
+      "id": "career-accountant",
+      "name": "Accountant",
+      "degreeRequired": true,
+      "paydayBonus": 6000
+    },
+    {
+      "id": "career-computer-consultant",
+      "name": "Computer Consultant",
+      "degreeRequired": true,
+      "paydayBonus": 7000
+    },
+    {
+      "id": "career-engineer",
+      "name": "Engineer",
+      "degreeRequired": true,
+      "paydayBonus": 6000
+    },
+    {
+      "id": "career-teacher",
+      "name": "Teacher",
+      "degreeRequired": true,
+      "paydayBonus": 4000
+    },
+    {
+      "id": "career-salesperson",
+      "name": "Salesperson",
+      "degreeRequired": false,
+      "paydayBonus": 4000
+    },
+    {
+      "id": "career-police-officer",
+      "name": "Police Officer",
+      "degreeRequired": false,
+      "paydayBonus": 3000
+    },
+    {
+      "id": "career-mechanic",
+      "name": "Mechanic",
+      "degreeRequired": false,
+      "paydayBonus": 3000
+    },
+    {
+      "id": "career-athlete",
+      "name": "Athlete",
+      "degreeRequired": false,
+      "paydayBonus": 5000
+    },
+    {
+      "id": "career-artist",
+      "name": "Artist",
+      "degreeRequired": false,
+      "paydayBonus": 3000
+    },
+    {
+      "id": "career-chef",
+      "name": "Chef",
+      "degreeRequired": false,
+      "paydayBonus": 4000
+    }
+  ]
+}

@@ -17,6 +17,7 @@ const registry = {
   'tic-tac-toe': require('../games/tic-tac-toe/game-logic'),
   yahtzee: require('../games/yahtzee/game-logic'),
   battleship: require('../games/battleship/game-logic'),
+  life: require('../games/life/game-logic'),
 };
 
 /**

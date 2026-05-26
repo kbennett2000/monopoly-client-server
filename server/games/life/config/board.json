@@ -1,0 +1,440 @@
+[
+  {
+    "id": "sq-000-start",
+    "type": "career-fork",
+    "label": "Start: Career or College?",
+    "next": ["sq-c01-career-pick", "sq-u01-college-loan"],
+    "data": {
+      "branches": [
+        { "id": "sq-c01-career-pick", "label": "Career Path", "path": "career" },
+        { "id": "sq-u01-college-loan", "label": "College Path", "path": "college" }
+      ]
+    }
+  },
+
+  {
+    "id": "sq-c01-career-pick",
+    "type": "draw-career-no-degree",
+    "label": "Pick a career (no degree)",
+    "next": ["sq-c02-pay-furniture"]
+  },
+  {
+    "id": "sq-c02-pay-furniture",
+    "type": "pay-bank",
+    "label": "Buy furniture",
+    "next": ["sq-c03-first-paycheck"],
+    "data": { "amount": 2000 }
+  },
+  {
+    "id": "sq-c03-first-paycheck",
+    "type": "collect-bank",
+    "label": "First paycheck!",
+    "next": ["sq-c04-buy-car"],
+    "data": { "amount": 1000 }
+  },
+  {
+    "id": "sq-c04-buy-car",
+    "type": "pay-bank",
+    "label": "Buy a car",
+    "next": ["sq-c05-payday"],
+    "data": { "amount": 5000 }
+  },
+  {
+    "id": "sq-c05-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-c06-win-contest"]
+  },
+  {
+    "id": "sq-c06-win-contest",
+    "type": "collect-bank",
+    "label": "Win a contest",
+    "next": ["sq-c07-traffic-ticket"],
+    "data": { "amount": 3000 }
+  },
+  {
+    "id": "sq-c07-traffic-ticket",
+    "type": "pay-bank",
+    "label": "Traffic ticket",
+    "next": ["sq-c08-spin-again"],
+    "data": { "amount": 500 }
+  },
+  {
+    "id": "sq-c08-spin-again",
+    "type": "spin-again",
+    "label": "Lucky day — spin again",
+    "next": ["sq-c09-payday"]
+  },
+  {
+    "id": "sq-c09-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-c10-junction"]
+  },
+  {
+    "id": "sq-c10-junction",
+    "type": "collect-bank",
+    "label": "Settle in",
+    "next": ["sq-m01-marry"],
+    "data": { "amount": 500 }
+  },
+
+  {
+    "id": "sq-u01-college-loan",
+    "type": "pay-loans",
+    "label": "Pay $40,000 in college loans",
+    "next": ["sq-u02-study-hard"]
+  },
+  {
+    "id": "sq-u02-study-hard",
+    "type": "pay-bank",
+    "label": "Buy textbooks",
+    "next": ["sq-u03-spring-break"],
+    "data": { "amount": 1000 }
+  },
+  {
+    "id": "sq-u03-spring-break",
+    "type": "pay-bank",
+    "label": "Spring break trip",
+    "next": ["sq-u04-cram"],
+    "data": { "amount": 2000 }
+  },
+  {
+    "id": "sq-u04-cram",
+    "type": "pay-bank",
+    "label": "All-night cramming (energy drinks)",
+    "next": ["sq-u05-tutor-job"],
+    "data": { "amount": 500 }
+  },
+  {
+    "id": "sq-u05-tutor-job",
+    "type": "collect-bank",
+    "label": "Tutor job",
+    "next": ["sq-u06-grad-school"],
+    "data": { "amount": 1000 }
+  },
+  {
+    "id": "sq-u06-grad-school",
+    "type": "pay-bank",
+    "label": "Grad school application fees",
+    "next": ["sq-u07-internship"],
+    "data": { "amount": 2000 }
+  },
+  {
+    "id": "sq-u07-internship",
+    "type": "collect-bank",
+    "label": "Summer internship",
+    "next": ["sq-u08-graduate"],
+    "data": { "amount": 2000 }
+  },
+  {
+    "id": "sq-u08-graduate",
+    "type": "collect-bank",
+    "label": "Graduation gift",
+    "next": ["sq-u09-career-pick"],
+    "data": { "amount": 5000 }
+  },
+  {
+    "id": "sq-u09-career-pick",
+    "type": "draw-career-degree",
+    "label": "Pick a career (degree required)",
+    "next": ["sq-u10-payday"]
+  },
+  {
+    "id": "sq-u10-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-u11-honeymoon-fund"]
+  },
+  {
+    "id": "sq-u11-honeymoon-fund",
+    "type": "collect-bank",
+    "label": "Honeymoon fund kickoff",
+    "next": ["sq-u12-junction"],
+    "data": { "amount": 2000 }
+  },
+  {
+    "id": "sq-u12-junction",
+    "type": "collect-bank",
+    "label": "Move into apartment",
+    "next": ["sq-m01-marry"],
+    "data": { "amount": 500 }
+  },
+
+  {
+    "id": "sq-m01-marry",
+    "type": "marry",
+    "label": "Get Married",
+    "next": ["sq-m02-wedding-gifts"]
+  },
+  {
+    "id": "sq-m02-wedding-gifts",
+    "type": "collect-bank",
+    "label": "Wedding gifts",
+    "next": ["sq-m03-buy-home"],
+    "data": { "amount": 5000 }
+  },
+  {
+    "id": "sq-m03-buy-home",
+    "type": "pay-bank",
+    "label": "Buy starter home",
+    "next": ["sq-m04-payday"],
+    "data": { "amount": 20000 }
+  },
+  {
+    "id": "sq-m04-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m05-vacation"]
+  },
+  {
+    "id": "sq-m05-vacation",
+    "type": "pay-bank",
+    "label": "Family vacation",
+    "next": ["sq-m06-night-class"],
+    "data": { "amount": 3000 }
+  },
+  {
+    "id": "sq-m06-night-class",
+    "type": "pay-bank",
+    "label": "Night classes",
+    "next": ["sq-m07-promotion"],
+    "data": { "amount": 1000 }
+  },
+  {
+    "id": "sq-m07-promotion",
+    "type": "collect-bank",
+    "label": "Promotion!",
+    "next": ["sq-m08-have-baby"],
+    "data": { "amount": 5000 }
+  },
+  {
+    "id": "sq-m08-have-baby",
+    "type": "have-baby",
+    "label": "Have a Baby",
+    "next": ["sq-m09-baby-gifts"]
+  },
+  {
+    "id": "sq-m09-baby-gifts",
+    "type": "collect-bank",
+    "label": "Baby shower gifts",
+    "next": ["sq-m10-pay-tax"],
+    "data": { "amount": 2000 }
+  },
+  {
+    "id": "sq-m10-pay-tax",
+    "type": "pay-bank",
+    "label": "Pay income tax",
+    "next": ["sq-m11-payday"],
+    "data": { "amount": 5000 }
+  },
+  {
+    "id": "sq-m11-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m12-spin-again"]
+  },
+  {
+    "id": "sq-m12-spin-again",
+    "type": "spin-again",
+    "label": "Found loose change — spin again",
+    "next": ["sq-m13-have-twins"]
+  },
+  {
+    "id": "sq-m13-have-twins",
+    "type": "have-twins",
+    "label": "Have Twins!",
+    "next": ["sq-m14-twin-daycare"]
+  },
+  {
+    "id": "sq-m14-twin-daycare",
+    "type": "pay-bank",
+    "label": "Twin daycare",
+    "next": ["sq-m15-stock-bonus"],
+    "data": { "amount": 4000 }
+  },
+  {
+    "id": "sq-m15-stock-bonus",
+    "type": "collect-bank",
+    "label": "Stock dividend",
+    "next": ["sq-m16-payday"],
+    "data": { "amount": 4000 }
+  },
+  {
+    "id": "sq-m16-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m17-auto-accident"]
+  },
+  {
+    "id": "sq-m17-auto-accident",
+    "type": "auto-accident",
+    "label": "Auto accident — auto insurance covers it",
+    "next": ["sq-m18-collect-each"]
+  },
+  {
+    "id": "sq-m18-collect-each",
+    "type": "collect-each-player",
+    "label": "Block party — collect $1,000 from each player",
+    "next": ["sq-m19-payday"],
+    "data": { "amount": 1000 }
+  },
+  {
+    "id": "sq-m19-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m20-pay-each"]
+  },
+  {
+    "id": "sq-m20-pay-each",
+    "type": "pay-each-player",
+    "label": "Garage sale loss — pay $1,000 to each player",
+    "next": ["sq-m21-illness"],
+    "data": { "amount": 1000 }
+  },
+  {
+    "id": "sq-m21-illness",
+    "type": "life-accident",
+    "label": "Hospitalized — life insurance covers it",
+    "next": ["sq-m22-home-improvement"]
+  },
+  {
+    "id": "sq-m22-home-improvement",
+    "type": "pay-bank",
+    "label": "Home renovation",
+    "next": ["sq-m23-payday"],
+    "data": { "amount": 8000 }
+  },
+  {
+    "id": "sq-m23-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m24-have-baby"]
+  },
+  {
+    "id": "sq-m24-have-baby",
+    "type": "have-baby",
+    "label": "Have a Baby",
+    "next": ["sq-m25-baby-gifts"]
+  },
+  {
+    "id": "sq-m25-baby-gifts",
+    "type": "collect-bank",
+    "label": "Baby gifts",
+    "next": ["sq-m26-win-lottery"],
+    "data": { "amount": 1500 }
+  },
+  {
+    "id": "sq-m26-win-lottery",
+    "type": "collect-bank",
+    "label": "Win the lottery!",
+    "next": ["sq-m27-payday"],
+    "data": { "amount": 25000 }
+  },
+  {
+    "id": "sq-m27-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m28-car-trouble"]
+  },
+  {
+    "id": "sq-m28-car-trouble",
+    "type": "pay-bank",
+    "label": "Car trouble",
+    "next": ["sq-m29-spin-again"],
+    "data": { "amount": 1500 }
+  },
+  {
+    "id": "sq-m29-spin-again",
+    "type": "spin-again",
+    "label": "Caught a break — spin again",
+    "next": ["sq-m30-business-trip"]
+  },
+  {
+    "id": "sq-m30-business-trip",
+    "type": "collect-bank",
+    "label": "Business-trip reimbursement",
+    "next": ["sq-m31-payday"],
+    "data": { "amount": 3000 }
+  },
+  {
+    "id": "sq-m31-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m32-jury-duty"]
+  },
+  {
+    "id": "sq-m32-jury-duty",
+    "type": "collect-bank",
+    "label": "Jury duty stipend",
+    "next": ["sq-m33-vacation"],
+    "data": { "amount": 1000 }
+  },
+  {
+    "id": "sq-m33-vacation",
+    "type": "pay-bank",
+    "label": "Second honeymoon",
+    "next": ["sq-m34-payday"],
+    "data": { "amount": 4000 }
+  },
+  {
+    "id": "sq-m34-payday",
+    "type": "payday",
+    "label": "PAY DAY",
+    "next": ["sq-m35-retirement-fork"]
+  },
+  {
+    "id": "sq-m35-retirement-fork",
+    "type": "retirement-fork",
+    "label": "Choose your retirement",
+    "next": ["sq-r-countryside-01", "sq-r-millionaire-01"],
+    "data": {
+      "branches": [
+        { "id": "sq-r-countryside-01", "label": "Countryside Acres" },
+        { "id": "sq-r-millionaire-01", "label": "Millionaire Estates" }
+      ]
+    }
+  },
+
+  {
+    "id": "sq-r-countryside-01",
+    "type": "collect-bank",
+    "label": "Countryside Acres — peaceful days",
+    "next": ["sq-r-countryside-02"],
+    "data": { "amount": 5000 }
+  },
+  {
+    "id": "sq-r-countryside-02",
+    "type": "collect-bank",
+    "label": "Countryside Acres — settled in",
+    "next": ["sq-r-countryside-end"],
+    "data": { "amount": 5000 }
+  },
+  {
+    "id": "sq-r-countryside-end",
+    "type": "terminal",
+    "label": "Countryside Acres",
+    "next": []
+  },
+
+  {
+    "id": "sq-r-millionaire-01",
+    "type": "collect-bank",
+    "label": "Millionaire Estates — high life",
+    "next": ["sq-r-millionaire-02"],
+    "data": { "amount": 10000 }
+  },
+  {
+    "id": "sq-r-millionaire-02",
+    "type": "collect-bank",
+    "label": "Millionaire Estates — yacht parties",
+    "next": ["sq-r-millionaire-end"],
+    "data": { "amount": 10000 }
+  },
+  {
+    "id": "sq-r-millionaire-end",
+    "type": "terminal",
+    "label": "Millionaire Estates",
+    "next": []
+  }
+]

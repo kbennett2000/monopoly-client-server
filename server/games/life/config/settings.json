@@ -1,0 +1,40 @@
+{
+  "_comment": "The Game of Life — session 2a settings. Edit these values to tune cash flow. All amounts are in Life dollars.",
+
+  "startingCash": 10000,
+  "collegeLoanAmount": 40000,
+  "spinMin": 1,
+  "spinMax": 10,
+
+  "startSquareId": "sq-000-start",
+  "mainTrackEntrySquareId": "sq-m01-marry",
+
+  "careerOptionsCount": 2,
+  "salaryOptionsCount": 2,
+
+  "weddingGiftPerPlayer": 5000,
+  "babyGiftPerPlayer": 5000,
+  "twinsGiftPerPlayer": 10000,
+
+  "autoInsuranceCost": 10000,
+  "autoAccidentCost": 10000,
+  "lifeInsuranceCost": 20000,
+  "lifeAccidentCost": 20000,
+
+  "stockCost": 50000,
+  "stockPayoutAmount": 10000,
+
+  "minPlayers": 2,
+  "maxPlayers": 6,
+
+  "playerColors": [
+    { "id": "red",    "hex": "#e63946", "label": "Red"    },
+    { "id": "blue",   "hex": "#3a86ff", "label": "Blue"   },
+    { "id": "green",  "hex": "#2a9d8f", "label": "Green"  },
+    { "id": "yellow", "hex": "#e8c428", "label": "Yellow" },
+    { "id": "purple", "hex": "#9d4edd", "label": "Purple" },
+    { "id": "orange", "hex": "#f4845f", "label": "Orange" }
+  ],
+
+  "playerTokens": ["🚗", "🚙", "🏎️", "🚕", "🚐", "🛻"]
+}
