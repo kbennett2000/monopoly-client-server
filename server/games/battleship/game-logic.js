@@ -236,6 +236,97 @@ function isTurnTimerBlocked(state) {
   return state?.turnState?.phase === 'setup';
 }
 
+/**
+ * Rich-shape action descriptors for the Battleship renderer. See
+ * docs/action-descriptors.md for the contract. Safe on pre-initGame
+ * waiting-room states (returns []).
+ *
+ * Shape choices documented in the design doc:
+ *   • commitPlacement / uncommitPlacement are SEPARATE descriptors;
+ *     `enabled` flips between them so the renderer picks the active one.
+ *   • placeShip / fireShot are single descriptors (no per-cell / per-ship
+ *     enumeration) — the renderer drives the payload via drag / click.
+ *   • The `hint` field doubles as button tooltip and status-line text;
+ *     the renderer surfaces it in both places.
+ */
+function getActionDescriptors(state, userId) {
+  if (!state || state.status !== 'playing') return [];
+  const idx = indexOfPlayer(state, userId);
+  if (idx < 0) return [];
+  const me = state.players[idx];
+  const phase = state.turnState?.phase;
+  const total = state.config.settings.ships.length;
+
+  if (phase === 'setup') {
+    const placed = me.ships.length;
+    const remaining = total - placed;
+    const allPlaced = placed === total;
+    const editing = !me.ready;
+    const placeHint = me.ready
+      ? "You've committed — un-ready to rearrange."
+      : allPlaced
+        ? `All ${total} placed — click Ready when you're set.`
+        : `Place your ships — ${placed} of ${total} placed.`;
+    return [
+      {
+        action: 'placeShip',
+        label: 'Drag a ship onto your grid',
+        enabled: editing,
+        hint: placeHint,
+        data: { shipsPlaced: placed, shipsRequired: total },
+      },
+      {
+        action: 'removeShip',
+        label: 'Pick up a placed ship',
+        enabled: editing && placed > 0,
+        hint: editing
+          ? placed > 0
+            ? 'Drag a placed ship to reposition it.'
+            : 'No ships placed yet.'
+          : "You've committed — un-ready to rearrange.",
+      },
+      {
+        action: 'commitPlacement',
+        label: 'Ready',
+        enabled: editing && allPlaced,
+        hint: me.ready
+          ? 'Already committed.'
+          : allPlaced
+            ? 'Click to commit your placement.'
+            : remaining === total
+              ? 'Place all 5 ships first.'
+              : `Place all ${total} ships first (${remaining} remaining).`,
+        data: { shipsPlaced: placed, shipsRequired: total },
+      },
+      {
+        action: 'uncommitPlacement',
+        label: 'Unready',
+        // Per uncommitPlacement's server check: phase must still be 'setup'
+        // and player.ready must be true. Both are encoded by `me.ready`
+        // here — once both players ready, the phase transitions to firing
+        // and this descriptor is no longer returned at all.
+        enabled: me.ready,
+        hint: me.ready ? 'Take back your commitment.' : "You haven't committed yet.",
+      },
+    ];
+  }
+
+  if (phase === 'firing') {
+    const isMyTurn = state.turnState.currentPlayerIndex === idx;
+    const opp = state.players[opponentIndexOf(state, userId)];
+    return [
+      {
+        action: 'fireShot',
+        label: `Fire at ${opp?.username || 'opponent'}'s waters`,
+        enabled: isMyTurn,
+        hint: isMyTurn ? 'Click an unshot cell.' : `${opp?.username || 'Opponent'}'s turn.`,
+      },
+    ];
+  }
+
+  return [];
+}
+
 function getValidActions(state, userId) {
   if (!state || state.status !== 'playing') return [];
   const idx = indexOfPlayer(state, userId);
@@ -766,6 +857,7 @@ module.exports = {
   getCurrentPlayer,
   isTurnTimerBlocked,
   getValidActions,
+  getActionDescriptors,
   getGameMetadata,
   loadConfig,
   getConfigCopy,

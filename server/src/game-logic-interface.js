@@ -268,6 +268,49 @@
  */
 
 /**
+ * getActionDescriptors(state, userId) → ActionDescriptor[]   [OPTIONAL]
+ * ─────────────────────────────────────────────────────────────────────
+ * Return enriched per-player action descriptors. The richer cousin of
+ * getValidActions — each descriptor includes a human-readable label, an
+ * enabled flag, an optional hint, and optional game-specific structured
+ * `data` (score previews, valid targets, etc.) so the renderer can drive
+ * UI without reimplementing rule logic.
+ *
+ * If a game does not implement this method, the framework falls back to
+ * getValidActions. Renderers consuming descriptors should check for the
+ * field's presence and degrade gracefully to validActions when absent.
+ *
+ * Same waiting-room-safety rule as getStateForPlayer: MUST be safe to
+ * call on pre-`initGame` states. Returning `[]` is always acceptable.
+ *
+ * See docs/action-descriptors.md for the design rationale, per-game
+ * example payloads, and the multi-instance-per-action shape rules.
+ *
+ * @param {Object} state  - Current game state (already filtered for this player).
+ * @param {string} userId - ID of the player to describe actions for.
+ * @returns {ActionDescriptor[]}
+ *
+ * @example
+ * // Battleship — setup phase, 3 ships placed, not ready:
+ * return [
+ *   { action: 'placeShip', label: 'Drag a ship onto your grid', enabled: true,
+ *     hint: 'Place your ships — 3 of 5 placed.' },
+ *   { action: 'commitPlacement', label: 'Ready', enabled: false,
+ *     hint: 'Place all 5 ships first (2 remaining).' },
+ * ];
+ */
+
+/**
+ * @typedef {Object} ActionDescriptor
+ * @property {string}  action  - Action identifier (matches applyAction dispatch).
+ * @property {string}  label   - Human-readable button label or affordance text.
+ * @property {boolean} enabled - Whether the action can currently be performed.
+ * @property {string}  [hint]  - Optional tooltip / sublabel / disabled-reason.
+ * @property {object}  [data]  - Optional structured data the renderer needs.
+ *                                Shape is game-specific (documented per-game).
+ */
+
+/**
  * getGameMetadata() → GameMetadata
  * ──────────────────────────────────
  * Return static metadata about this game type.  Called once at framework
@@ -497,6 +540,11 @@ const REQUIRED_METHODS = [
 
 const OPTIONAL_METHODS = [
   'migrate',
+  // getActionDescriptors returns an ActionDescriptor[] enriching the action
+  // surface beyond what getValidActions returns. See docs/action-descriptors.md
+  // and the JSDoc block below for the contract. Optional — games that don't
+  // implement it stay on the getValidActions string[] contract.
+  'getActionDescriptors',
   // STATE_VERSION is a plain numeric constant, not a function, so it is not
   // listed here and is not validated.  It must equal state.stateVersion for
   // any state produced by this module's initGame.

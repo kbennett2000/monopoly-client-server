@@ -240,32 +240,50 @@ const BattleshipSetup = (() => {
   }
 
   function paintStatusAndButton() {
-    const me = state_meAndOpp().me;
-    const totalShips = _state.config.settings.ships.length;
-    const placed = me.ships.length;
-
     const status = document.getElementById('bs-setup-status');
     const btn = document.getElementById('bs-ready-btn');
     if (!status || !btn) return;
 
-    if (me.ready) {
-      status.textContent = 'Waiting for opponent…';
-      btn.textContent = 'Unready';
-      btn.classList.add('btn-outline');
-      btn.classList.remove('btn-primary');
-      btn.disabled = false;
-      btn.dataset.action = 'uncommit';
-    } else {
-      status.textContent =
-        placed === totalShips
-          ? `All ${totalShips} ships placed — click Ready when you're set.`
-          : `Place your ships — ${placed} of ${totalShips} placed.`;
-      btn.textContent = 'Ready';
-      btn.classList.add('btn-primary');
-      btn.classList.remove('btn-outline');
-      btn.disabled = placed !== totalShips;
-      btn.dataset.action = 'commit';
+    // Action descriptors are the source of truth for button label, enabled
+    // state, and the status-line hint. See docs/action-descriptors.md. The
+    // hand-rolled mirror of me.ready / me.ships.length used to live here;
+    // that mirror could drift from server rules. The descriptors carry the
+    // server's view, computed server-side, attached to every emit.
+    const descriptors = _state.actionDescriptors || [];
+    const commit = descriptors.find((d) => d.action === 'commitPlacement');
+    const uncommit = descriptors.find((d) => d.action === 'uncommitPlacement');
+    const placeShip = descriptors.find((d) => d.action === 'placeShip');
+
+    // Pick whichever of commit/uncommit is currently enabled; if neither is
+    // (e.g. setup with not-all-placed), surface the disabled commit
+    // descriptor so the button still renders informatively.
+    let active;
+    if (uncommit?.enabled) {
+      active = { ...uncommit, dataAction: 'uncommit', primary: false };
+    } else if (commit) {
+      active = { ...commit, dataAction: 'commit', primary: true };
     }
+    // No descriptors yet (waiting-room race): keep the button hidden by
+    // disabling and blanking it; update() will be called again with real
+    // data shortly.
+    if (!active) {
+      btn.disabled = true;
+      btn.textContent = '';
+      status.textContent = '';
+      return;
+    }
+    btn.textContent = active.label;
+    btn.disabled = !active.enabled;
+    btn.dataset.action = active.dataAction;
+    btn.classList.toggle('btn-primary', active.primary);
+    btn.classList.toggle('btn-outline', !active.primary);
+    // The placeShip descriptor's hint is the broader setup status text
+    // ("3 of 5 placed" etc). When the player is ready, the active commit/
+    // uncommit hint is more relevant ("Waiting for opponent" via the
+    // commitPlacement hint, or "Take back your commitment" via uncommit).
+    status.textContent = active.dataAction === 'uncommit'
+      ? 'Waiting for opponent…'
+      : placeShip?.hint || active.hint || '';
   }
 
   function paintOpponentPlaceholder() {

@@ -857,3 +857,131 @@ describe('Battleship — first-player randomization (statistical)', () => {
     expect(seen.has(1)).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getActionDescriptors covers six phase × state combinations documented in
+// docs/action-descriptors.md. The shape contract (per-action descriptor with
+// label/enabled/hint/data) is exercised explicitly so a regression that
+// drops a field or returns the wrong shape fails loudly.
+
+describe('Battleship — getActionDescriptors', () => {
+  /** Look up a descriptor by action name, asserting it exists. */
+  function find(descriptors, action) {
+    const d = descriptors.find((x) => x.action === action);
+    expect(d).toBeDefined();
+    return d;
+  }
+
+  test('returns [] on pre-initGame waiting-room state (safety)', () => {
+    const wait = { status: 'waiting', players: [] };
+    expect(gl.getActionDescriptors(wait, 'p1')).toEqual([]);
+  });
+
+  test('returns [] for a non-player userId', () => {
+    expect(gl.getActionDescriptors(makeState(), 'stranger')).toEqual([]);
+  });
+
+  test('setup, no ships placed, not ready', () => {
+    const d = gl.getActionDescriptors(makeState(), 'p1');
+    expect(find(d, 'placeShip')).toMatchObject({
+      enabled: true,
+      hint: 'Place your ships — 0 of 5 placed.',
+      data: { shipsPlaced: 0, shipsRequired: 5 },
+    });
+    expect(find(d, 'removeShip')).toMatchObject({ enabled: false });
+    expect(find(d, 'commitPlacement')).toMatchObject({
+      enabled: false,
+      hint: 'Place all 5 ships first.',
+    });
+    expect(find(d, 'uncommitPlacement')).toMatchObject({ enabled: false });
+  });
+
+  test('setup, 3 ships placed, not ready', () => {
+    let s = makeState();
+    s = placeAll(s, 'p1', aliceShipsPayload().slice(0, 3));
+    const d = gl.getActionDescriptors(s, 'p1');
+    expect(find(d, 'placeShip')).toMatchObject({
+      enabled: true,
+      hint: 'Place your ships — 3 of 5 placed.',
+      data: { shipsPlaced: 3, shipsRequired: 5 },
+    });
+    expect(find(d, 'removeShip')).toMatchObject({ enabled: true });
+    expect(find(d, 'commitPlacement')).toMatchObject({
+      enabled: false,
+      hint: 'Place all 5 ships first (2 remaining).',
+    });
+    expect(find(d, 'uncommitPlacement')).toMatchObject({ enabled: false });
+  });
+
+  test('setup, all 5 placed, not ready', () => {
+    let s = makeState();
+    s = placeAll(s, 'p1', aliceShipsPayload());
+    const d = gl.getActionDescriptors(s, 'p1');
+    expect(find(d, 'commitPlacement')).toMatchObject({
+      enabled: true,
+      hint: 'Click to commit your placement.',
+    });
+    expect(find(d, 'placeShip')).toMatchObject({ enabled: true });
+    expect(find(d, 'removeShip')).toMatchObject({ enabled: true });
+    expect(find(d, 'uncommitPlacement')).toMatchObject({ enabled: false });
+  });
+
+  test('setup, ready, opponent not ready: only uncommit is enabled', () => {
+    let s = makeState();
+    s = placeAll(s, 'p1', aliceShipsPayload());
+    s = gl.applyAction(s, 'p1', 'commitPlacement').state;
+    const d = gl.getActionDescriptors(s, 'p1');
+    expect(find(d, 'placeShip')).toMatchObject({ enabled: false });
+    expect(find(d, 'removeShip')).toMatchObject({ enabled: false });
+    expect(find(d, 'commitPlacement')).toMatchObject({ enabled: false });
+    expect(find(d, 'uncommitPlacement')).toMatchObject({
+      enabled: true,
+      hint: 'Take back your commitment.',
+    });
+  });
+
+  test('firing, my turn: fireShot enabled with opponent username in label', () => {
+    let s = bothReadyState();
+    s = setCurrent(s, 0);
+    const d = gl.getActionDescriptors(s, 'p1');
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({
+      action: 'fireShot',
+      enabled: true,
+      label: "Fire at Bob's waters",
+      hint: 'Click an unshot cell.',
+    });
+  });
+
+  test('firing, opponent turn: fireShot disabled with whose-turn hint', () => {
+    let s = bothReadyState();
+    s = setCurrent(s, 1);
+    const d = gl.getActionDescriptors(s, 'p1');
+    expect(d[0]).toMatchObject({
+      action: 'fireShot',
+      enabled: false,
+      hint: "Bob's turn.",
+    });
+  });
+
+  test('every descriptor has required action/label/enabled fields', () => {
+    // Spot-check across a few states that the contract's required-fields
+    // invariant holds for every returned descriptor.
+    const states = [
+      makeState(),
+      (() => {
+        let s = makeState();
+        s = placeAll(s, 'p1', aliceShipsPayload());
+        return s;
+      })(),
+      bothReadyState(),
+    ];
+    for (const s of states) {
+      for (const d of gl.getActionDescriptors(s, 'p1')) {
+        expect(typeof d.action).toBe('string');
+        expect(typeof d.label).toBe('string');
+        expect(typeof d.enabled).toBe('boolean');
+      }
+    }
+  });
+});

@@ -53,16 +53,21 @@ function filteredFor(state, userId) {
   // Delegate the hidden-information filter to the shared helper that the
   // REST layer also uses; see server/src/state-filter.js.
   const view = filterStateForUser(state, userId, gameRegistry);
-  // Socket-only decoration: attach the per-player valid-actions list so
-  // clients can drive button enablement without re-implementing the rules.
-  // Wraps the filtered view (not the canonical state) so hidden-information
-  // filters take effect first. REST responses deliberately omit this — the
-  // client computes its own action set on the REST rejoin path.
+  // Socket-only decorations: attach the per-player valid-actions list and,
+  // when the game implements it, the richer action-descriptors list.
+  // Both wrap the filtered view (not the canonical state) so hidden-info
+  // filtering takes effect first. REST responses deliberately omit both —
+  // the client computes its own action set on the REST rejoin path.
+  // See docs/action-descriptors.md for the descriptor contract.
   const logic = gameRegistry.getGameLogic(state.gameType);
+  let out = view;
   if (userId && typeof logic.getValidActions === 'function') {
-    return { ...view, validActions: logic.getValidActions(view, userId) };
+    out = { ...out, validActions: logic.getValidActions(out, userId) };
   }
-  return view;
+  if (userId && typeof logic.getActionDescriptors === 'function') {
+    out = { ...out, actionDescriptors: logic.getActionDescriptors(out, userId) };
+  }
+  return out;
 }
 
 /**

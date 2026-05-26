@@ -49,6 +49,33 @@ describe('validateImplementation — required methods', () => {
   });
 });
 
+describe('validateImplementation — optional getActionDescriptors', () => {
+  test('passes when getActionDescriptors is absent (old contract)', () => {
+    const impl = makeImpl();
+    expect(impl.getActionDescriptors).toBeUndefined();
+    expect(() => validateImplementation(impl)).not.toThrow();
+  });
+
+  test('passes when getActionDescriptors is present and a function', () => {
+    const impl = makeImpl({ getActionDescriptors: () => [] });
+    expect(() => validateImplementation(impl)).not.toThrow();
+  });
+
+  test('does not warn (unrecognised-export) when getActionDescriptors is exported', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const impl = makeImpl({ getActionDescriptors: () => [] });
+      validateImplementation(impl);
+      // The validator should treat getActionDescriptors as a known OPTIONAL
+      // method — no "unrecognised exported method" warning should fire for it.
+      const warnings = warn.mock.calls.flat().join('\n');
+      expect(warnings).not.toMatch(/getActionDescriptors/);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('validateImplementation — getGameMetadata fields', () => {
