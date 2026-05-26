@@ -78,7 +78,6 @@ function createInitialPlayer(user, existingPlayers = [], config = null) {
     colorHex: colorObj.hex,
     token: tokens[idx] || colorObj.id,
     active: true,
-    isBankrupt: false, // keep field for framework compatibility
     connected: true,
   };
 }

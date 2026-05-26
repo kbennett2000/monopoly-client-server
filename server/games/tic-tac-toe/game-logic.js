@@ -72,7 +72,6 @@ function createInitialPlayer(user, existingPlayers = [], config = null) {
     colorHex: colorObj.hex,
     token,
     active: true,
-    isBankrupt: false, // keep field for framework compatibility
     connected: true,
   };
 }

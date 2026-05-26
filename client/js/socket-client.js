@@ -185,13 +185,16 @@ const SocketClient = (() => {
     }
 
     if (state.status === 'finished') {
-      // Generic winner lookup: prefer state.winner (userId), fall back to Monopoly isBankrupt check.
+      // Prefer state.winner (set by every modern game).  For pre-state.winner
+      // Monopoly games the only surviving player is the winner — fall back to
+      // the last-player-standing via isBankrupt.  Gated on gameType so the
+      // fallback can't accidentally fire for other games.
       let winnerName;
       if (state.winner !== undefined && state.winner !== null) {
         winnerName = state.players.find(p => p.userId === state.winner)?.username;
       } else if (state.winner === null) {
         winnerName = null; // draw
-      } else {
+      } else if (state.gameType === 'monopoly') {
         winnerName = state.players.find(p => !p.isBankrupt)?.username;
       }
       // Let the active renderer disable its controls on game over.

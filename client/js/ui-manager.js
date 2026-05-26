@@ -109,22 +109,25 @@ const UIManager = (() => {
 
     // Build a card per player
     const currentPlayerIdx = state.turnState?.currentPlayerIndex ?? -1;
+    // isBankrupt is a Monopoly-only concept; gate reads on gameType so other
+    // games' player records don't need to set the field at all.
+    const isMonopoly = state.gameType === 'monopoly';
 
     panel.innerHTML = '';
     state.players.forEach((player, idx) => {
       const card = document.createElement('div');
       card.className = 'player-card';
-      if (idx === currentPlayerIdx) card.classList.add('active-turn');
-      if (player.isBankrupt)        card.classList.add('bankrupt');
+      if (idx === currentPlayerIdx)            card.classList.add('active-turn');
+      if (isMonopoly && player.isBankrupt)     card.classList.add('bankrupt');
 
       const colorHex   = getPlayerColorHex(state, player);
       const props       = state.properties || {};
       const ownedCount  = Object.values(props).filter(ps => ps.ownerId === player.userId).length;
 
       let badges = '';
-      if (player.inJail)     badges += `<span class="player-jail-badge">JAIL</span>`;
-      if (player.isBankrupt) badges += `<span class="player-jail-badge">OUT</span>`;
-      if (!player.connected) badges += `<span class="player-jail-badge" style="background:#666">AFK</span>`;
+      if (player.inJail)                       badges += `<span class="player-jail-badge">JAIL</span>`;
+      if (isMonopoly && player.isBankrupt)     badges += `<span class="player-jail-badge">OUT</span>`;
+      if (!player.connected)                   badges += `<span class="player-jail-badge" style="background:#666">AFK</span>`;
 
       const moneyHtml = player.money !== undefined
         ? `<span class="player-card-money">$${player.money.toLocaleString()}</span>`
@@ -197,6 +200,9 @@ const UIManager = (() => {
     const currentPlayer = state.players[state.turnState.currentPlayerIndex];
     const myPlayer      = state.players.find(p => p.userId === myUserId);
     const isMyTurn      = currentPlayer?.userId === myUserId;
+    // isBankrupt is a Monopoly-only concept; other games don't set the field.
+    const isMonopoly    = state.gameType === 'monopoly';
+    const meIsBankrupt  = isMonopoly && myPlayer?.isBankrupt;
 
     // Server-supplied validActions is the source of truth.  We still evaluate
     // the old hand-rolled fallback so we can detect drift between server
@@ -218,13 +224,13 @@ const UIManager = (() => {
       titleEl.textContent = isMyTurn ? 'Your Actions' : `Waiting for ${currentPlayer?.username || ''}…`;
     }
 
-    if (!myPlayer || myPlayer.isBankrupt) {
+    if (!myPlayer || meIsBankrupt) {
       addBtn(buttonsEl, '📜 View Properties', 'btn-outline', handlers.openTradeModal);
       return;
     }
 
     // ── Auction panel (all players can bid regardless of turn) ──────────────
-    if (state.auction && !myPlayer.isBankrupt && !state.auction.passed.includes(myUserId)) {
+    if (state.auction && !meIsBankrupt && !state.auction.passed.includes(myUserId)) {
       auctionEl.style.display = 'block';
       const sq = state.config.board[state.auction.position];
       document.getElementById('auction-prop-name').textContent    = sq?.name || '';
@@ -418,7 +424,10 @@ const UIManager = (() => {
     const isMyProp  = propState.ownerId === myUserId;
     const myPlayer  = state.players.find(p => p.userId === myUserId);
     const phase     = state.turnState?.phase;
-    const canManage = isMyProp && myPlayer && !myPlayer.isBankrupt && (phase === 'pre-roll' || phase === 'post-roll');
+    // isBankrupt is a Monopoly-only field; this modal is Monopoly-only too
+    // but keep the gate for defence-in-depth.
+    const isMonopoly = state.gameType === 'monopoly';
+    const canManage = isMyProp && myPlayer && !(isMonopoly && myPlayer.isBankrupt) && (phase === 'pre-roll' || phase === 'post-roll');
 
     // Build rent table
     let rentRows = '';
@@ -524,7 +533,10 @@ const UIManager = (() => {
 
     const myPlayer = state.players.find(p => p.userId === myUserId);
     const phase    = state.turnState?.phase;
-    const canManage = myPlayer && !myPlayer.isBankrupt && (phase === 'pre-roll' || phase === 'post-roll');
+    // isBankrupt is a Monopoly-only field; this modal is Monopoly-only too
+    // but keep the gate for defence-in-depth.
+    const isMonopoly = state.gameType === 'monopoly';
+    const canManage = myPlayer && !(isMonopoly && myPlayer.isBankrupt) && (phase === 'pre-roll' || phase === 'post-roll');
 
     body.innerHTML = '';
     for (const pos of positions) {
@@ -603,10 +615,12 @@ const UIManager = (() => {
     if (!modal || !state) return;
 
     // Populate target player dropdown
+    // (Trade is Monopoly-specific; isBankrupt gate kept defensive.)
+    const isMonopoly = state.gameType === 'monopoly';
     const select = document.getElementById('trade-target-player');
     select.innerHTML = '<option value="">— Select player —</option>';
     for (const p of state.players) {
-      if (p.userId === myUserId || p.isBankrupt) continue;
+      if (p.userId === myUserId || (isMonopoly && p.isBankrupt)) continue;
       const opt = document.createElement('option');
       opt.value       = p.userId;
       opt.textContent = p.username;
