@@ -48,6 +48,7 @@ function isAdminRequest(req) {
 }
 const gameRegistry = require('../game-registry');
 const socketHandler = require('../socket-handler');
+const { filterStateForUser } = require('../state-filter');
 
 const router = express.Router();
 
@@ -195,13 +196,7 @@ router.get('/:id', (req, res) => {
   // Snapshot — returned over the wire; the client may mutate it freely.
   const state = gameManager.getGameSnapshot(req.params.id);
   if (!state) return res.status(404).json({ error: 'Game not found' });
-  // TODO: extract shared filter helper (see docs/state-emission-audit.md)
-  const logic = gameRegistry.getGameLogic(state.gameType);
-  const view =
-    typeof logic.getStateForPlayer === 'function'
-      ? logic.getStateForPlayer(state, req.user.sub)
-      : state;
-  res.json({ state: view });
+  res.json({ state: filterStateForUser(state, req.user.sub, gameRegistry) });
 });
 
 // ── POST /api/games/:id/join ─────────────────────────────────────────────────
@@ -220,13 +215,7 @@ router.post('/:id/join', (req, res) => {
 router.post('/:id/start', (req, res) => {
   const result = gameManager.startGame(req.params.id, req.user.sub);
   if (result.error) return res.status(400).json({ error: result.error });
-  // TODO: extract shared filter helper (see docs/state-emission-audit.md)
-  const logic = gameRegistry.getGameLogic(result.state.gameType);
-  const view =
-    typeof logic.getStateForPlayer === 'function'
-      ? logic.getStateForPlayer(result.state, req.user.sub)
-      : result.state;
-  res.json({ state: view });
+  res.json({ state: filterStateForUser(result.state, req.user.sub, gameRegistry) });
 });
 
 // ── POST /api/games/:id/save ─────────────────────────────────────────────────

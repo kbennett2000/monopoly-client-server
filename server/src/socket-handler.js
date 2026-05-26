@@ -33,6 +33,7 @@
 const { authenticateSocket } = require('./auth');
 const gameManager = require('./game-manager');
 const gameRegistry = require('./game-registry');
+const { filterStateForUser } = require('./state-filter');
 
 // Track which socket is in which game room: Map<socketId, gameId>
 const socketGameMap = new Map();
@@ -49,12 +50,15 @@ const userSocketMap = new Map();
 
 function filteredFor(state, userId) {
   if (!state) return state;
+  // Delegate the hidden-information filter to the shared helper that the
+  // REST layer also uses; see server/src/state-filter.js.
+  const view = filterStateForUser(state, userId, gameRegistry);
+  // Socket-only decoration: attach the per-player valid-actions list so
+  // clients can drive button enablement without re-implementing the rules.
+  // Wraps the filtered view (not the canonical state) so hidden-information
+  // filters take effect first. REST responses deliberately omit this — the
+  // client computes its own action set on the REST rejoin path.
   const logic = gameRegistry.getGameLogic(state.gameType);
-  const view =
-    typeof logic.getStateForPlayer === 'function' ? logic.getStateForPlayer(state, userId) : state;
-  // Attach the per-player valid-actions list so clients can drive button
-  // enablement without re-implementing the rules.  Wraps the filtered view
-  // (not the canonical state) so hidden-information filters take effect first.
   if (userId && typeof logic.getValidActions === 'function') {
     return { ...view, validActions: logic.getValidActions(view, userId) };
   }
