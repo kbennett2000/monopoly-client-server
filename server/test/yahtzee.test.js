@@ -647,6 +647,105 @@ describe('Yahtzee — game-over detection', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// finalizeGame is exported so it can be unit-tested directly with synthetic
+// completed score sheets — edge cases like 3-way ties or exact-threshold
+// upper bonuses would otherwise require driving through ~26 dice rolls.
+
+describe('Yahtzee — finalizeGame (direct unit tests)', () => {
+  // Build a player whose every category is filled with a constant value so
+  // the totals are easy to reason about.
+  function filledPlayer(name, scores) {
+    const sheet = {};
+    for (const c of gl.CATEGORIES) sheet[c] = 0;
+    Object.assign(sheet, scores);
+    return makePlayer(name, name, sheet);
+  }
+
+  test('three-way tie returns winner as an array of all three usernames', () => {
+    // Three players each with identical chance=10 and zero everywhere else.
+    const players = ['A', 'B', 'C'].map((n) => filledPlayer(n, { chance: 10 }));
+    const state = makeState({ players });
+    const { state: out, events } = gl.finalizeGame(state, players, [], []);
+    expect(out.status).toBe('finished');
+    expect(Array.isArray(out.winner)).toBe(true);
+    expect(out.winner).toHaveLength(3);
+    expect(out.winner).toEqual(expect.arrayContaining(['A', 'B', 'C']));
+    const go = events.find((e) => e.type === 'GAME_OVER');
+    expect(go.data.finalScores).toHaveLength(3);
+    expect(go.data.finalScores.every((s) => s.grandTotal === 10)).toBe(true);
+  });
+
+  test('upper bonus applied at exactly the threshold (63 → +35)', () => {
+    // Upper section sums to exactly 63: 1+2+3+4+5+6 = 21 per dice value times
+    // three repetitions = ... actually use the canonical "three of each face":
+    // ones=3, twos=6, threes=9, fours=12, fives=15, sixes=18 → sum 63.
+    const winner = filledPlayer('W', {
+      ones: 3,
+      twos: 6,
+      threes: 9,
+      fours: 12,
+      fives: 15,
+      sixes: 18,
+    });
+    const loser = filledPlayer('L', { chance: 1 });
+    const state = makeState({ players: [winner, loser] });
+    const { state: out, events } = gl.finalizeGame(state, [winner, loser], [], []);
+    const wScore = events
+      .find((e) => e.type === 'GAME_OVER')
+      .data.finalScores.find((s) => s.username === 'W');
+    expect(wScore.upperSubtotal).toBe(63);
+    expect(wScore.upperBonus).toBe(35);
+    expect(wScore.grandTotal).toBe(63 + 35); // no lower-section points
+    expect(out.winner).toBe('W');
+  });
+
+  test('upper bonus NOT applied when subtotal is one below threshold (62 → 0)', () => {
+    // 1+2+3+4+5+18=33? Let me just construct: ones=3,twos=6,threes=9,fours=12,fives=15,sixes=17 → 62.
+    // sixes can't be 17 (only multiples of 6 are valid sums of 6s) but we
+    // bypass that — finalizeGame trusts the score sheet, doesn't re-validate.
+    const winner = filledPlayer('W', {
+      ones: 3,
+      twos: 6,
+      threes: 9,
+      fours: 12,
+      fives: 15,
+      sixes: 17,
+    });
+    const loser = filledPlayer('L', { chance: 100 });
+    const state = makeState({ players: [winner, loser] });
+    const { state: out, events } = gl.finalizeGame(state, [winner, loser], [], []);
+    const wScore = events
+      .find((e) => e.type === 'GAME_OVER')
+      .data.finalScores.find((s) => s.username === 'W');
+    expect(wScore.upperSubtotal).toBe(62);
+    expect(wScore.upperBonus).toBe(0);
+    expect(wScore.grandTotal).toBe(62); // no bonus, no lower
+    expect(out.winner).toBe('L'); // loser wins with chance=100
+  });
+
+  test('appends GAME_OVER and winner-message log to baseEvents/baseLog', () => {
+    const p = filledPlayer('Solo', { chance: 5 });
+    const baseEvents = [{ type: 'CATEGORY_SCORED', data: {}, timestamp: 0 }];
+    const baseLog = [{ message: 'Solo scored 5 in chance', type: 'score', timestamp: 0 }];
+    const { state: out, events } = gl.finalizeGame(
+      makeState({ players: [p] }),
+      [p],
+      baseEvents,
+      baseLog,
+    );
+    // baseEvents preserved + GAME_OVER appended
+    expect(events).toHaveLength(2);
+    expect(events[0].type).toBe('CATEGORY_SCORED');
+    expect(events[1].type).toBe('GAME_OVER');
+    // baseLog preserved + winner-message appended
+    expect(out.log).toHaveLength(2);
+    expect(out.log[0].type).toBe('score');
+    expect(out.log[1].type).toBe('game');
+    expect(out.log[1].message).toMatch(/Solo wins with 5/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe('Yahtzee — getValidActions', () => {
   test('returns [] when game is not playing', () => {

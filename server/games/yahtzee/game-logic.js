@@ -297,6 +297,51 @@ function allCategoriesFilled(scoreSheet) {
   return true;
 }
 
+/**
+ * Finalize a game whose every player has filled every category.  Pure:
+ * returns the post-game state (status='finished', winner set) and the
+ * caller's event/log arrays appended with GAME_OVER and a winner message.
+ *
+ * Exported for unit testing — extracted from scoreCategory so edge cases
+ * like three-way ties and upper-bonus thresholds can be exercised without
+ * driving through dozens of scripted dice rolls.
+ *
+ * @param {Object} state       Pre-finalization state (config/log carry over).
+ * @param {Array}  players     Player array with all 13 categories filled.
+ * @param {Array}  baseEvents  Events accumulated before the game-over check.
+ * @param {Array}  baseLog     Log entries accumulated before the game-over check.
+ * @returns {{ state, events }}
+ */
+function finalizeGame(state, players, baseEvents, baseLog) {
+  const finalScores = players.map((p) => ({
+    username: p.username,
+    ...computeTotals(p.scoreSheet, state.config),
+  }));
+  const top = Math.max(...finalScores.map((s) => s.grandTotal));
+  const winners = finalScores.filter((s) => s.grandTotal === top).map((s) => s.username);
+  const winner = winners.length === 1 ? winners[0] : winners;
+
+  const events = [
+    ...baseEvents,
+    { type: 'GAME_OVER', data: { winner, finalScores }, timestamp: Date.now() },
+  ];
+  const log = [
+    ...baseLog,
+    {
+      message: Array.isArray(winner)
+        ? `Tie! ${winner.join(' & ')} all finished with ${top}.`
+        : `${winner} wins with ${top}!`,
+      type: 'game',
+      timestamp: Date.now(),
+    },
+  ];
+
+  return {
+    state: { ...state, players, status: 'finished', winner, log },
+    events,
+  };
+}
+
 // ── actions ───────────────────────────────────────────────────────────────────
 
 function rollDie(faces) {
@@ -423,35 +468,7 @@ function scoreCategory(state, userId, payload) {
 
   // Check for game over: every player has every category filled.
   if (newPlayers.every((p) => allCategoriesFilled(p.scoreSheet))) {
-    const finalScores = newPlayers.map((p) => ({
-      username: p.username,
-      ...computeTotals(p.scoreSheet, state.config),
-    }));
-    const top = Math.max(...finalScores.map((s) => s.grandTotal));
-    const winners = finalScores.filter((s) => s.grandTotal === top).map((s) => s.username);
-    const winner = winners.length === 1 ? winners[0] : winners;
-    events.push({
-      type: 'GAME_OVER',
-      data: { winner, finalScores },
-      timestamp: Date.now(),
-    });
-    logs.push({
-      message: Array.isArray(winner)
-        ? `Tie! ${winner.join(' & ')} all finished with ${top}.`
-        : `${winner} wins with ${top}!`,
-      type: 'game',
-      timestamp: Date.now(),
-    });
-    return {
-      state: {
-        ...state,
-        players: newPlayers,
-        status: 'finished',
-        winner,
-        log: logs,
-      },
-      events,
-    };
+    return finalizeGame(state, newPlayers, events, logs);
   }
 
   // Otherwise advance the turn.
@@ -585,10 +602,11 @@ module.exports = {
   // Internal helpers exported for unit tests.
   scoreFor,
   computeTotals,
+  finalizeGame,
   CATEGORIES,
   UPPER_CATEGORIES,
 };
 
 validateImplementation(module.exports, {
-  internalExports: ['scoreFor', 'computeTotals', 'CATEGORIES', 'UPPER_CATEGORIES'],
+  internalExports: ['scoreFor', 'computeTotals', 'finalizeGame', 'CATEGORIES', 'UPPER_CATEGORIES'],
 });
