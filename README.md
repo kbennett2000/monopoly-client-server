@@ -123,9 +123,9 @@ In addition to this README, the project keeps three design docs under `docs/`:
 - **[Action descriptors](docs/action-descriptors.md)** — optional interface
   for game-logic to supply dynamic action labels, enabled-state, and per-action
   data to renderers without forcing each renderer to mirror server-side rule
-  logic. Implemented across the three pressuring games (Battleship, Risk,
-  Yahtzee); Life deliberately did not migrate (its action surface is large
-  enough that a descriptor migration would help but is its own session).
+  logic. Implemented across four of the seven games (Battleship, Risk, Yahtzee,
+  and The Game of Life). Connect Four and Tic-Tac-Toe deliberately don't —
+  their action surfaces are trivial enough that `getValidActions` covers them.
 - **[Renderer contract notes](docs/renderer-contract.md)** — running design memo
   tracking open and resolved questions about the client-side renderer interface
   as it has evolved across game implementations.
@@ -203,7 +203,7 @@ Find `<host-ip>` with `ip addr` (Linux/macOS) or `ipconfig` (Windows).
 lan-games/
 ├── README.md
 ├── docs/                         ← design notes & active proposals
-│   ├── action-descriptors.md     ← optional rich-action interface (in active migration)
+│   ├── action-descriptors.md     ← optional rich-action interface (4 of 7 games adopted)
 │   ├── renderer-contract.md      ← renderer / framework DOM contract; open questions
 │   └── state-emission-audit.md   ← security audit of every state-bearing emit path
 │
@@ -640,9 +640,9 @@ GameRendererRegistry.register('your-game', YourGameRenderer);
 
 Add one `<script>` tag to `client/index.html`. No `app.js` or `socket-client.js` changes — the framework dispatches to the renderer via the registry based on `state.gameType`.
 
-### 5. (Optional) Implement `getActionDescriptors`
+### 5. (Recommended) Implement `getActionDescriptors`
 
-If your game has dynamic action labels, score previews, or enabled-state logic that depends on game rules (the renderer would otherwise have to mirror server-side rule logic), implement the optional `getActionDescriptors(state, userId)` method. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract. The framework attaches the descriptor list to `state.actionDescriptors` on every socket emit when the method is present. Games that don't implement it stay on the simpler `getValidActions` contract.
+If your game has dynamic action labels, score previews, or enabled-state logic that depends on game rules (the renderer would otherwise have to mirror server-side rule logic), implement the `getActionDescriptors(state, userId)` method. Four of the seven bundled games (Battleship, Risk, Yahtzee, Life) adopt it; only the two trivially-small action surfaces (Connect Four, Tic-Tac-Toe) skip it. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract. The framework attaches the descriptor list to `state.actionDescriptors` on every socket emit when the method is present. Games that don't implement it stay on the simpler `getValidActions` contract.
 
 ---
 
@@ -1449,14 +1449,14 @@ Only games created *after* the reload will use the new config. In-progress games
 - [ ] `server/src/game-registry.js` — one new line in the `registry` object
 - [ ] (optional) `client/js/games/<name>/renderer.js` — visual renderer; self-registers via `GameRendererRegistry.register('<name>', …)` at the bottom of the file
 - [ ] (optional) One `<script>` tag in `client/index.html` to load the renderer
-- [ ] (optional) Implement `getActionDescriptors` if the renderer needs dynamic labels / enabled-state logic; see [`docs/action-descriptors.md`](docs/action-descriptors.md)
+- [ ] (recommended) Implement `getActionDescriptors` if the renderer needs dynamic labels / enabled-state logic; see [`docs/action-descriptors.md`](docs/action-descriptors.md)
 
 ---
 
 ## Roadmap
 
 - **More games** — Chess, Checkers, Scrabble, Catan, Coup, Liar's Dice, …
-- **Action descriptor contract** — implemented across the three pressuring games (Battleship, Risk, Yahtzee); the renderer-side rule mirrors are gone. The Game of Life deliberately did not migrate to descriptors — its action surface is large enough that a future descriptor migration would help, but is its own session. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract and the patterns the three migrations established.
+- **Action descriptor contract** — implemented across four of the seven games (Battleship, Risk, Yahtzee, and The Game of Life); the renderer-side rule mirrors are gone in all four. Connect Four and Tic-Tac-Toe deliberately skip the contract — their action surfaces (`dropPiece`, `markCell`) are trivial enough that `getValidActions` covers them. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract and the patterns the four migrations established.
 - **Turn timer UI** — server emits absolute-deadline warnings via `game:turn_warning`; the client-side countdown bar is implemented in [`client/js/turn-warning.js`](client/js/turn-warning.js).
 - **Spectator mode** — join a game room as a read-only observer
 - **AI players** — pluggable bot interface implementing the same `applyAction` contract

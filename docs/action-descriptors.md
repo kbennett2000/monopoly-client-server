@@ -368,7 +368,7 @@ makes the call locally.
 
 ## Migration status (complete)
 
-All three planned migrations have shipped without contract revisions:
+All four migrations have shipped without contract revisions:
 
 - **Battleship** (commit `2d0c78e`) — skeleton implementation alongside
   the initial proposal. Established the per-action-type descriptor
@@ -386,6 +386,17 @@ All three planned migrations have shipped without contract revisions:
   Established the *many descriptors per action type* pattern (13
   `scoreCategory` descriptors at the start of a turn, discriminated
   by `data.category`).
+- **The Game of Life** (commit `af0de90`) — fourth and largest
+  migration. Largest action surface in the project: `spin`, three
+  out-of-band purchase actions (auto/life insurance, stocks), and four
+  pending-state choice actions (`chooseBranch`, `chooseCareer`,
+  `chooseSalary`, `chooseHouse`). Mixed single-instance and per-instance
+  descriptor patterns in the same turn — `spin` is single, `chooseBranch`
+  emits one descriptor per fork option, `chooseHouse` emits one per
+  offered card with an affordability-driven `enabled` flag. Renderer
+  branches on `player.pending.type` (kept renderer-side per the
+  retirement-fork's special UI treatment) but consumes descriptors
+  within each branch. No contract changes required.
 
 ### Patterns that emerged
 
@@ -423,13 +434,25 @@ implementations should follow them:
   "two copies but one is a fallback" is the same bug with a slower
   drift cycle.
 
+- **`data` absorbs game-specific richness without forcing contract
+  changes.** Across four migrations, the per-descriptor `data` field
+  has carried wildly different shapes — Battleship's
+  `{ shipsPlaced, shipsRequired }`, Risk's `{ validSets }`, Yahtzee's
+  `{ category, previewScore }`, Life's `{ cardName, paydayBonus }`
+  for careers and `{ takenNumbers, spinMin, spinMax }` for stocks and
+  `{ houseId, cost, value }` for houses. None of these required a
+  contract revision; the "untyped at the interface level, documented
+  per-game" design from the original proposal held up. Each game's
+  `getActionDescriptors` documents its own `data` shape in JSDoc;
+  renderers know what to expect from the game they consume.
+
 ### Things this did not become
 
 The proposal listed several open questions (whether
 `validateImplementation` should eventually require descriptors,
 whether the framework should provide a default implementation that
 wraps `getValidActions`, whether `data` should be schema-validated
-per game). After three migrations, the answer to all of them remains
+per game). After four migrations, the answer to all of them remains
 "no, and the lack hasn't bitten us."
 
 Connect Four and Tic-Tac-Toe deliberately don't implement
