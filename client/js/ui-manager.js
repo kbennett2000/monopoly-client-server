@@ -127,10 +127,18 @@ const UIManager = (() => {
       let badges = '';
       if (player.inJail)                       badges += `<span class="player-jail-badge">JAIL</span>`;
       if (isMonopoly && player.isBankrupt)     badges += `<span class="player-jail-badge">OUT</span>`;
+      // Life: retired players stay in the panel but visually mark them as done.
+      if (player.retired)                      badges += `<span class="player-jail-badge" style="background:#48bb78">RETIRED</span>`;
       if (!player.connected)                   badges += `<span class="player-jail-badge" style="background:#666">AFK</span>`;
 
-      const moneyHtml = player.money !== undefined
-        ? `<span class="player-card-money">$${player.money.toLocaleString()}</span>`
+      // Money field falls back to Life's `cash` field — same purpose,
+      // different name.  No gameType gate needed: the !== undefined check
+      // ensures games without either field render no money chip.
+      const moneyValue = player.money !== undefined ? player.money
+                       : player.cash  !== undefined ? player.cash
+                       : null;
+      const moneyHtml = moneyValue !== null
+        ? `<span class="player-card-money">$${moneyValue.toLocaleString()}</span>`
         : '';
       const propsHtml = state.properties
         ? `<div class="player-card-props">${ownedCount} propert${ownedCount === 1 ? 'y' : 'ies'}${player.jailCards > 0 ? ` · ${player.jailCards} jail card(s)` : ''}</div>`
