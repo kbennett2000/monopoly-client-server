@@ -189,6 +189,19 @@ router.post('/', (req, res) => {
   }
 });
 
+// ── GET /api/games/:id/spectators ────────────────────────────────────────────
+// Returns the current spectator list for a game, sourced from the socket
+// handler's runtime map (spectators are not persisted in state).  Used by
+// the lobby to render a "N spectator(s)" chip next to in-progress games.
+// Defined before /:id so the static segment wins the routing match.
+
+router.get('/:id/spectators', (req, res) => {
+  if (!gameManager.peekGame(req.params.id)) {
+    return res.status(404).json({ error: 'Game not found' });
+  }
+  res.json({ spectators: socketHandler.spectatorsForWire(req.params.id) });
+});
+
 // ── GET /api/games/:id ───────────────────────────────────────────────────────
 // NOTE: all static routes above must be defined before this pattern.
 

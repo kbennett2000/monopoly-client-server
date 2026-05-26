@@ -40,6 +40,59 @@ const socketGameMap = new Map();
 // Track each user's active socket for targeted emissions: Map<userId, socketId>
 const userSocketMap = new Map();
 
+// ── spectators ───────────────────────────────────────────────────────────────
+//
+// Spectators are runtime-only — they live in this map, not in the persisted
+// game state.  A user is a spectator of game X if they appear in
+// `gameSpectators.get(X)`.  Spectators receive UNFILTERED game state (see
+// the bypass in filteredFor) and CANNOT take game actions (see the gate in
+// the game:action handler).  Joining as a player and joining as a spectator
+// are mutually exclusive — the spectate handler rejects a player of the
+// same game, and addPlayerToLobby/startGame don't add spectators to the
+// player list.
+//
+// Map<gameId, Map<userId, { username, joinedAt, socketId }>>
+const gameSpectators = new Map();
+
+function isSpectator(gameId, userId) {
+  const spectators = gameSpectators.get(gameId);
+  return !!(spectators && spectators.has(userId));
+}
+
+function addSpectator(gameId, userId, username, socketId) {
+  let spectators = gameSpectators.get(gameId);
+  if (!spectators) {
+    spectators = new Map();
+    gameSpectators.set(gameId, spectators);
+  }
+  spectators.set(userId, { username, joinedAt: Date.now(), socketId });
+}
+
+function removeSpectator(gameId, userId) {
+  const spectators = gameSpectators.get(gameId);
+  if (!spectators) return false;
+  const removed = spectators.delete(userId);
+  if (spectators.size === 0) gameSpectators.delete(gameId);
+  return removed;
+}
+
+/**
+ * Snapshot of a game's spectator list in the shape the wire format expects:
+ *   [{ userId, username, joinedAt }, ...]
+ * Always returns a fresh array (never the internal Map).  Empty array is
+ * returned for games with no spectators — renderers should treat that as
+ * "no spectators present" rather than "feature unavailable."
+ */
+function spectatorsForWire(gameId) {
+  const spectators = gameSpectators.get(gameId);
+  if (!spectators) return [];
+  return Array.from(spectators.entries(), ([userId, info]) => ({
+    userId,
+    username: info.username,
+    joinedAt: info.joinedAt,
+  }));
+}
+
 // ── per-socket state filtering ─────────────────────────────────────────────────
 //
 // Hidden-information games (Risk, future card games) implement
@@ -48,17 +101,42 @@ const userSocketMap = new Map();
 // emit MUST go through these helpers so each socket receives the version
 // tailored to its user.
 
-function filteredFor(state, userId) {
+/**
+ * Build the per-recipient view of state for the wire.  Two flavours:
+ *
+ *   Player path  — runs the recipient's userId through getStateForPlayer
+ *     so hidden information (Battleship ships, Risk hands, Life tiles)
+ *     stays masked; attaches the recipient's validActions and
+ *     actionDescriptors decorations.
+ *   Spectator path — SKIPS the hidden-information filter (spectators
+ *     watch with full visibility per the locked design decision) AND
+ *     skips the action decorations (spectators have no actions).
+ *
+ * The spectator branch is the ONLY legitimate way for a connected user
+ * to receive unfiltered state for a game they're not playing in.  The
+ * gate is `isSpectator(gameId, userId)` — registration goes through
+ * the `spectate` socket handler, which validates the game exists and
+ * the user isn't already a player.  No client-side flag can claim
+ * spectator status.
+ *
+ * Every state-bearing emit attaches `state.spectators` (a list of
+ * { userId, username, joinedAt }) so renderers can render a spectator
+ * count without an extra round-trip.  The list comes from gameSpectators,
+ * not from persisted state — see the spectators block above.
+ */
+function filteredFor(state, userId, gameId = null) {
   if (!state) return state;
-  // Delegate the hidden-information filter to the shared helper that the
-  // REST layer also uses; see server/src/state-filter.js.
+  const gid = gameId || state.id;
+
+  const spectatorList = gid ? spectatorsForWire(gid) : [];
+
+  if (gid && userId && isSpectator(gid, userId)) {
+    // Spectator path — full state, no descriptors, no validActions.
+    return { ...state, spectators: spectatorList };
+  }
+
+  // Player path — filter for hidden information then attach decorations.
   const view = filterStateForUser(state, userId, gameRegistry);
-  // Socket-only decorations: attach the per-player valid-actions list and,
-  // when the game implements it, the richer action-descriptors list.
-  // Both wrap the filtered view (not the canonical state) so hidden-info
-  // filtering takes effect first. REST responses deliberately omit both —
-  // the client computes its own action set on the REST rejoin path.
-  // See docs/action-descriptors.md for the descriptor contract.
   const logic = gameRegistry.getGameLogic(state.gameType);
   let out = view;
   if (userId && typeof logic.getValidActions === 'function') {
@@ -67,6 +145,7 @@ function filteredFor(state, userId) {
   if (userId && typeof logic.getActionDescriptors === 'function') {
     out = { ...out, actionDescriptors: logic.getActionDescriptors(out, userId) };
   }
+  out = { ...out, spectators: spectatorList };
   return out;
 }
 
@@ -74,10 +153,15 @@ function filteredFor(state, userId) {
  * Emit a state-bearing event to one socket, with the state filtered for that
  * socket's user.  `extra` is merged into the payload unchanged (events array,
  * etc. — never private to a particular user).
+ *
+ * The gameId argument is the recipient's current game room; passed through to
+ * filteredFor so it can apply the spectator-bypass when applicable.  When
+ * omitted, falls back to socketGameMap (the socket's current room).
  */
-function emitToSocket(socket, eventName, state, extra = {}) {
+function emitToSocket(socket, eventName, state, extra = {}, gameId = null) {
   const userId = socket.data?.userId;
-  socket.emit(eventName, { state: filteredFor(state, userId), ...extra });
+  const gid = gameId || socketGameMap.get(socket.id) || null;
+  socket.emit(eventName, { state: filteredFor(state, userId, gid), ...extra });
 }
 
 /**
@@ -92,7 +176,7 @@ function emitToRoom(io, gameId, eventName, state, extra = {}, exceptSocket = nul
     if (exceptSocket && socketId === exceptSocket.id) continue;
     const sock = io.sockets.sockets.get(socketId);
     if (!sock) continue;
-    emitToSocket(sock, eventName, state, extra);
+    emitToSocket(sock, eventName, state, extra, gameId);
   }
 }
 
@@ -246,6 +330,90 @@ function registerHandlers(io) {
       ack?.({ success: true });
     });
 
+    // ── spectate game (read-only join) ───────────────────────────────────────
+
+    socket.on('spectate', async (gameId, ack) => {
+      const state = gameManager.peekGame(gameId);
+      if (!state) return ack?.({ error: 'Game not found' });
+      if (state.status !== 'playing') {
+        return ack?.({
+          error: 'You can only spectate a game in progress',
+        });
+      }
+      // A player of this game can't also spectate it.  The lobby UI
+      // doesn't show the Spectate button for the user's own active
+      // games — this is the server-side enforcement of that decision.
+      if (state.players?.some((p) => p.userId === currentUser.sub)) {
+        return ack?.({ error: 'You are already a player in this game' });
+      }
+
+      // Leave any previously joined game room (spectator or player).
+      const prevGame = socketGameMap.get(socket.id);
+      if (prevGame && prevGame !== gameId) {
+        if (isSpectator(prevGame, currentUser.sub)) {
+          removeSpectator(prevGame, currentUser.sub);
+        }
+        socket.leave(prevGame);
+        socketGameMap.delete(socket.id);
+      }
+
+      socket.join(gameId);
+      socketGameMap.set(socket.id, gameId);
+      addSpectator(gameId, currentUser.sub, currentUser.username, socket.id);
+
+      const latestState = gameManager.getGameSnapshot(gameId);
+
+      // Send the full state to the joining spectator (filteredFor's
+      // spectator branch returns unfiltered state because we just
+      // registered them above).
+      emitToSocket(socket, 'game:state', latestState, {}, gameId);
+
+      // Notify everyone else in the room — players want to know who's watching.
+      emitToRoom(
+        io,
+        gameId,
+        'game:update',
+        latestState,
+        {
+          events: [
+            {
+              type: 'SPECTATOR_JOINED',
+              data: { username: currentUser.username, joinedAt: Date.now() },
+              timestamp: Date.now(),
+            },
+          ],
+        },
+        socket,
+      );
+
+      // The targeted broadcast above also emits the spectator:joined event
+      // separately so renderers that don't read the events array still see
+      // the join.
+      io.to(gameId).emit('spectator:joined', {
+        username: currentUser.username,
+        joinedAt: Date.now(),
+      });
+
+      // Lobby spectator counts changed.
+      broadcastLobbyUpdate();
+
+      ack?.({ success: true });
+    });
+
+    socket.on('unspectate', () => {
+      const gameId = socketGameMap.get(socket.id);
+      if (!gameId) return;
+      if (!isSpectator(gameId, currentUser.sub)) return;
+
+      removeSpectator(gameId, currentUser.sub);
+      socket.leave(gameId);
+      socketGameMap.delete(socket.id);
+
+      // No spectator:left broadcast — locked design decision (joins are
+      // events, leaves are silent).  Lobby refresh keeps counts in sync.
+      broadcastLobbyUpdate();
+    });
+
     // ── leave game room ──────────────────────────────────────────────────────
 
     socket.on('leave_game', async () => {
@@ -282,6 +450,16 @@ function registerHandlers(io) {
       const gameId = socketGameMap.get(socket.id);
       if (gameId) {
         socketGameMap.delete(socket.id);
+
+        // Spectator disconnects clean up silently (no spectator:left
+        // broadcast, no setPlayerConnected — they aren't players).  The
+        // lobby refresh keeps spectator counts in sync.
+        if (isSpectator(gameId, currentUser.sub)) {
+          removeSpectator(gameId, currentUser.sub);
+          broadcastLobbyUpdate();
+          return;
+        }
+
         await gameManager.setPlayerConnected(gameId, currentUser.sub, false);
 
         // Snapshot — sent over the wire and also passed to game-logic
@@ -346,7 +524,7 @@ function registerHandlers(io) {
       });
 
       // ack is delivered to the joining socket; filter the state for them too
-      ack?.({ success: true, state: filteredFor(result.state, currentUser.sub) });
+      ack?.({ success: true, state: filteredFor(result.state, currentUser.sub, gameId) });
     });
 
     // ── game action (single generic handler for all player actions) ──────────
@@ -361,6 +539,20 @@ function registerHandlers(io) {
       const gameId = socketGameMap.get(socket.id);
       if (!gameId) {
         socket.emit('game:error', { message: 'Not in a game' });
+        return;
+      }
+
+      // Spectators are watch-only.  A normal-UI client never reaches here
+      // (the spectator banner replaces the action panel), but a buggy
+      // or malicious client trying to slip an action through is rejected
+      // server-side.  Logged because if this fires in normal play we
+      // want to know.
+      if (isSpectator(gameId, currentUser.sub)) {
+        console.warn(
+          `[socket] spectator ${currentUser.username} attempted action "${action}" ` +
+            `in game ${gameId} — rejected`,
+        );
+        socket.emit('game:error', { message: 'Spectators cannot take actions' });
         return;
       }
 
@@ -409,13 +601,25 @@ function registerHandlers(io) {
       const gameId = socketGameMap.get(socket.id);
       if (!gameId) return;
 
+      // senderRole lets the client render spectator messages with a
+      // distinguishing prefix.  The server is the only place that
+      // knows authoritatively whether the sender is a player or a
+      // spectator — a client-supplied role tag would be forgeable.
+      const senderRole = isSpectator(gameId, currentUser.sub) ? 'spectator' : 'player';
+
       io.to(gameId).emit('chat:message', {
         username: currentUser.username,
         text: trimmed,
         timestamp: Date.now(),
+        senderRole,
       });
     });
   }); // end io.on('connection')
 }
 
-module.exports = { registerHandlers, broadcastLobbyUpdate };
+module.exports = {
+  registerHandlers,
+  broadcastLobbyUpdate,
+  // Exported for REST routes that want to render a spectator count.
+  spectatorsForWire,
+};
