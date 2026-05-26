@@ -195,7 +195,13 @@ router.get('/:id', (req, res) => {
   // Snapshot — returned over the wire; the client may mutate it freely.
   const state = gameManager.getGameSnapshot(req.params.id);
   if (!state) return res.status(404).json({ error: 'Game not found' });
-  res.json({ state });
+  // TODO: extract shared filter helper (see docs/state-emission-audit.md)
+  const logic = gameRegistry.getGameLogic(state.gameType);
+  const view =
+    typeof logic.getStateForPlayer === 'function'
+      ? logic.getStateForPlayer(state, req.user.sub)
+      : state;
+  res.json({ state: view });
 });
 
 // ── POST /api/games/:id/join ─────────────────────────────────────────────────
@@ -214,7 +220,13 @@ router.post('/:id/join', (req, res) => {
 router.post('/:id/start', (req, res) => {
   const result = gameManager.startGame(req.params.id, req.user.sub);
   if (result.error) return res.status(400).json({ error: result.error });
-  res.json({ state: result.state });
+  // TODO: extract shared filter helper (see docs/state-emission-audit.md)
+  const logic = gameRegistry.getGameLogic(result.state.gameType);
+  const view =
+    typeof logic.getStateForPlayer === 'function'
+      ? logic.getStateForPlayer(result.state, req.user.sub)
+      : result.state;
+  res.json({ state: view });
 });
 
 // ── POST /api/games/:id/save ─────────────────────────────────────────────────

@@ -298,27 +298,38 @@ client flow does use it before the socket sync arrives.
 
 ## Confidence statement
 
-**As of commit `07881aa`, every socket-channel emission of game state in
-`server/src/` is filtered through `getStateForPlayer` via `emitToRoom` /
-`emitToSocket`, and every game's `events` array has been verified to
-contain no hidden information that the state filter would otherwise mask.**
+**As of the fix commit that follows this audit, every state-bearing emit in
+`server/src/` — both socket and REST channels — is either filtered through
+`getStateForPlayer` or has been verified to contain no hidden information.**
 
-**However, two REST endpoints in `server/src/routes/game.routes.js` bypass
-the filter pipeline:**
+The previously identified leaks in `GET /api/games/:id` and
+`POST /api/games/:id/start` were closed by routing their response state
+through the same per-recipient filter the socket pipeline uses. Regression
+tests in [server/test/integration/rest-state-filter.test.js](../server/test/integration/rest-state-filter.test.js)
+lock in the property for both Battleship (ship positions removed from
+opponent view) and Risk (hand masked to handCount; canary card never
+appears in opponent JSON), plus a waiting-room safe-by-construction test.
 
-- **`GET /api/games/:id`** is a real, currently-active leak. It returns
-  the raw canonical `GameState` to any authenticated caller of that game's
-  ID. For Battleship this leaks every player's ship positions; for Risk
-  this leaks every player's card hand. The client's rejoin flow uses this
-  endpoint on every reconnect.
-- **`POST /api/games/:id/start`** is unfiltered by pattern. It doesn't
-  currently leak anything because neither shipped hidden-info game places
-  hidden data into `initGame`'s output, but a future game that does (Coup
-  roles, opening-hand card games) would leak immediately on start.
+The duplicated filter logic across `socket-handler.js` and `game.routes.js`
+is marked with `TODO: extract shared filter helper` at both new call sites.
+That extraction is a follow-up commit; this audit and its fix deliberately
+scope to the security fix only.
 
-The audit is therefore **not clean**. Fixing both REST endpoints to route
-through `getStateForPlayer` would convert this statement to: "every state-bearing
-emit is either filtered or has been verified to contain no hidden information."
+### Pre-fix statement (kept for historical record)
+
+Before the fix, this section read:
+
+> *As of commit `07881aa`, every socket-channel emission of game state in
+> `server/src/` is filtered through `getStateForPlayer` via `emitToRoom` /
+> `emitToSocket`, and every game's `events` array has been verified to
+> contain no hidden information that the state filter would otherwise mask.*
+>
+> *However, two REST endpoints in `server/src/routes/game.routes.js` bypass
+> the filter pipeline: `GET /api/games/:id` (real active leak — used by
+> client rejoin flow, leaks Battleship ship positions and Risk hands) and
+> `POST /api/games/:id/start` (unfiltered by pattern; safe today because
+> neither shipped game's `initGame` populates hidden data, but a trap for
+> a future game that does).*
 
 ## Recommended fix
 
