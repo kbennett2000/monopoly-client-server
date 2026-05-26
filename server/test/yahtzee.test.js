@@ -515,11 +515,12 @@ describe('Yahtzee — game-over detection', () => {
     const r = gl.applyAction(state, 'p2', 'scoreCategory', { category: finalCategory });
     expect(r.error).toBeUndefined();
     expect(r.state.status).toBe('finished');
-    expect(r.state.winner).toBe('Bob');
+    expect(r.state.winner).toBe('p2');
     const go = r.events.find((e) => e.type === 'GAME_OVER');
     expect(go).toBeDefined();
-    expect(go.data.winner).toBe('Bob');
+    expect(go.data.winner).toBe('p2');
     expect(go.data.finalScores).toHaveLength(2);
+    expect(go.data.finalScores.find((s) => s.userId === 'p2').username).toBe('Bob');
   });
 
   test('upper bonus is applied when upper subtotal >= threshold', () => {
@@ -614,7 +615,7 @@ describe('Yahtzee — game-over detection', () => {
     expect(bobFinal.upperBonus).toBe(0);
   });
 
-  test('tie sets winner to an array of usernames', () => {
+  test('tie sets winner to an array of userIds', () => {
     // Both end with identical grand totals.
     const sharedScores = {
       ones: 0,
@@ -641,7 +642,7 @@ describe('Yahtzee — game-over detection', () => {
     const r = gl.applyAction(state, 'p2', 'scoreCategory', { category: 'chance' });
     expect(r.error).toBeUndefined();
     expect(Array.isArray(r.state.winner)).toBe(true);
-    expect(r.state.winner).toEqual(expect.arrayContaining(['Alice', 'Bob']));
+    expect(r.state.winner).toEqual(expect.arrayContaining(['p1', 'p2']));
     expect(r.state.winner).toHaveLength(2);
   });
 });
@@ -661,8 +662,10 @@ describe('Yahtzee — finalizeGame (direct unit tests)', () => {
     return makePlayer(name, name, sheet);
   }
 
-  test('three-way tie returns winner as an array of all three usernames', () => {
+  test('three-way tie returns winner as an array of all three userIds', () => {
     // Three players each with identical chance=10 and zero everywhere else.
+    // filledPlayer uses the same string for both userId and username, so the
+    // assertions below double as "userIds match" and "usernames match."
     const players = ['A', 'B', 'C'].map((n) => filledPlayer(n, { chance: 10 }));
     const state = makeState({ players });
     const { state: out, events } = gl.finalizeGame(state, players, [], []);
@@ -673,6 +676,7 @@ describe('Yahtzee — finalizeGame (direct unit tests)', () => {
     const go = events.find((e) => e.type === 'GAME_OVER');
     expect(go.data.finalScores).toHaveLength(3);
     expect(go.data.finalScores.every((s) => s.grandTotal === 10)).toBe(true);
+    expect(go.data.finalScores.every((s) => s.userId && s.username)).toBe(true);
   });
 
   test('upper bonus applied at exactly the threshold (63 → +35)', () => {

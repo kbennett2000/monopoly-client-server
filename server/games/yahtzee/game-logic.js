@@ -20,7 +20,7 @@
  *   createdBy, minPlayers, maxPlayers,
  *   players: Player[],
  *   turnState: TurnState,
- *   winner: string | string[] | null,  // username, array for ties, null if unfinished
+ *   winner: string | string[] | null,  // userId, array of userIds for ties, null if unfinished
  *   log: LogEntry[]
  * }
  *
@@ -314,12 +314,18 @@ function allCategoriesFilled(scoreSheet) {
  */
 function finalizeGame(state, players, baseEvents, baseLog) {
   const finalScores = players.map((p) => ({
+    userId: p.userId,
     username: p.username,
     ...computeTotals(p.scoreSheet, state.config),
   }));
   const top = Math.max(...finalScores.map((s) => s.grandTotal));
-  const winners = finalScores.filter((s) => s.grandTotal === top).map((s) => s.username);
-  const winner = winners.length === 1 ? winners[0] : winners;
+  const winnerScores = finalScores.filter((s) => s.grandTotal === top);
+  const winnerIds = winnerScores.map((s) => s.userId);
+  const winnerNames = winnerScores.map((s) => s.username);
+  // winner: userId for a single winner, array of userIds for ties — matches
+  // the framework convention used by every other game (socket-client.js
+  // reads state.winner as a userId).
+  const winner = winnerIds.length === 1 ? winnerIds[0] : winnerIds;
 
   const events = [
     ...baseEvents,
@@ -328,9 +334,10 @@ function finalizeGame(state, players, baseEvents, baseLog) {
   const log = [
     ...baseLog,
     {
-      message: Array.isArray(winner)
-        ? `Tie! ${winner.join(' & ')} all finished with ${top}.`
-        : `${winner} wins with ${top}!`,
+      message:
+        winnerNames.length > 1
+          ? `Tie! ${winnerNames.join(' & ')} all finished with ${top}.`
+          : `${winnerNames[0]} wins with ${top}!`,
       type: 'game',
       timestamp: Date.now(),
     },
