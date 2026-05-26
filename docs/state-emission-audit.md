@@ -382,3 +382,59 @@ function that adds a per-recipient `validActions` decoration on top of
 the filter — that decoration is socket-only by design (the REST rejoin
 client computes its own action set). The shared helper handles the
 security-critical part; the wrapper handles the socket-only convenience.
+
+## Addendum: spectator filter bypass
+
+Spectator mode (added in the spectator session) introduces the *only*
+legitimate path that returns unfiltered state to a connected user.
+Before this change, every state-bearing socket emit ran through
+`filterStateForUser` so hidden information stayed masked. After this
+change, the `filteredFor` wrapper in `socket-handler.js` has a single
+branch that skips the filter when the recipient is a registered
+spectator:
+
+```js
+function filteredFor(state, userId, gameId = null) {
+  // …
+  if (gid && userId && isSpectator(gid, userId)) {
+    return { ...state, spectators: spectatorList };  // ← unfiltered, no decorations
+  }
+  // …existing filter + decoration path…
+}
+```
+
+The `isSpectator(gameId, userId)` gate is keyed on the in-memory
+`gameSpectators` Map<gameId, Map<userId, …>> that `socket-handler.js`
+maintains. **The only way to enter that map is via the `spectate`
+socket handler**, which:
+
+- Verifies the game exists and is in `playing` status.
+- Verifies the requesting user is NOT already a player in the game.
+- Registers the user under their authenticated `currentUser.sub` (from
+  the JWT-validated `socket.data.userId`) — no client-supplied identity.
+
+No REST route, no socket event other than `spectate`, and no game-logic
+action can promote a user to spectator status. The bypass is one-way
+and gated by the handshake.
+
+**Spectator state has no decorations either.** The bypass branch returns
+just `{ ...state, spectators: spectatorList }` — no `validActions`, no
+`actionDescriptors`. The client's existing "no descriptors = no actions"
+rendering naturally produces a read-only UI; the spectator's renderer
+sees an empty action surface and shows nothing.
+
+**Regression test:** `server/test/integration/spectator.test.js` mirrors
+the existing `risk-hand-masking.test.js` / `rest-state-filter.test.js`
+shape. The "filter bypass (security)" describe block asserts the
+*intentional* asymmetry — a Battleship spectator sees both fleets;
+a Battleship player still sees only their own ships. If the bypass ever
+fires for a player (or fails to fire for a spectator), the test
+breaks. Three tests in that block.
+
+**REST routes are unaffected.** Spectators don't have a REST entry —
+they only enter via the `spectate` socket event. The REST
+`GET /api/games/:id` continues to use `filterStateForUser(state,
+req.user.sub, gameRegistry)` and applies the player-side filter to
+everyone. (A REST endpoint *does* exist at
+`GET /api/games/:id/spectators` but it returns only the spectator list,
+not game state.)

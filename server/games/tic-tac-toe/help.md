@@ -6,6 +6,8 @@ Tic-Tac-Toe is a two-player game played on a 3×3 grid. One player is **X**, the
 
 A complete game usually takes less than a minute. It is one of the simplest games on the platform and a good first pick if you are showing a new player how the framework works.
 
+**Spectators welcome** — anyone logged in can watch a Tic-Tac-Toe game in progress from the lobby's 👁 Spectate button.
+
 ## Setup
 
 There is no setup. As soon as both players join and the host starts the game, an empty 3×3 board appears. The first player is assigned **X** and moves first; the second player gets **O**.

@@ -171,6 +171,51 @@ of those will have their own opinions about action labels (bids in
 Liar's Dice are inherently numeric and stateful; Coup's actions are
 named cards). Decide once we have three data points, not one.
 
+## Resolved: spectator mode and the `isSpectator` init flag
+
+Spectator mode added a non-player viewer concept. The framework had no
+distinction between players and spectators before this session; the
+addition pressured the renderer interface in one specific place:
+`init(container, state, myUserId, emitAction)`.
+
+**Resolution.** A fifth optional parameter — an `options` object — was
+added to `init`:
+
+```js
+renderer.init(container, state, myUserId, emitAction, { isSpectator: false })
+```
+
+Renderers MUST honor `options.isSpectator`:
+
+- Skip click handlers that would call `emitAction` for a game action.
+- Hide any "your turn" affordances (the spectator has no turn).
+- Render the board as read-only — no drag-and-drop, no cell hover that
+  implies interactability.
+
+Two implementation patterns emerged across the seven renderers:
+
+| Pattern | Used by | Mechanic |
+|---|---|---|
+| Explicit gate in each click handler | Tic-Tac-Toe, Connect Four, Yahtzee | `if (_isSpectator) return;` at the top of each click handler; also gate `canHold` / `cell.disabled` derivations. |
+| Wrapped `_emit` + `pointer-events: none` | Battleship, Risk, Life | Wrap `emitAction` so it's a no-op for spectators; set `wrapper.style.pointerEvents = 'none'` so visual interactions never fire. Sub-modules need no changes. |
+| Implicit gate (framework hides the surface) | Monopoly | All action buttons live inside `#action-section` which `UIManager.applySpectatorChrome` hides; modal `canManage` gates fail when the viewer isn't in `state.players`. The renderer adds the plumbing for symmetry but no new click gates were required. |
+
+The right pattern depends on how a renderer's interactive surfaces are
+structured — single-purpose cell clicks call for explicit gates; multi-
+sub-module renderers benefit from the wrapped-emit approach. There's no
+contract opinion on which to use; both produce correct behavior.
+
+**Server-side gate is the security boundary.** The client-side gates are
+UX only — a spectator's click shouldn't appear to do anything. The
+server's `socket-handler.js` rejects any `game:action` originating from a
+registered spectator with a `game:error`. A spectator with a manipulated
+client cannot affect game state.
+
+**State filter bypass.** Spectators receive *unfiltered* state — the
+opposite of every other recipient. The bypass lives in `filteredFor`
+(socket-handler.js) and is keyed on the runtime `gameSpectators` map.
+See `docs/state-emission-audit.md` for the addendum tracking this change.
+
 ## Resolved: getPlayerCardData hook (player roster cards)
 
 The third instance of the "framework chrome with renderer-supplied

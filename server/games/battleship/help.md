@@ -6,6 +6,8 @@ Battleship is a two-player game of hidden ship placement and shot-by-shot deduct
 
 A complete game takes roughly 10–20 minutes. The game has two distinct phases: a **setup** phase where both players place ships in secret, and a **firing** phase where they take turns shooting.
 
+**Spectators welcome** — anyone logged in can watch a Battleship game in progress from the lobby's 👁 Spectate button. Note that spectators see *both* fleets' positions (the suspense is for the players, not the audience).
+
 ## Setup — Placing Your Fleet
 
 Each player places five ships on their own 10×10 grid:

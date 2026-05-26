@@ -57,6 +57,7 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 - **Save & Resume** — pause any in-progress game and continue it later from the lobby
 - **Auto-reconnect** — disconnected players are marked AFK; their turn is auto-skipped after 30 s
 - **In-game chat** — room-scoped, real-time, 300-character cap
+- **Spectator mode** — anyone logged in can watch any game in progress (👁 Spectate button on every in-progress lobby card). Spectators see the full unfiltered state (including hidden information for games like Battleship, Risk, and Life), chat with players, and watch the action log; they cannot take actions. Players are notified when spectators join. See the "Spectator mode" section below.
 - **Configurable** — every rule, price, and board value lives in JSON; hot-reload without a restart
 
 ### Monopoly
@@ -194,6 +195,22 @@ Find `<host-ip>` with `ip addr` (Linux/macOS) or `ipconfig` (Windows).
 2. One player creates a game, picks a game type, and optionally customises rules.
 3. Other players join from the lobby.
 4. The host clicks **Start Game**.
+
+### Spectator mode
+
+Anyone logged in can watch any in-progress game without playing.
+
+- In the lobby, every game in `playing` status has a **👁 Spectate** button next to the Join/Rejoin button.
+- A spectator sees the full unfiltered state — *including* hidden information like Battleship ship positions, Risk card hands, and Life tiles. (The point is to enjoy watching strategy unfold; spectators are watching, not playing.)
+- Spectators can chat in the same room as players; their messages are prefixed with 👁 so players know which lines come from the gallery.
+- Spectators see the action log, the player roster, and any in-progress modals.
+- The action panel is hidden; the "You're spectating" banner persists at the top of the play area.
+- Players are notified when a spectator joins (log entry). Leaves are silent.
+- A spectator can leave any time via the **✕ Leave** button (replacing the host's Save/Quit). Leaving has no effect on the game.
+
+Spectators cannot take actions. The server enforces this (any `game:action` from a spectator is rejected with a `game:error`); the client gates click handlers as a UX layer so spectator clicks don't appear to do anything.
+
+A user who is already a player in a game cannot also spectate it — the Spectate button is suppressed in that case, and the server rejects an explicit attempt with "You are already a player in this game".
 
 ---
 

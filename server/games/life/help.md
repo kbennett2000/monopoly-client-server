@@ -6,6 +6,8 @@ The Game of Life is a roll-and-move journey for 2–6 players. Each player picks
 
 A full game takes 30–60 minutes. The board is a sequence of squares with a few forks; the spinner is a 1–10 wheel that replaces dice.
 
+**Spectators welcome** — anyone logged in can watch a game of Life in progress from the lobby's 👁 Spectate button. Spectators see every player's Life Tile values (which players normally only learn at game over).
+
 ## Setup
 
 Setup is automatic. Each player starts with **$10,000** in cash, no career, no salary, no spouse, no children, and no house. The first player is chosen and the game begins at the **start fork**.

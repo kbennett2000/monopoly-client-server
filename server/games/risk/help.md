@@ -6,6 +6,8 @@ Risk is a turn-based war game for 2–6 players played on a world map of 42 terr
 
 A full game takes 45–90 minutes depending on player count and aggression. Risk is the most complex game on the platform — there are three distinct phases per turn, dice combat, continent bonuses, and a card system that drives big swings.
 
+**Spectators welcome** — anyone logged in can watch a Risk game in progress from the lobby's 👁 Spectate button. Spectators see every player's card hand (the players themselves only see their own).
+
 ## Setup
 
 Setup is handled automatically:

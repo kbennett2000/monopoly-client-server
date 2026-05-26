@@ -6,6 +6,8 @@ Connect Four is a two-player game played on a vertical board with 7 columns and 
 
 A typical game lasts about 5 minutes. The rules are easy to teach but the strategy is much deeper than Tic-Tac-Toe.
 
+**Spectators welcome** — anyone logged in can watch a Connect Four game in progress from the lobby's 👁 Spectate button.
+
 ## Setup
 
 No setup phase. As soon as the host starts the game, both players see an empty 7×6 board. Red moves first.

@@ -6,6 +6,8 @@ Monopoly is a property-trading board game for 2–8 players. Each player rolls d
 
 A complete game typically runs 60–120 minutes. This implementation follows the classic ruleset with a few config defaults worth knowing — the most notable is that the **Free Parking jackpot** house rule is **off** by default. (The host can toggle several rules when creating a game.)
 
+**Spectators welcome** — anyone logged in can watch a Monopoly game in progress from the lobby's 👁 Spectate button.
+
 ## Setup
 
 Setup is automatic:

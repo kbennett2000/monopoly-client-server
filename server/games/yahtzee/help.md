@@ -6,6 +6,8 @@ Yahtzee is a dice game for 1–8 players. Each player rolls five dice and tries 
 
 A full game takes around 15–25 minutes. The rules are simple but the choices each turn — *which dice to keep, which category to lock in* — are surprisingly rich.
 
+**Spectators welcome** — anyone logged in can watch a Yahtzee game in progress from the lobby's 👁 Spectate button. Spectators see every player's score sheet and dice rolls.
+
 ## How a Turn Works
 
 On your turn you get **up to three rolls** of all five dice, with the chance to keep some and reroll the rest in between.
