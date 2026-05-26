@@ -186,6 +186,83 @@ needed for winner determination and the `GAME_OVER` event payload — a
 genuine rule decision, not display sugar. Renderers asking for them
 mid-game compute their own.
 
+## Open question: game-over modal richness
+
+Yahtzee session 2 surfaced the second instance of a framework display
+surface that loses game-specific richness when the renderer tries to use
+it. The framework's modal API is `UIManager.showGameOver(winnerName)` —
+it takes a single string and renders "🎉 {name} wins!" or "🤝 It's a
+draw!". That works for two-player games with one winner.
+
+**The Yahtzee instance:** ties produce a shared-winner array of userIds,
+and the final scores (each player's grandTotal, upper subtotal, bonus
+status) are interesting enough that players want to see them in the
+game-over moment. The current API can't express either.
+
+**The workaround in v1:** the renderer's `onEvent('GAME_OVER')` writes
+the rich version (`🤝 Tie! Alice & Bob all win`) via
+`UIManager.appendLog` and accepts that the modal itself shows just the
+first winner's name. The log entry survives long enough to read; the
+modal is functionally correct (someone did win, the modal does say so).
+
+**Plausible future shapes:**
+
+- **`describeGameOver(state) → string`** as an optional game-logic
+  method, parallel to the action-label candidates below. Modal calls it
+  if present, falls back to the current single-winner string otherwise.
+- **Richer `GAME_OVER` event payload** that the framework's modal handler
+  knows how to read (`{ title, body, winners[] }`).
+- **Renderer-supplied modal content hook** — the renderer's
+  `onEvent('GAME_OVER')` returns a string or DOM fragment that the
+  framework injects into the modal before showing it.
+
+Don't pick yet. See the cohering-pattern note below.
+
+## Cohering pattern: framework chrome with renderer-supplied display content
+
+The "action label contract" and "game-over modal richness" notes above
+are instances of the same shape:
+
+|                          | Framework offers                          | Renderer wants                                         |
+|--------------------------|-------------------------------------------|--------------------------------------------------------|
+| **Action buttons**       | `getValidActions(state, userId) → string[]` | `{ action, label, enabled }[]` with dynamic labels    |
+| **Game-over modal**      | `showGameOver(winnerName: string)`        | Rich text — tie summary, final scores, per-player breakdown |
+
+Both fit this template:
+
+> The framework owns a UI surface that exposes a scalar/thin contract.
+> The renderer needs to inject game-specific structured display content
+> through that surface. The renderer works around the gap by maintaining
+> a parallel channel — its own label map for action buttons; a log entry
+> instead of (or alongside) the modal.
+
+If extracted, the obvious shape is an optional hook that returns display
+text given context — `describeAction(state, action, userId) → string`
+for the action side, `describeGameOver(state) → string | object` for the
+modal side. Same pattern, two sites.
+
+**Hold off until a third instance.** Two is enough to notice; three is
+enough to know the shape. The natural candidates for a third sighting:
+
+- **Liar's Dice** will exercise the action-label side hard — bids are
+  numeric, stateful, and contested ("raise to 4×5s"). If the same
+  hook-returning-a-string shape works for bids, that's three.
+- **Some future card game** (Coup, Love Letter) may exercise the modal
+  side with a "knocked out" or "reveal" moment that the current
+  one-string modal can't carry.
+- **Or a different framework surface entirely loses richness** — the
+  turn indicator (currently "{name}'s turn"), player-panel badges
+  (currently a static `JAIL` / `OUT` / `AFK` triad), the game log entry
+  formatter. Any of those could become the third instance and shift the
+  shape away from "describe-X-returns-string" toward something else.
+
+Wait for the third sighting; don't extract from two. The action-label
+note above already says this explicitly for its own case — this section
+just acknowledges that the same caution applies across multiple notes
+because they're the same underlying pattern.
+
+**Two-instance pattern, waiting for a third before extraction.**
+
 ## Do not refactor based on this note
 
 Pure capture. Nothing in this document is a green light to move code.

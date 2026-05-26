@@ -5,7 +5,7 @@ Drop in any turn-based game by implementing a single interface; the framework ha
 
 Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/JavaScript** (client).
 
-**Bundled games:** Monopoly (2–8 players) · Connect Four (2 players) · Risk (2–6 players)
+**Bundled games:** Monopoly (2–8 players) · Connect Four (2 players) · Risk (2–6 players) · Tic-Tac-Toe (2 players) · Yahtzee (1–8 players)
 
 ---
 
@@ -18,6 +18,8 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Monopoly](#monopoly)
    - [Connect Four](#connect-four)
    - [Risk](#risk)
+   - [Tic-Tac-Toe](#tic-tac-toe)
+   - [Yahtzee](#yahtzee)
 5. [Adding a New Game](#adding-a-new-game)
 6. [Architecture](#architecture)
 7. [Configuration](#configuration)
@@ -28,6 +30,8 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Risk Settings](#risk-settings)
    - [Risk Board](#risk-board--territories)
    - [Risk Cards](#risk-cards)
+   - [Tic-Tac-Toe Settings](#tic-tac-toe-settings)
+   - [Yahtzee Settings](#yahtzee-settings)
 8. [API Reference](#api-reference)
 9. [Socket.io Events](#socketio-events)
 10. [Security Notes](#security-notes)
@@ -66,6 +70,18 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 - 44-card deck (42 territory + 2 wild); valid sets (3 of a kind, 3 different, or any 2 + wild) traded for escalating bonus armies (4, 6, 8, 10, 12, 15, then +5 each)
 - Player elimination transfers all cards to the conqueror; last player standing wins by world domination
 - **First game with hidden information** — each player's hand is private, enforced server-side by the game's `getStateForPlayer` filter
+
+### Tic-Tac-Toe
+- Classic 3 × 3 board; 2 players take turns marking cells with `✕` and `◯`
+- Win detection: rows, columns, both diagonals
+- Draw detection when the board fills
+
+### Yahtzee
+- Standard 5-dice, 13-category, three-rolls-per-turn rules; 1–8 players (solo play supported)
+- Up to 3 rolls per turn with arbitrary holds between rolls
+- All 13 categories (six upper + three-/four-of-a-kind, full house, two straights, Yahtzee, chance)
+- Upper-section bonus (+35 when subtotal ≥ 63); ties produce a shared-winner array
+- **First non-board game** — UI is a shared score sheet (players as columns, categories as rows) plus a dice tray, all inside the renderer-owned board area
 
 ---
 
@@ -150,10 +166,24 @@ lan-games/
 │   │   │       ├── board.json    ← 40 board squares (names, prices, rents)
 │   │   │       ├── cards.json    ← Chance & Community Chest decks
 │   │   │       └── settings.json ← game rules (starting money, jail fine, …)
-│   │   └── connect-four/
-│   │       ├── game-logic.js     ← Connect Four rules (pure functions)
+│   │   ├── connect-four/
+│   │   │   ├── game-logic.js     ← Connect Four rules (pure functions)
+│   │   │   └── config/
+│   │   │       └── settings.json ← board dimensions, win length, colours
+│   │   ├── risk/
+│   │   │   ├── game-logic.js     ← Risk rules (pure functions)
+│   │   │   └── config/
+│   │   │       ├── board.json    ← 42 territories across 6 continents + adjacencies
+│   │   │       ├── cards.json    ← 44-card deck (42 territory + 2 wild)
+│   │   │       └── settings.json ← reinforcement formula, dice caps, card bonuses
+│   │   ├── tic-tac-toe/
+│   │   │   ├── game-logic.js     ← Tic-Tac-Toe rules (pure functions)
+│   │   │   └── config/
+│   │   │       └── settings.json ← board size, win length, colours, tokens
+│   │   └── yahtzee/
+│   │       ├── game-logic.js     ← Yahtzee rules + scoring (pure functions)
 │   │       └── config/
-│   │           └── settings.json ← board dimensions, win length, colours
+│   │           └── settings.json ← dice count, rolls per turn, category bonuses
 │   │
 │   └── src/                      ← game-agnostic framework
 │       ├── index.js              ← entry point; HTTP + Socket.io server
@@ -174,14 +204,22 @@ lan-games/
     └── js/
         ├── api.js                ← fetch() wrapper for REST calls
         ├── game-state.js         ← client-side state singleton
-        ├── board-renderer.js     ← Monopoly CSS Grid board builder & updater
-        ├── ui-manager.js         ← all DOM updates outside the board
+        ├── ui-manager.js         ← all DOM updates outside the board area
         ├── socket-client.js      ← Socket.io connection + event dispatch
         ├── sound-manager.js      ← audio cues
         ├── app.js                ← wires modules + DOM event listeners
         └── games/
-            └── connect-four/
-                └── renderer.js   ← Connect Four grid builder & updater
+            ├── renderer-interface.js  ← GameRenderer contract + runtime validator
+            ├── renderer-registry.js   ← gameType → renderer lookup
+            ├── monopoly/
+            │   ├── board-grid.js      ← CSS Grid board builder
+            │   └── renderer.js
+            ├── connect-four/renderer.js
+            ├── risk/renderer.js
+            ├── tic-tac-toe/renderer.js
+            └── yahtzee/
+                ├── renderer.js        ← lifecycle + dice tray + roll controls
+                └── score-sheet.js     ← shared score-sheet table builder + painter
 ```
 
 ---
@@ -254,6 +292,35 @@ Click **End turn** to pass.
 #### Winning
 
 Conquer every territory on the board.
+
+---
+
+### Tic-Tac-Toe
+
+Click any empty cell on the 3 × 3 grid to mark it.  
+The game alternates turns automatically between `✕` (first player) and `◯`.  
+**Win** by getting three of your marks in a row — horizontally, vertically, or diagonally.  
+**Draw** when the board fills with no winner.
+
+---
+
+### Yahtzee
+
+#### Your turn
+
+1. **Roll** — clicks the Roll button to roll all five dice. You get up to three rolls per turn.
+2. **Hold** — click any die between rolls to keep it; click again to release. Held dice carry to the next roll; the Roll button shows "Roll N of 3 — K held".
+3. **Score** — click any unscored category cell in your column to **preview** the score; click it again to **commit**. Clicking a different category moves the selection; clicking Roll cancels it.
+
+A category is **locked** once scored — including categories scored at 0. Use `=== null` not falsy checks (a deliberate 0 is a real score). Two-click commit is the protection against accidental lock-in.
+
+#### The score sheet
+
+Players are columns, the 13 categories are rows. Your column shows live previews of every unscored category given the current dice; opponents' unscored cells stay blank. Summary rows show upper subtotal, upper bonus (+35 when subtotal ≥ 63), lower total, and grand total — all derived client-side.
+
+#### Winning
+
+After every player fills all 13 categories, the highest grand total wins. Ties produce a shared-winner array and the modal/log call out all tied players.
 
 ---
 
@@ -734,6 +801,41 @@ Trading a card whose `territoryId` you currently own grants +2 extra armies on t
 
 ---
 
+### Tic-Tac-Toe Settings
+
+`server/games/tic-tac-toe/config/settings.json`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `boardSize` | 3 | Square board edge length (also used as default `winLength`) |
+| `winLength` | 3 | Marks in a row required to win |
+| `playerColors` | x, o | Array of `{ id, hex }` colour objects |
+| `playerTokens` | ✕, ◯ | Symbols shown in each cell |
+
+---
+
+### Yahtzee Settings
+
+`server/games/yahtzee/config/settings.json`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `diceCount` | 5 | Number of dice rolled per turn |
+| `diceFaces` | 6 | Faces per die |
+| `rollsPerTurn` | 3 | Maximum rolls a player gets each turn |
+| `upperBonusThreshold` | 63 | Upper-section subtotal needed for the bonus |
+| `upperBonus` | 35 | Bonus awarded when the upper subtotal reaches the threshold |
+| `fullHouseScore` | 25 | Fixed score for a full house |
+| `smallStraightScore` | 30 | Fixed score for a small straight (4 consecutive faces) |
+| `largeStraightScore` | 40 | Fixed score for a large straight (5 consecutive faces) |
+| `yahtzeeScore` | 50 | Fixed score for five of a kind |
+| `minPlayers` | 1 | Solo play supported |
+| `maxPlayers` | 8 | |
+| `playerColors` | 8 entries | Array of `{ id, hex }` |
+| `playerTokens` | 🎲 🎯 🎪 🎨 🎭 🎰 🎳 🎱 | Emoji tokens shown in the player panel |
+
+---
+
 ## API Reference
 
 All endpoints live under `/api`. Authenticated endpoints (`✓`) require:
@@ -816,6 +918,19 @@ Authorization: Bearer <jwt-token>
 |----------|--------------|--------|
 | `dropPiece` | `{ column }` | Drop a piece into the given column (0-indexed) |
 
+**Tic-Tac-Toe**
+
+| `action` | Extra payload | Effect |
+|----------|--------------|--------|
+| `markCell` | `{ row, col }` | Mark the cell at (row, col); both 0-indexed |
+
+**Yahtzee**
+
+| `action` | Extra payload | Effect |
+|----------|--------------|--------|
+| `rollDice` | `{ held? }` | Roll the dice; `held` is a boolean array indicating which dice carry over from the previous roll (omit on the first roll of a turn) |
+| `scoreCategory` | `{ category }` | Commit the current dice to the named category; locks the cell. Category strings: `ones`, `twos`, …, `sixes`, `threeOfAKind`, `fourOfAKind`, `fullHouse`, `smallStraight`, `largeStraight`, `yahtzee`, `chance` |
+
 **Risk**
 
 | `action` | Extra payload | Valid in phase | Effect |
@@ -876,7 +991,12 @@ Each event has `{ type, data, timestamp }`. Clients use these for sounds, animat
 | `CARD_DRAWN` *(Risk variant)* | `username` *(actual card is private — sent only inside the owning player's filtered state)* |
 | `PHASE_CHANGED` *(Risk)* | `phase` (`reinforce` / `attack` / `fortify`), `username` |
 | `PLAYER_ELIMINATED` *(Risk)* | `username`, `eliminatedBy` |
-| `GAME_OVER` | `winner` (username or `null` for draw) |
+| `CELL_MARKED` *(Tic-Tac-Toe)* | `username`, `row`, `col`, `token` |
+| `DICE_ROLLED` *(Yahtzee variant)* | `username`, `dice[]`, `held[]`, `rollsUsed` |
+| `CATEGORY_SCORED` *(Yahtzee)* | `username`, `category`, `dice[]`, `points` |
+| `TURN_STARTED` *(Yahtzee)* | `username` |
+| `TURN_ENDED` *(Yahtzee)* | `username` |
+| `GAME_OVER` | `winner` (userId, or array of userIds for ties, or `null` for draw); `finalScores[]` *(Yahtzee — `{ userId, username, upperSubtotal, upperBonus, lowerTotal, grandTotal }` per player)* |
 
 ---
 
@@ -965,11 +1085,11 @@ npm run reset-db:hard  # delete the .db file entirely and recreate it
 
 ```bash
 cd server
-npm test
-# → 70 tests, all game-logic unit tests for Monopoly
+npm test                    # unit tests for every bundled game's game-logic
+npm run test:integration    # socket + persistence round-trip tests
 ```
 
-Tests live in `server/test/`. They import game-logic modules directly and never touch the network, database, or socket layer — making them fast and reliable.
+Tests live in `server/test/`. The unit suite imports game-logic modules directly and never touches the network, database, or socket layer — making it fast and reliable. The integration suite spins up a real server, a real SQLite database, and real socket clients to verify full round-trips end-to-end.
 
 ### Hot-reloading config
 
