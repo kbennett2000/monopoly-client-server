@@ -146,6 +146,10 @@ const SocketClient = (() => {
     socket.on('game:turn_warning', ({ username, deadlineTimestamp }) => {
       const seconds = Math.max(0, Math.round((deadlineTimestamp - Date.now()) / 1000));
       UIManager.appendLog(`⏱ ${username} disconnected — turn auto-skips in ${seconds}s`, 'info');
+      // Banner with live countdown — see client/js/turn-warning.js. The
+      // existing appendLog above remains as a persistent log entry; the
+      // banner is the foreground affordance.
+      TurnWarning.handleTurnWarning({ username, deadlineTimestamp });
     });
 
   } // end connect()
@@ -154,6 +158,12 @@ const SocketClient = (() => {
 
   function handleFullStateUpdate(state) {
     if (!state) return;
+
+    // Let the turn-warning banner inspect every state push and dismiss
+    // itself if the warning is no longer relevant (warned player came
+    // back, turn moved on, game ended). The server doesn't emit a
+    // dedicated cancellation event, so this is the dismissal signal.
+    TurnWarning.handleStateUpdate(state);
 
     const myUserId       = GameState.getUser()?.id;
     const activeRenderer = GameRendererRegistry.getActive();

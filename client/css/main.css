@@ -1518,6 +1518,38 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   color: var(--text-muted);
 }
 
+/* ── turn-timer warning banner ───────────────────────────────────────────── */
+
+.turn-warning {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 10px 18px;
+  background: rgba(120, 53, 15, 0.95);
+  color: #fff;
+  border: 1px solid var(--warning);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+
+.turn-warning.turn-warning-me {
+  background: rgba(153, 27, 27, 0.95);
+  border-color: #f87171;
+  animation: turnWarningPulse 1s ease-in-out infinite;
+}
+
+@keyframes turnWarningPulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); }
+  50%      { box-shadow: 0 4px 18px rgba(248, 113, 113, 0.55), 0 4px 14px rgba(0, 0, 0, 0.45); }
+}
+
 /* ── scrollbar styling ────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
