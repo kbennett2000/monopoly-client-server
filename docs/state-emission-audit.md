@@ -298,14 +298,15 @@ client flow does use it before the socket sync arrives.
 
 ## Confidence statement
 
-**As of the fix commit that follows this audit, every state-bearing emit in
-`server/src/` — both socket and REST channels — is either filtered through
-`getStateForPlayer` or has been verified to contain no hidden information.**
+**As of commit `01209bd`, every state-bearing emit in `server/src/` — both
+socket and REST channels — is either filtered through `getStateForPlayer`
+or has been verified to contain no hidden information.**
 
 The previously identified leaks in `GET /api/games/:id` and
-`POST /api/games/:id/start` were closed by routing their response state
-through the same per-recipient filter the socket pipeline uses. Regression
-tests in [server/test/integration/rest-state-filter.test.js](../server/test/integration/rest-state-filter.test.js)
+`POST /api/games/:id/start` were closed in commit `01209bd` by routing
+their response state through the same per-recipient filter the socket
+pipeline uses. Regression tests in
+[server/test/integration/rest-state-filter.test.js](../server/test/integration/rest-state-filter.test.js)
 lock in the property for both Battleship (ship positions removed from
 opponent view) and Risk (hand masked to handCount; canary card never
 appears in opponent JSON), plus a waiting-room safe-by-construction test.
