@@ -1444,7 +1444,7 @@ npm test                    # unit tests for every bundled game's game-logic
 npm run test:integration    # socket + persistence round-trip tests
 ```
 
-Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **538 unit tests across the seven bundled games** plus the framework interface, and **22 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, and game-lifecycle round-trips.
+Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **565 unit tests across the seven bundled games** plus the framework interface, and **40 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, spectator mode, and game-lifecycle round-trips.
 
 The unit suite imports game-logic modules directly and never touches the network, database, or socket layer — making it fast and reliable. The integration suite spins up a real server, a real SQLite database, and real socket clients to verify full round-trips end-to-end.
 

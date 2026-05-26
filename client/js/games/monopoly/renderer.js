@@ -137,9 +137,9 @@ const MonopolyRenderer = (() => {
 
     // Build the entire Monopoly board structure inside the framework-owned
     // container.  destroy() removes it.  These inner ids (free-parking-pot,
-    // dice-display, auction-center, …) are referenced by UIManager from
-    // Monopoly-specific update paths, so they must exist when BoardRenderer
-    // and UIManager run their first updates.
+    // monopoly-board-dice, auction-center, …) are referenced by Monopoly's
+    // own update paths (board-grid.js etc.), so they must exist when
+    // BoardRenderer and UIManager run their first updates.
     container.insertAdjacentHTML('beforeend', `
       <div id="board" class="board">
         <div class="board-center">
@@ -148,7 +148,10 @@ const MonopolyRenderer = (() => {
             <span class="pot-label">Free Parking</span>
             <span id="free-parking-amount" class="pot-amount">$0</span>
           </div>
-          <div id="dice-display" class="dice-display">
+          <!-- Board-center spin result.  Renamed from #dice-display to
+               disambiguate from the sidebar #dice-display (pip-slot
+               element) in index.html. -->
+          <div id="monopoly-board-dice" class="dice-display">
             <span class="die" id="die1">—</span>
             <span class="die" id="die2">—</span>
           </div>

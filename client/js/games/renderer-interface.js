@@ -328,10 +328,11 @@
  * @property {string}        [subtext]      - Short secondary line below the
  *                                            header (e.g. `'5 properties · 2 jail card(s)'`).
  * @property {boolean}       [dimmed]       - When true the framework applies
- *                                            its `.bankrupt`/dimmed visual
- *                                            treatment to the whole card.
- *                                            Use for "out of contention"
- *                                            states (bankrupt, retired).
+ *                                            its `.dimmed` visual treatment
+ *                                            (reduced opacity) to the whole
+ *                                            card.  Use for "out of
+ *                                            contention" states (bankrupt,
+ *                                            retired).
  *
  * @typedef {object} PlayerBadge
  * @property {string} label   - Short ALL-CAPS text, e.g. `'JAIL'`.

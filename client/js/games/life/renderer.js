@@ -188,7 +188,10 @@ const LifeRenderer = (() => {
       primaryValue: typeof player.cash === 'number' ? `$${player.cash.toLocaleString()}` : '',
       badges,
       subtext: '',
-      dimmed: false,
+      // Retired players visually exit the active game — same treatment
+      // Monopoly applies to bankrupt players.  The RETIRED badge above is
+      // the verbal signal; the dim is the at-a-glance one.
+      dimmed: player.retired === true,
     };
   }
 

@@ -550,7 +550,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   transition: border-color 0.2s;
 }
 .player-card.active-turn { border-color: var(--accent); }
-.player-card.bankrupt    { opacity: 0.45; }
+.player-card.dimmed      { opacity: 0.45; }
 
 .player-card-header {
   display: flex;

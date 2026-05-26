@@ -192,7 +192,7 @@ const UIManager = (() => {
       if (idx === currentPlayerIdx) card.classList.add('active-turn');
 
       const data = getPlayerCardData(player, state);
-      if (data.dimmed) card.classList.add('bankrupt');
+      if (data.dimmed) card.classList.add('dimmed');
 
       const colorHex = getPlayerColorHex(state, player);
 
