@@ -122,6 +122,15 @@ Don't bundle that with the layout question.
 
 ## Open question: action label contract
 
+> **Status (resolved by proposal — migration in progress):** This question
+> is now being answered by the optional `getActionDescriptors` contract
+> proposed in [docs/action-descriptors.md](action-descriptors.md). The
+> framework wiring and Battleship implementation landed in the skeleton
+> commit; Yahtzee and Risk migrations land in separate sessions. The
+> original framing below is preserved as historical context — it documents
+> how the problem looked before the proposal, which is useful for
+> understanding why the proposal took the shape it did.
+
 Yahtzee surfaced the first real instance of a renderer needing
 human-readable labels for actions returned by `getValidActions`.
 
@@ -262,6 +271,41 @@ just acknowledges that the same caution applies across multiple notes
 because they're the same underlying pattern.
 
 **Two-instance pattern, waiting for a third before extraction.**
+
+## Open question: simultaneous-actors gap
+
+Battleship session 1 surfaced the first instance: the framework's
+`getCurrentPlayer` model assumes a single player is "active" at any
+moment. Fine for turn-based phases; less clean for phases where multiple
+players act in parallel. Battleship's setup phase is the canonical
+example — both players place ships simultaneously, neither is the
+current player, and the phase transitions to firing on a barrier (both
+ready) rather than via a turn.
+
+The current workaround:
+
+- `getCurrentPlayer` returns `null` during setup. Framework consumers
+  in `socket-handler.js` already handle null gracefully (`cur?.userId`,
+  `!cur` short-circuits).
+- `isTurnTimerBlocked` returns `true` during setup so the 30-second
+  auto-skip doesn't fire on either player.
+- Each setup action validates "is this player allowed to act right now"
+  inline (phase check + ready check + per-action specifics), rather than
+  relying on a single framework-level current-player gate.
+
+That works, but the validation is hand-rolled per action.
+
+**The natural second instance:** Coup's role-assignment phase, when it
+lands. Every player simultaneously receives two private role cards;
+the same null-current-player / barrier-transition / per-action
+validation pattern will apply.
+
+**Don't extract from one instance.** A future second sighting (Coup,
+Love Letter, any game with simultaneous private setup) would tell us
+whether the right shape is e.g. `getActivePlayers(state) → userId[]`
+(defaulting to `[getCurrentPlayer(state).userId]` for turn-based games)
+or something else entirely. One instance plus a future hypothetical
+isn't enough.
 
 ## Do not refactor based on this note
 
