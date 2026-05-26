@@ -179,6 +179,106 @@ function getValidActions(state, userId) {
   return actions;
 }
 
+// ── action descriptors ───────────────────────────────────────────────────────
+
+/**
+ * Human-readable display names for each scoring category. Used by
+ * getActionDescriptors to build descriptor labels like "Score Three of a
+ * Kind for 18". Separate from the renderer's own CATEGORY_META labels
+ * (which are for table-row headers, static and rendering-specific).
+ */
+const CATEGORY_DISPLAY_NAMES = {
+  ones: 'Ones',
+  twos: 'Twos',
+  threes: 'Threes',
+  fours: 'Fours',
+  fives: 'Fives',
+  sixes: 'Sixes',
+  threeOfAKind: 'Three of a Kind',
+  fourOfAKind: 'Four of a Kind',
+  fullHouse: 'Full House',
+  smallStraight: 'Small Straight',
+  largeStraight: 'Large Straight',
+  yahtzee: 'Yahtzee',
+  chance: 'Chance',
+};
+
+/**
+ * Rich action descriptors for the Yahtzee renderer. See
+ * docs/action-descriptors.md for the contract.
+ *
+ * Shape:
+ *   • Exactly one `rollDice` descriptor when it's the player's turn, with
+ *     enabled flipping based on rolls remaining.
+ *   • One `scoreCategory` descriptor per unscored category, ONLY after
+ *     the player's first roll of the turn. Each descriptor's data carries
+ *     { category, previewScore } — the renderer reads previewScore for
+ *     the in-table preview cell; the descriptor's label includes it too
+ *     so hover tooltips and other surfacings work without reformatting.
+ *
+ * Decision (option (a) from the migration spec): pre-roll
+ * (rollsUsed === 0) emits ONLY the rollDice descriptor. No
+ * scoreCategory descriptors before any roll — dice are empty, there's
+ * nothing to preview, and the renderer's score-sheet table renders all
+ * 13 rows from CATEGORIES regardless of descriptor presence. Matches
+ * Battleship/Risk precedent: descriptors describe what's currently
+ * actionable, not "all actions, gated by enabled."
+ *
+ * Returns [] on non-current-player calls, finished games, and pre-
+ * initGame waiting-room states (per the waiting-room-safety convention).
+ */
+function getActionDescriptors(state, userId) {
+  if (!state || state.status !== 'playing') return [];
+  if (!state.turnState || !Array.isArray(state.players)) return [];
+  const idx = state.players.findIndex((p) => p.userId === userId);
+  if (idx < 0) return [];
+  const ts = state.turnState;
+  if (ts.currentPlayerIndex !== idx) return [];
+
+  const me = state.players[idx];
+  const { rollsPerTurn } = state.config.settings;
+  const dice = ts.dice;
+  const out = [];
+
+  // ── rollDice ─────────────────────────────────────────────────────────
+  const next = ts.rollsUsed + 1;
+  const rollsRemaining = rollsPerTurn - ts.rollsUsed;
+  if (rollsRemaining > 0) {
+    out.push({
+      action: 'rollDice',
+      label: next === 1 ? 'Roll dice' : `Roll ${next} of ${rollsPerTurn}`,
+      enabled: true,
+      hint:
+        next === 1
+          ? `You have ${rollsPerTurn} rolls this turn.`
+          : `Re-roll unheld dice — ${rollsRemaining} ${rollsRemaining === 1 ? 'roll' : 'rolls'} remaining.`,
+    });
+  } else {
+    out.push({
+      action: 'rollDice',
+      label: 'Rolls exhausted',
+      enabled: false,
+      hint: 'All rolls used — choose a category to score.',
+    });
+  }
+
+  // ── scoreCategory (one per unscored category, after first roll) ──────
+  if (ts.rollsUsed >= 1 && Array.isArray(dice) && dice.length > 0) {
+    for (const cat of CATEGORIES) {
+      if (me.scoreSheet[cat] !== null) continue; // already scored
+      const previewScore = scoreFor(cat, dice, state.config);
+      out.push({
+        action: 'scoreCategory',
+        label: `Score ${CATEGORY_DISPLAY_NAMES[cat]} for ${previewScore}`,
+        enabled: true,
+        data: { category: cat, previewScore },
+      });
+    }
+  }
+
+  return out;
+}
+
 // ── scoring ──────────────────────────────────────────────────────────────────
 
 /**
@@ -597,6 +697,7 @@ module.exports = {
   getCurrentPlayer,
   isTurnTimerBlocked,
   getValidActions,
+  getActionDescriptors,
   getGameMetadata,
   loadConfig,
   getConfigCopy,
@@ -612,8 +713,16 @@ module.exports = {
   finalizeGame,
   CATEGORIES,
   UPPER_CATEGORIES,
+  CATEGORY_DISPLAY_NAMES,
 };
 
 validateImplementation(module.exports, {
-  internalExports: ['scoreFor', 'computeTotals', 'finalizeGame', 'CATEGORIES', 'UPPER_CATEGORIES'],
+  internalExports: [
+    'scoreFor',
+    'computeTotals',
+    'finalizeGame',
+    'CATEGORIES',
+    'UPPER_CATEGORIES',
+    'CATEGORY_DISPLAY_NAMES',
+  ],
 });

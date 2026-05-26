@@ -375,38 +375,40 @@ const YahtzeeRenderer = (() => {
   function paintRollButton(state) {
     const btn = document.getElementById('yz-roll-btn');
     if (!btn) return;
-    const cur = state.players[state.turnState.currentPlayerIndex];
-    const isMyTurn = cur?.userId === _myUserId;
-    const playing = state.status === 'playing';
     const ts = state.turnState;
-    const rollsRemaining = state.config.settings.rollsPerTurn - ts.rollsUsed;
     const next = ts.rollsUsed + 1;
     const max = state.config.settings.rollsPerTurn;
-
     btn.dataset.nextRoll = String(next);
     btn.dataset.maxRoll = String(max);
 
-    if (!playing) {
-      btn.disabled = true;
+    // The rollDice descriptor is the source of truth for label/enabled
+    // when it's the player's turn (whether enabled or rolls-exhausted).
+    // It's absent only when status !== 'playing' or not my turn — those
+    // states show display-only text the descriptor doesn't cover.
+    const roll = (state.actionDescriptors || []).find((d) => d.action === 'rollDice');
+    if (roll) {
+      btn.disabled = !roll.enabled;
+      // For rolls 2+, append the DOM-derived held count — this is purely
+      // client-side ephemeral state (the user's held selection before
+      // committing the next roll), not something the server can know.
+      if (roll.enabled && next > 1) {
+        const heldCount = currentHeldFromDom(state.config.settings.diceCount).filter(
+          Boolean,
+        ).length;
+        btn.textContent = `${roll.label} — ${heldCount} held`;
+      } else {
+        btn.textContent = roll.label;
+      }
+      return;
+    }
+
+    // No descriptor: not my turn, or game finished. Show display-only text.
+    btn.disabled = true;
+    if (state.status !== 'playing') {
       btn.textContent = 'Game over';
-      return;
-    }
-    if (!isMyTurn) {
-      btn.disabled = true;
-      btn.textContent = `Waiting for ${cur?.username || ''}…`;
-      return;
-    }
-    if (rollsRemaining <= 0) {
-      btn.disabled = true;
-      btn.textContent = 'Pick a category to score';
-      return;
-    }
-    btn.disabled = false;
-    if (next === 1) {
-      btn.textContent = `Roll 1 of ${max}`;
     } else {
-      const heldCount = currentHeldFromDom(state.config.settings.diceCount).filter(Boolean).length;
-      btn.textContent = `Roll ${next} of ${max} — ${heldCount} held`;
+      const cur = state.players[ts.currentPlayerIndex];
+      btn.textContent = `Waiting for ${cur?.username || ''}…`;
     }
   }
 

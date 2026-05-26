@@ -17,10 +17,16 @@
  *   • Click handlers — renderer wires onCellClick in rebuild()'s options.
  *   • Dice and roll button — separate concerns.
  *
- * Score preview math (scoreFor, computeTotals) lives here because previews
- * are a score-sheet concern. The math mirrors server/games/yahtzee/game-logic.js
- * by design — see docs/renderer-contract.md, "action label contract" open
- * question. Both copies must stay in sync until that contract is decided.
+ * Preview values for unscored categories come from the server-side
+ * getActionDescriptors output (state.actionDescriptors) — one
+ * scoreCategory descriptor per unscored category, carrying
+ * data.previewScore. The renderer's old scoreFor mirror was deleted
+ * when this contract landed; see docs/action-descriptors.md.
+ *
+ * computeTotals stays renderer-side: upper subtotal, lower total, and
+ * grand total are display arithmetic over already-visible scoreSheet
+ * values, not rule logic. See the resolved decision in
+ * docs/renderer-contract.md ("derived view fields stay client-side").
  */
 
 const YahtzeeScoreSheet = (() => {
@@ -235,10 +241,18 @@ const YahtzeeScoreSheet = (() => {
           dice.length > 0 &&
           p.userId === myUserId
         ) {
-          const preview = scoreFor(cat, dice, state.config);
-          td.textContent = String(preview);
-          td.classList.add('yz-cell-preview');
-          if (selectedCategory === cat) td.classList.add('yz-cell-selected');
+          // Preview score comes from the server-supplied descriptor.
+          // No fallback: if descriptors are absent, the cell renders
+          // blank rather than re-deriving from rule logic.
+          const desc = findScoreDescriptor(state, cat);
+          if (desc) {
+            td.textContent = String(desc.data.previewScore);
+            td.classList.add('yz-cell-preview');
+            if (selectedCategory === cat) td.classList.add('yz-cell-selected');
+          } else {
+            td.textContent = '—';
+            td.classList.add('yz-cell-empty');
+          }
         } else {
           td.textContent = '—';
           td.classList.add('yz-cell-empty');
@@ -282,63 +296,19 @@ const YahtzeeScoreSheet = (() => {
     setTimeout(() => td.classList.remove('yz-cell-flash'), 800);
   }
 
-  // ─── pure scoring (mirror of server scoreFor) ────────────────────────────
+  // ─── descriptor lookup ───────────────────────────────────────────────────
 
-  function scoreFor(category, dice, config) {
-    const sum = dice.reduce((a, b) => a + b, 0);
-    const counts = countByFace(dice, config.settings.diceFaces);
-    const cfg = config.settings;
-    switch (category) {
-      case 'ones':
-        return sumOfFace(dice, 1);
-      case 'twos':
-        return sumOfFace(dice, 2);
-      case 'threes':
-        return sumOfFace(dice, 3);
-      case 'fours':
-        return sumOfFace(dice, 4);
-      case 'fives':
-        return sumOfFace(dice, 5);
-      case 'sixes':
-        return sumOfFace(dice, 6);
-      case 'threeOfAKind':
-        return counts.some((c) => c >= 3) ? sum : 0;
-      case 'fourOfAKind':
-        return counts.some((c) => c >= 4) ? sum : 0;
-      case 'fullHouse':
-        return counts.includes(3) && counts.includes(2) ? cfg.fullHouseScore : 0;
-      case 'smallStraight':
-        return hasConsecutiveRun(counts, 4) ? cfg.smallStraightScore : 0;
-      case 'largeStraight':
-        return hasConsecutiveRun(counts, 5) ? cfg.largeStraightScore : 0;
-      case 'yahtzee':
-        return counts.some((c) => c >= 5) ? cfg.yahtzeeScore : 0;
-      case 'chance':
-        return sum;
-      default:
-        return 0;
-    }
-  }
-
-  function sumOfFace(dice, face) {
-    let t = 0;
-    for (const d of dice) if (d === face) t += d;
-    return t;
-  }
-  function countByFace(dice, diceFaces) {
-    const counts = Array(diceFaces).fill(0);
-    for (const d of dice) counts[d - 1]++;
-    return counts;
-  }
-  function hasConsecutiveRun(counts, n) {
-    let run = 0;
-    for (const c of counts) {
-      if (c > 0) {
-        run++;
-        if (run >= n) return true;
-      } else run = 0;
-    }
-    return false;
+  /**
+   * Find the scoreCategory descriptor for a given category from the
+   * server-supplied state.actionDescriptors list. Returns undefined when
+   * no descriptor exists for that category (already scored, pre-roll, or
+   * not the player's turn). The renderer uses this for both the preview
+   * value (data.previewScore) and the per-category enabled gate.
+   */
+  function findScoreDescriptor(state, category) {
+    return state.actionDescriptors?.find(
+      (d) => d.action === 'scoreCategory' && d.data?.category === category,
+    );
   }
 
   function computeTotals(scoreSheet, config) {

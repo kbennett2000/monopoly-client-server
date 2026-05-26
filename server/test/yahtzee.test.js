@@ -837,3 +837,165 @@ describe('Yahtzee — migrate', () => {
     expect(() => gl.migrate({ stateVersion: 0 })).toThrow(/No migration path/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Yahtzee — getActionDescriptors', () => {
+  /** Convenience: set state to "Alice's turn, N rolls used, dice rolled." */
+  function withRoll(state, rollsUsed, dice) {
+    return {
+      ...state,
+      turnState: { ...state.turnState, rollsUsed, dice },
+    };
+  }
+
+  // ── rollDice ─────────────────────────────────────────────────────────────
+
+  test('rollDice present and enabled before any roll', () => {
+    const d = gl.getActionDescriptors(makeState(), 'p1');
+    const roll = d.find((x) => x.action === 'rollDice');
+    expect(roll).toBeDefined();
+    expect(roll.enabled).toBe(true);
+    expect(roll.label).toBe('Roll dice');
+  });
+
+  test('rollDice label is "Roll N of 3" on subsequent rolls', () => {
+    const s = withRoll(makeState(), 1, [1, 2, 3, 4, 5]);
+    const d = gl.getActionDescriptors(s, 'p1');
+    expect(d.find((x) => x.action === 'rollDice').label).toBe('Roll 2 of 3');
+    const s3 = withRoll(makeState(), 2, [1, 2, 3, 4, 5]);
+    const d3 = gl.getActionDescriptors(s3, 'p1');
+    expect(d3.find((x) => x.action === 'rollDice').label).toBe('Roll 3 of 3');
+  });
+
+  test('rollDice present but disabled after rolls exhausted', () => {
+    const s = withRoll(makeState(), 3, [1, 2, 3, 4, 5]);
+    const d = gl.getActionDescriptors(s, 'p1');
+    const roll = d.find((x) => x.action === 'rollDice');
+    expect(roll.enabled).toBe(false);
+    expect(roll.hint).toMatch(/choose a category/);
+  });
+
+  test('rollDice absent on opponent turn (descriptor list empty)', () => {
+    expect(gl.getActionDescriptors(makeState(), 'p2')).toEqual([]);
+  });
+
+  // ── scoreCategory ────────────────────────────────────────────────────────
+
+  test('no scoreCategory descriptors before any roll (option (a))', () => {
+    const d = gl.getActionDescriptors(makeState(), 'p1');
+    expect(d.filter((x) => x.action === 'scoreCategory')).toEqual([]);
+    // Only rollDice should be present.
+    expect(d.map((x) => x.action)).toEqual(['rollDice']);
+  });
+
+  test('13 scoreCategory descriptors after one roll, all categories unscored', () => {
+    const s = withRoll(makeState(), 1, [1, 2, 3, 4, 5]);
+    const d = gl.getActionDescriptors(s, 'p1');
+    const scoreDescs = d.filter((x) => x.action === 'scoreCategory');
+    expect(scoreDescs).toHaveLength(13);
+    // Every CATEGORIES entry appears exactly once.
+    const cats = scoreDescs.map((x) => x.data.category).sort();
+    expect(cats).toEqual([...gl.CATEGORIES].sort());
+  });
+
+  test('scoreCategory descriptors decrement as categories are scored', () => {
+    const p1 = makePlayer('p1', 'Alice');
+    fillSheet(p1, { ones: 3, twos: 6, fullHouse: 25 });
+    const s = withRoll(makeState({ players: [p1, makePlayer('p2', 'Bob')] }), 1, [1, 1, 1, 2, 2]);
+    const d = gl.getActionDescriptors(s, 'p1');
+    const scoreDescs = d.filter((x) => x.action === 'scoreCategory');
+    expect(scoreDescs).toHaveLength(13 - 3);
+    const cats = new Set(scoreDescs.map((x) => x.data.category));
+    expect(cats.has('ones')).toBe(false);
+    expect(cats.has('twos')).toBe(false);
+    expect(cats.has('fullHouse')).toBe(false);
+  });
+
+  test("each descriptor's previewScore equals scoreFor(category, dice, config)", () => {
+    const dice = [3, 3, 3, 5, 5];
+    const s = withRoll(makeState(), 1, dice);
+    const d = gl.getActionDescriptors(s, 'p1');
+    for (const desc of d.filter((x) => x.action === 'scoreCategory')) {
+      const expected = gl.scoreFor(desc.data.category, dice, CFG);
+      expect(desc.data.previewScore).toBe(expected);
+    }
+  });
+
+  test('descriptor label includes the preview score (even zero)', () => {
+    // Dice [1,1,1,1,1] form a yahtzee (5 of a kind). For yahtzee → 50,
+    // for fullHouse → 0 (standard rule: 5 of a kind is NOT a full house).
+    const s = withRoll(makeState(), 1, [1, 1, 1, 1, 1]);
+    const d = gl.getActionDescriptors(s, 'p1');
+    const yahtzeeDesc = d.find((x) => x.data?.category === 'yahtzee');
+    const fullHouseDesc = d.find((x) => x.data?.category === 'fullHouse');
+    expect(yahtzeeDesc.data.previewScore).toBe(50);
+    expect(yahtzeeDesc.label).toBe('Score Yahtzee for 50');
+    expect(fullHouseDesc.data.previewScore).toBe(0);
+    expect(fullHouseDesc.label).toBe('Score Full House for 0');
+  });
+
+  test('category scored at 0 does NOT generate a future descriptor', () => {
+    // Player deliberately punted yahtzee at 0; that category is now used.
+    const p1 = makePlayer('p1', 'Alice');
+    fillSheet(p1, { yahtzee: 0 });
+    const s = withRoll(makeState({ players: [p1, makePlayer('p2', 'Bob')] }), 1, [1, 1, 1, 1, 1]);
+    const d = gl.getActionDescriptors(s, 'p1');
+    const yahtzeeDesc = d.find((x) => x.data?.category === 'yahtzee');
+    expect(yahtzeeDesc).toBeUndefined();
+    // All 12 other categories remain.
+    expect(d.filter((x) => x.action === 'scoreCategory')).toHaveLength(12);
+  });
+
+  // ── final / end states ───────────────────────────────────────────────────
+
+  test('final-category state: rollDice + 1 scoreCategory', () => {
+    const p1 = makePlayer('p1', 'Alice');
+    // Fill everything except chance.
+    for (const cat of gl.CATEGORIES) {
+      if (cat !== 'chance') p1.scoreSheet[cat] = 10;
+    }
+    const s = withRoll(makeState({ players: [p1, makePlayer('p2', 'Bob')] }), 1, [6, 6, 6, 6, 6]);
+    const d = gl.getActionDescriptors(s, 'p1');
+    expect(d).toHaveLength(2);
+    expect(d.map((x) => x.action).sort()).toEqual(['rollDice', 'scoreCategory']);
+    expect(d.find((x) => x.action === 'scoreCategory').data.category).toBe('chance');
+  });
+
+  test('finished game returns no descriptors for either player', () => {
+    const s = { ...makeState(), status: 'finished' };
+    expect(gl.getActionDescriptors(s, 'p1')).toEqual([]);
+    expect(gl.getActionDescriptors(s, 'p2')).toEqual([]);
+  });
+
+  test('safe on pre-initGame waiting-room state', () => {
+    expect(gl.getActionDescriptors({ status: 'waiting', players: [] }, 'p1')).toEqual([]);
+  });
+
+  // ── solo + multi-player turn rotation ────────────────────────────────────
+
+  test('solo game (1 player): descriptors work for the lone player', () => {
+    const solo = makePlayer('solo', 'Hermit');
+    const s = makeState({ players: [solo] });
+    const d = gl.getActionDescriptors(s, 'solo');
+    expect(d.find((x) => x.action === 'rollDice')).toBeDefined();
+  });
+
+  test('descriptor list flips between players as the turn rotates', () => {
+    const s1 = makeState();
+    expect(gl.getActionDescriptors(s1, 'p1').length).toBeGreaterThan(0);
+    expect(gl.getActionDescriptors(s1, 'p2')).toEqual([]);
+    const s2 = { ...s1, turnState: { ...s1.turnState, currentPlayerIndex: 1 } };
+    expect(gl.getActionDescriptors(s2, 'p1')).toEqual([]);
+    expect(gl.getActionDescriptors(s2, 'p2').length).toBeGreaterThan(0);
+  });
+
+  test('every returned descriptor carries action/label/enabled', () => {
+    const s = withRoll(makeState(), 2, [3, 3, 3, 5, 5]);
+    for (const d of gl.getActionDescriptors(s, 'p1')) {
+      expect(typeof d.action).toBe('string');
+      expect(typeof d.label).toBe('string');
+      expect(typeof d.enabled).toBe('boolean');
+    }
+  });
+});
