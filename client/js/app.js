@@ -162,6 +162,11 @@
   document.getElementById('refresh-games-btn').addEventListener('click', refreshGameList);
 
   document.getElementById('logout-btn').addEventListener('click', () => {
+    // Disconnect the socket BEFORE clearing the token so the next login
+    // opens a fresh connection authenticated as the new user.  Without
+    // this, the next connect() short-circuits on the stale socket and
+    // every subsequent action is authenticated as the previous user.
+    SocketClient.disconnect();
     API.logout();
     GameState.clear();
     UIManager.showScreen('auth-screen');

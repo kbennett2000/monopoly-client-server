@@ -12,24 +12,38 @@ const SocketClient = (() => {
 
   let socket = null;
   let _onLobbyUpdate = null;
+  let _connectedWithToken = null; // the JWT in use by the current socket
 
   // ── connect ────────────────────────────────────────────────────────────────
 
   /**
    * Open a Socket.io connection, passing the JWT in the handshake.
    * Must be called once after the user logs in.
+   *
+   * If a socket is already open but the JWT has changed (e.g. user logged
+   * out and back in as a different account), the old socket is forcibly
+   * closed and reconnected with the new token.  Otherwise the server would
+   * keep authenticating the connection as the previous user — symptom:
+   * client thinks "your turn" but server rejects every action as "Not your
+   * turn", because the two sides identify the socket as different users.
    */
   function connect(onReady) {
-    if (socket && socket.connected) {
+    const currentToken = API.getToken();
+    if (socket && socket.connected && _connectedWithToken === currentToken) {
       onReady?.();
       return;
     }
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
 
     socket = io({
-      auth: { token: API.getToken() },
+      auth: { token: currentToken },
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
     });
+    _connectedWithToken = currentToken;
 
     socket.on('connect', () => {
       console.log('[socket] connected', socket.id);
@@ -262,8 +276,21 @@ const SocketClient = (() => {
 
   // ── public API ─────────────────────────────────────────────────────────────
 
+  /**
+   * Close the active socket, if any.  Use on logout so the next login can
+   * open a fresh connection with the new token.
+   */
+  function disconnect() {
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
+    _connectedWithToken = null;
+  }
+
   return {
     connect,
+    disconnect,
     onLobbyUpdate,
     joinGameRoom,
     joinLobby,
