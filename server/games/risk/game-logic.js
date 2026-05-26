@@ -277,7 +277,9 @@ function computeReinforcements(state, userId) {
 
 function getCurrentPlayer(state) {
   if (!state?.turnState) return null;
-  return state.players[state.turnState.currentPlayerIndex] || null;
+  const p = state.players[state.turnState.currentPlayerIndex];
+  if (!p) return null;
+  return { userId: p.userId, username: p.username };
 }
 
 // Attack resolution is atomic (defender auto-rolls), so no phase ever

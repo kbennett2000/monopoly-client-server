@@ -109,7 +109,9 @@ function initGame(gameId, name, players, config) {
 
 function getCurrentPlayer(state) {
   if (!state?.turnState) return null;
-  return state.players[state.turnState.currentPlayerIndex] || null;
+  const p = state.players[state.turnState.currentPlayerIndex];
+  if (!p) return null;
+  return { userId: p.userId, username: p.username };
 }
 
 function isTurnTimerBlocked(_state) {
