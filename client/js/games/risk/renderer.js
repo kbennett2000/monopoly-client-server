@@ -317,39 +317,28 @@ const RiskRenderer = (() => {
 
     // It IS my turn
     const me = state.players.find(p => p.userId === _myUserId);
-    // Server-supplied validActions is the source of truth.  We still evaluate
-    // the old hand-rolled fallback so we can detect drift between server
-    // rules and the client's local re-derivation.  If a few playthroughs
-    // produce no `[validActions drift]` warnings, the fallback can be
-    // deleted in a follow-up commit.  If warnings fire, fix the SERVER
-    // (game-logic.getValidActions) — the renderer must not be the authority.
-    const va = Array.isArray(state.validActions) ? state.validActions : null;
-    const allowed = (action, fallback) => {
-      if (!va) return fallback;
-      const serverSays = va.includes(action);
-      if (serverSays !== Boolean(fallback)) {
-        console.warn(`[validActions drift] action="${action}" server=${serverSays} fallback=${Boolean(fallback)}`);
-      }
-      return serverSays;
-    };
+
+    // Risk has multiple descriptors active simultaneously per phase
+    // (reinforce: 3, attack/fortify: 2) so the renderer keeps its own
+    // phase-level status text rather than promoting any single descriptor's
+    // hint to the status line. Descriptors drive button label / enabled /
+    // tooltip — that's what they're for. See docs/action-descriptors.md
+    // "Status text and the `hint` field" — Risk falls in the "renderer
+    // owns status text locally" camp, unlike Battleship's setup phase.
 
     if (phase === 'reinforce') {
       const remaining = state.turnState.armiesToPlace;
       if (titleEl) {
         titleEl.textContent = `Reinforce — ${remaining} armies to place`;
       }
-
-      if (allowed('tradeCards', me && hasAnyValidCardSet(me.hand || []))) {
-        const tradeBtn = button('Trade cards', () => openTradeDialog(me.hand || []));
-        buttonsEl.appendChild(tradeBtn);
-      }
-
-      const endBtn = button('End reinforce phase', () => _emit('endReinforcePhase', {}));
-      endBtn.disabled = !allowed('endReinforcePhase', remaining === 0);
-      buttonsEl.appendChild(endBtn);
-
+      buttonsEl.appendChild(buttonFromDescriptor(state, 'tradeCards', () =>
+        openTradeDialog(me.hand || []),
+      ));
+      buttonsEl.appendChild(buttonFromDescriptor(state, 'endReinforcePhase', () =>
+        _emit('endReinforcePhase', {}),
+      ));
       const help = document.createElement('p');
-      help.className   = 'risk-help';
+      help.className = 'risk-help';
       help.textContent = 'Click one of your territories to place an army.';
       buttonsEl.appendChild(help);
     }
@@ -359,7 +348,7 @@ const RiskRenderer = (() => {
           ? `Attack from ${territoryName(state, _selectedFrom)} — click an enemy territory`
           : 'Attack — click one of your territories to attack from';
       }
-      buttonsEl.appendChild(button('End attack phase', () => {
+      buttonsEl.appendChild(buttonFromDescriptor(state, 'endAttackPhase', () => {
         _selectedFrom = null;
         _emit('endAttackPhase', {});
       }));
@@ -373,11 +362,33 @@ const RiskRenderer = (() => {
               ? `Fortify from ${territoryName(state, _selectedFrom)} — click a connected territory`
               : 'Fortify — click one of your territories to move armies from');
       }
-      buttonsEl.appendChild(button('End turn', () => {
+      buttonsEl.appendChild(buttonFromDescriptor(state, 'endTurn', () => {
         _selectedFrom = null;
         _emit('endTurn', {});
       }));
     }
+  }
+
+  /** Find a descriptor by action name in state.actionDescriptors. */
+  function findDescriptor(state, action) {
+    return (state.actionDescriptors || []).find((d) => d.action === action);
+  }
+
+  /**
+   * Build a button from the descriptor for `action` — label, disabled, and
+   * tooltip come from the descriptor. If no descriptor is found (game
+   * doesn't ship them, or the action isn't applicable right now), the
+   * returned button is disabled with empty content. Caller appends it.
+   */
+  function buttonFromDescriptor(state, action, onClick) {
+    const d = findDescriptor(state, action);
+    const b = document.createElement('button');
+    b.className = 'action-btn risk-btn';
+    b.textContent = d?.label || action;
+    b.disabled = !d?.enabled;
+    if (d?.hint) b.title = d.hint;
+    b.addEventListener('click', onClick);
+    return b;
   }
 
   function button(label, onClick) {
@@ -409,27 +420,11 @@ const RiskRenderer = (() => {
     _emit('tradeCards', { cardIds });
   }
 
-  function hasAnyValidCardSet(hand) {
-    if (!hand || hand.length < 3) return false;
-    for (let i = 0; i < hand.length - 2; i++) {
-      for (let j = i + 1; j < hand.length - 1; j++) {
-        for (let k = j + 1; k < hand.length; k++) {
-          if (isValidCardSet([hand[i], hand[j], hand[k]])) return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  function isValidCardSet(cards) {
-    if (cards.length !== 3) return false;
-    const wilds = cards.filter(c => c.troopType === 'wild').length;
-    const types = new Set(cards.filter(c => c.troopType !== 'wild').map(c => c.troopType));
-    if (wilds >= 1) return true;
-    if (types.size === 1) return true;
-    if (types.size === 3) return true;
-    return false;
-  }
+  // Note: the previous client-side hasAnyValidCardSet / isValidCardSet
+  // helpers used to gate the Trade cards button. Replaced by
+  // state.actionDescriptors.tradeCards.enabled — see
+  // docs/action-descriptors.md. The rule arithmetic now lives only on
+  // the server (server/games/risk/game-logic.js findValidCardSets).
 
   function territoryName(state, id) {
     return state.config?.territoryById?.[id]?.name ||

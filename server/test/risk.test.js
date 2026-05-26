@@ -644,6 +644,244 @@ describe('Risk — getValidActions', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+describe('Risk — getActionDescriptors', () => {
+  function findDesc(descs, action) {
+    const d = descs.find((x) => x.action === action);
+    expect(d).toBeDefined();
+    return d;
+  }
+
+  // ── reinforce phase ──────────────────────────────────────────────────────
+
+  test('reinforce, armies remaining: placeReinforcement enabled, endReinforcePhase disabled', () => {
+    const s = makeGame(2);
+    const d = risk.getActionDescriptors(s, 'u1');
+    expect(findDesc(d, 'placeReinforcement')).toMatchObject({
+      enabled: true,
+      data: { armiesRemaining: s.turnState.armiesToPlace },
+    });
+    expect(findDesc(d, 'endReinforcePhase').enabled).toBe(false);
+  });
+
+  test('reinforce, no armies left: placeReinforcement disabled, endReinforcePhase enabled', () => {
+    const s = makeGame(2);
+    s.turnState.armiesToPlace = 0;
+    const d = risk.getActionDescriptors(s, 'u1');
+    expect(findDesc(d, 'placeReinforcement').enabled).toBe(false);
+    expect(findDesc(d, 'endReinforcePhase')).toMatchObject({
+      enabled: true,
+      hint: 'Advance to attack phase.',
+    });
+  });
+
+  test('reinforce, hand has no valid set: tradeCards disabled with rule hint', () => {
+    const s = makeGame(2);
+    const me = s.players.find((p) => p.userId === 'u1');
+    me.hand = [
+      { id: 'c1', troopType: 'infantry', territoryId: 'alaska' },
+      { id: 'c2', troopType: 'infantry', territoryId: 'alberta' },
+    ];
+    const d = risk.getActionDescriptors(s, 'u1');
+    const trade = findDesc(d, 'tradeCards');
+    expect(trade.enabled).toBe(false);
+    expect(trade.data.validSets).toEqual([]);
+    expect(trade.hint).toMatch(/3 cards|wild/);
+  });
+
+  test('reinforce, hand has a 3-of-a-kind: tradeCards enabled, validSets enumerated', () => {
+    const s = makeGame(2);
+    const me = s.players.find((p) => p.userId === 'u1');
+    me.hand = [
+      { id: 'c1', troopType: 'infantry', territoryId: 'alaska' },
+      { id: 'c2', troopType: 'infantry', territoryId: 'alberta' },
+      { id: 'c3', troopType: 'infantry', territoryId: 'argentina' },
+    ];
+    const d = risk.getActionDescriptors(s, 'u1');
+    const trade = findDesc(d, 'tradeCards');
+    expect(trade.enabled).toBe(true);
+    expect(trade.data.validSets).toEqual([['c1', 'c2', 'c3']]);
+    expect(trade.data.handSize).toBe(3);
+  });
+
+  test('reinforce, hand has multiple valid sets: validSets enumerates all combinations', () => {
+    const s = makeGame(2);
+    const me = s.players.find((p) => p.userId === 'u1');
+    // Four infantry → 4 choose 3 = 4 different valid triples.
+    me.hand = [
+      { id: 'c1', troopType: 'infantry', territoryId: 't1' },
+      { id: 'c2', troopType: 'infantry', territoryId: 't2' },
+      { id: 'c3', troopType: 'infantry', territoryId: 't3' },
+      { id: 'c4', troopType: 'infantry', territoryId: 't4' },
+    ];
+    const d = risk.getActionDescriptors(s, 'u1');
+    const trade = findDesc(d, 'tradeCards');
+    expect(trade.data.validSets).toHaveLength(4);
+  });
+
+  test('reinforce, wild + two non-wild: tradeCards enabled (wild matches anything)', () => {
+    const s = makeGame(2);
+    const me = s.players.find((p) => p.userId === 'u1');
+    me.hand = [
+      { id: 'c1', troopType: 'infantry', territoryId: 'alaska' },
+      { id: 'c2', troopType: 'cavalry', territoryId: 'alberta' },
+      { id: 'cw', troopType: 'wild', territoryId: null },
+    ];
+    const d = risk.getActionDescriptors(s, 'u1');
+    expect(findDesc(d, 'tradeCards').enabled).toBe(true);
+  });
+
+  // ── attack phase ─────────────────────────────────────────────────────────
+
+  test('attack phase, valid attack exists: attackTerritory enabled, endAttackPhase always enabled', () => {
+    const s = makeGame(2);
+    s.turnState.phase = 'attack';
+    // Default initGame distributes territories — at least one of u1's
+    // owned territories has 2+ armies and an enemy neighbour in a 2-player
+    // distribution (each player gets ~21 territories with armies spread).
+    // To make the assertion deterministic, force a known shape:
+    giveAllTerritoriesTo(s, 'u1', 1);
+    // Give u1 a 2-army territory adjacent to an enemy-owned one.
+    s.territories['alaska'] = { ownerId: 'u1', armies: 3 };
+    s.territories['kamchatka'] = { ownerId: 'u2', armies: 1 };
+    const d = risk.getActionDescriptors(s, 'u1');
+    expect(findDesc(d, 'attackTerritory').enabled).toBe(true);
+    expect(findDesc(d, 'endAttackPhase').enabled).toBe(true);
+  });
+
+  test('attack phase, no valid attack: attackTerritory disabled with hint', () => {
+    const s = makeGame(2);
+    s.turnState.phase = 'attack';
+    // u1 owns everything, so no enemy neighbours exist anywhere.
+    giveAllTerritoriesTo(s, 'u1', 5);
+    const d = risk.getActionDescriptors(s, 'u1');
+    const attack = findDesc(d, 'attackTerritory');
+    expect(attack.enabled).toBe(false);
+    expect(attack.hint).toMatch(/No valid attacks/);
+  });
+
+  // ── fortify phase ────────────────────────────────────────────────────────
+
+  test('fortify phase, valid fortify possible: fortify enabled', () => {
+    const s = makeGame(2);
+    s.turnState.phase = 'fortify';
+    s.turnState.fortifyUsed = false;
+    giveAllTerritoriesTo(s, 'u1', 1);
+    s.territories['alaska'] = { ownerId: 'u1', armies: 5 };
+    // alaska's adjacency includes alberta — give that to u1 too with armies.
+    s.territories['alberta'] = { ownerId: 'u1', armies: 1 };
+    const d = risk.getActionDescriptors(s, 'u1');
+    expect(findDesc(d, 'fortify').enabled).toBe(true);
+    expect(findDesc(d, 'endTurn').enabled).toBe(true);
+  });
+
+  test('fortify phase, already fortified: fortify disabled with hint', () => {
+    const s = makeGame(2);
+    s.turnState.phase = 'fortify';
+    s.turnState.fortifyUsed = true;
+    const d = risk.getActionDescriptors(s, 'u1');
+    const fortify = findDesc(d, 'fortify');
+    expect(fortify.enabled).toBe(false);
+    expect(fortify.hint).toMatch(/already fortified/);
+  });
+
+  test('fortify phase, no source with owned neighbour: fortify disabled with rule hint', () => {
+    const s = makeGame(2);
+    s.turnState.phase = 'fortify';
+    s.turnState.fortifyUsed = false;
+    // u1 owns only one territory — no possible fortify destination.
+    for (const tid of Object.keys(s.territories)) {
+      s.territories[tid] = { ownerId: 'u2', armies: 1 };
+    }
+    s.territories['alaska'] = { ownerId: 'u1', armies: 5 };
+    const d = risk.getActionDescriptors(s, 'u1');
+    const fortify = findDesc(d, 'fortify');
+    expect(fortify.enabled).toBe(false);
+    expect(fortify.hint).toMatch(/No valid fortification/);
+  });
+
+  // ── turn gating + finished ───────────────────────────────────────────────
+
+  test('non-current player gets empty descriptor list', () => {
+    const s = makeGame(2);
+    expect(risk.getActionDescriptors(s, 'u2')).toEqual([]);
+  });
+
+  test('finished game returns empty for everyone', () => {
+    const s = makeGame(2);
+    s.status = 'finished';
+    expect(risk.getActionDescriptors(s, 'u1')).toEqual([]);
+    expect(risk.getActionDescriptors(s, 'u2')).toEqual([]);
+  });
+
+  test('eliminated player returns empty descriptor list', () => {
+    const s = makeGame(2);
+    const me = s.players.find((p) => p.userId === 'u1');
+    me.eliminated = true;
+    expect(risk.getActionDescriptors(s, 'u1')).toEqual([]);
+  });
+
+  test('safe on pre-initGame waiting-room state', () => {
+    const wait = { status: 'waiting', players: [] };
+    expect(risk.getActionDescriptors(wait, 'u1')).toEqual([]);
+  });
+
+  test('every returned descriptor has the contract required-fields', () => {
+    const s = makeGame(2);
+    for (const d of risk.getActionDescriptors(s, 'u1')) {
+      expect(typeof d.action).toBe('string');
+      expect(typeof d.label).toBe('string');
+      expect(typeof d.enabled).toBe('boolean');
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Risk — getActionDescriptors hidden-info filter (SECURITY)', () => {
+  test("opponent's getActionDescriptors view never includes our validSets", () => {
+    // Inject a known-tradeable hand into u1; ask the framework what u2
+    // sees by calling getActionDescriptors(state, u2). It must return []
+    // (u2 isn't the current player) and crucially, asking for u1's
+    // descriptors from u2's perspective is meaningless — descriptors are
+    // computed per-recipient, so the opponent's hand never travels through
+    // u2's descriptor channel.
+    //
+    // The framework's filteredFor wrapper (server/src/socket-handler.js)
+    // calls getActionDescriptors(view, userId) with userId = recipient,
+    // so the recipient only ever receives their own descriptors. This
+    // test pins that property at the function level.
+    const s = makeGame(2);
+    const u1 = s.players.find((p) => p.userId === 'u1');
+    u1.hand = [
+      { id: 'card-secret-canary-007', troopType: 'infantry', territoryId: 'alaska' },
+      { id: 'card-secret-canary-008', troopType: 'infantry', territoryId: 'alberta' },
+      { id: 'card-secret-canary-009', troopType: 'infantry', territoryId: 'argentina' },
+    ];
+
+    // u1's own descriptors include the canary IDs.
+    const u1Descs = risk.getActionDescriptors(s, 'u1');
+    expect(JSON.stringify(u1Descs)).toContain('card-secret-canary-007');
+
+    // u2's descriptors are empty (not their turn) — so no leak. But the
+    // stronger property: even if u2 became the current player, their
+    // descriptors would describe u2's hand, never u1's.
+    const u2Descs = risk.getActionDescriptors(s, 'u2');
+    expect(u2Descs).toEqual([]);
+    expect(JSON.stringify(u2Descs)).not.toContain('card-secret-canary');
+
+    // Force-flip u2 to current player and verify their descriptors
+    // describe u2's hand (empty), not u1's.
+    s.turnState.currentPlayerIndex = 1;
+    s.turnState.armiesToPlace = 3;
+    const u2NowCurrent = risk.getActionDescriptors(s, 'u2');
+    expect(JSON.stringify(u2NowCurrent)).not.toContain('card-secret-canary');
+    const u2Trade = u2NowCurrent.find((d) => d.action === 'tradeCards');
+    expect(u2Trade.data.validSets).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 describe('Risk — migrate stub', () => {
   test('throws on any version mismatch (no migrations defined yet)', () => {
     expect(() => risk.migrate({ stateVersion: 0 })).toThrow(/No migration path/);

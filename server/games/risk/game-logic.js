@@ -310,6 +310,155 @@ function getValidActions(state, userId) {
   }
 }
 
+// ── attack / fortify reachability ────────────────────────────────────────────
+
+/** True if the player owns any territory with 2+ armies adjacent to an enemy. */
+function canAnyAttack(state, userId) {
+  for (const tid of getOwnedTerritories(state, userId)) {
+    if (state.territories[tid].armies < 2) continue;
+    const territory = state.config.board.territories.find((t) => t.id === tid);
+    if (!territory) continue;
+    for (const neighborId of territory.adjacent) {
+      const n = state.territories[neighborId];
+      if (n && n.ownerId && n.ownerId !== userId) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * True if the player can fortify between any two owned territories.
+ *
+ * A direct owned neighbour is sufficient — fortification can travel through
+ * an arbitrarily long owned chain (`canFortifyPath` allows this), but if
+ * source T has ANY owned neighbour N, then (T → N) is itself a valid
+ * fortify move, so checking direct neighbours is enough to say "any
+ * fortification is possible at all."
+ */
+function canAnyFortify(state, userId) {
+  const owned = new Set(getOwnedTerritories(state, userId));
+  for (const tid of owned) {
+    if (state.territories[tid].armies < 2) continue;
+    const territory = state.config.board.territories.find((t) => t.id === tid);
+    if (!territory) continue;
+    for (const neighborId of territory.adjacent) {
+      if (owned.has(neighborId)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Rich action descriptors for the Risk renderer. See docs/action-descriptors.md.
+ *
+ * Shape choices documented per-phase:
+ *   • reinforce — placeReinforcement / tradeCards / endReinforcePhase. The
+ *     tradeCards descriptor carries data.validSets (array of [cardId,
+ *     cardId, cardId] triples) so the renderer can offer a pre-validated
+ *     choice rather than reimplementing isValidCardSet client-side. IDs
+ *     not full card objects — the renderer already has the cards in
+ *     state.players[me].hand and can look them up cheaply.
+ *   • attack — attackTerritory (enabled if any owned 2+ army territory has
+ *     an enemy neighbour) and endAttackPhase (always enabled).
+ *   • fortify — fortify (enabled if any owned 2+ army territory has an
+ *     owned neighbour AND we haven't fortified this turn) and endTurn
+ *     (always enabled).
+ *   • declareBankruptcy is NOT in the list — it's a deliberate destructive
+ *     action; the renderer surfaces it via its own affordance, not as a
+ *     primary turn action.
+ *
+ * Returns [] for non-current players, finished games, eliminated players.
+ * Safe on pre-initGame waiting-room states (returns []).
+ */
+function getActionDescriptors(state, userId) {
+  if (!state || state.status !== 'playing') return [];
+  const cur = getCurrentPlayer(state);
+  if (!cur || cur.userId !== userId) return [];
+  const player = state.players.find((p) => p.userId === userId);
+  if (!player || player.eliminated) return [];
+
+  const phase = state.turnState?.phase;
+
+  if (phase === 'reinforce') {
+    const armies = state.turnState.armiesToPlace;
+    const validSets = findValidCardSets(player.hand || []);
+    return [
+      {
+        action: 'placeReinforcement',
+        label: 'Place reinforcement',
+        enabled: armies > 0,
+        hint:
+          armies > 0
+            ? `${armies} ${armies === 1 ? 'army' : 'armies'} to place — click one of your territories.`
+            : 'All armies placed — end the phase to advance.',
+        data: { armiesRemaining: armies },
+      },
+      {
+        action: 'tradeCards',
+        label: 'Trade cards',
+        enabled: validSets.length > 0,
+        hint:
+          validSets.length > 0
+            ? `${validSets.length} valid set${validSets.length === 1 ? '' : 's'} — click to choose.`
+            : 'You need 3 cards of the same type, one of each type, or 2 + wild.',
+        data: {
+          handSize: (player.hand || []).length,
+          validSets,
+        },
+      },
+      {
+        action: 'endReinforcePhase',
+        label: 'End reinforce phase',
+        enabled: armies === 0,
+        hint: armies === 0 ? 'Advance to attack phase.' : 'Place all reinforcements first.',
+      },
+    ];
+  }
+
+  if (phase === 'attack') {
+    const couldAttack = canAnyAttack(state, userId);
+    return [
+      {
+        action: 'attackTerritory',
+        label: 'Attack',
+        enabled: couldAttack,
+        hint: couldAttack
+          ? 'Click one of your territories (2+ armies) to attack from.'
+          : 'No valid attacks — every owned territory with 2+ armies has no adjacent enemy.',
+      },
+      {
+        action: 'endAttackPhase',
+        label: 'End attack phase',
+        enabled: true,
+      },
+    ];
+  }
+
+  if (phase === 'fortify') {
+    const used = state.turnState.fortifyUsed;
+    const couldFortify = canAnyFortify(state, userId);
+    return [
+      {
+        action: 'fortify',
+        label: 'Fortify',
+        enabled: !used && couldFortify,
+        hint: used
+          ? "You've already fortified this turn — end your turn."
+          : couldFortify
+            ? 'Click your source territory (2+ armies), then a connected friendly territory.'
+            : 'No valid fortification — no source with 2+ armies has an owned neighbour.',
+      },
+      {
+        action: 'endTurn',
+        label: 'End turn',
+        enabled: true,
+      },
+    ];
+  }
+
+  return [];
+}
+
 // ── card-set validation ──────────────────────────────────────────────────────
 
 /**
@@ -340,6 +489,29 @@ function hasAnyValidCardSet(hand) {
     }
   }
   return false;
+}
+
+/**
+ * Enumerate every valid 3-card subset of the given hand as triples of
+ * card ids. Used by getActionDescriptors so the renderer can offer the
+ * player a pre-validated choice of sets rather than reimplementing
+ * isValidCardSet client-side. Returns the IDs only — the renderer
+ * already has the full card objects in state.players[me].hand.
+ */
+function findValidCardSets(hand) {
+  if (!hand || hand.length < 3) return [];
+  const sets = [];
+  for (let i = 0; i < hand.length - 2; i++) {
+    for (let j = i + 1; j < hand.length - 1; j++) {
+      for (let k = j + 1; k < hand.length; k++) {
+        const trio = [hand[i], hand[j], hand[k]];
+        if (isValidCardSet(trio)) {
+          sets.push([hand[i].id, hand[j].id, hand[k].id]);
+        }
+      }
+    }
+  }
+  return sets;
 }
 
 /**
@@ -964,6 +1136,7 @@ module.exports = {
   getCurrentPlayer,
   isTurnTimerBlocked,
   getValidActions,
+  getActionDescriptors,
   getGameMetadata,
   loadConfig,
   getConfigCopy,
@@ -976,6 +1149,9 @@ module.exports = {
   getContinentsOwned,
   isValidCardSet,
   hasAnyValidCardSet,
+  findValidCardSets,
+  canAnyAttack,
+  canAnyFortify,
   nextSetBonus,
   resolveCombat,
   canFortifyPath,
@@ -989,6 +1165,9 @@ validateImplementation(module.exports, {
     'getContinentsOwned',
     'isValidCardSet',
     'hasAnyValidCardSet',
+    'findValidCardSets',
+    'canAnyAttack',
+    'canAnyFortify',
     'nextSetBonus',
     'resolveCombat',
     'canFortifyPath',
