@@ -1163,6 +1163,288 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   font-weight: 600;
 }
 
+/* ── Battleship ───────────────────────────────────────────────────────────── */
+
+.battleship-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  gap: 12px;
+  overflow-y: auto;
+  user-select: none;
+}
+
+/* ── grid primitive ─────────────────────────────────────────────────────── */
+
+.bs-grid {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  background: #16291a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+  width: fit-content;
+}
+
+.bs-cell {
+  width: 36px;
+  height: 36px;
+  background: #2c3e30;
+  border-radius: 3px;
+  position: relative;
+  transition: background 0.12s;
+}
+
+.bs-grid-dimmed .bs-cell {
+  background: #1c2a1f;
+  opacity: 0.55;
+}
+
+.bs-grid-active.bs-grid-opp .bs-cell:not(.bs-cell-shot-disabled):hover {
+  background: #4a6750;
+  cursor: crosshair;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.bs-grid-inactive {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+
+/* Own ships visible */
+.bs-cell.bs-cell-ship {
+  background: var(--accent);
+}
+.bs-cell.bs-cell-ship-pickup {
+  cursor: grab;
+}
+.bs-cell.bs-cell-ship-pickup:active {
+  cursor: grabbing;
+}
+
+/* Drag ghost — green when placement valid, red when invalid */
+.bs-cell.bs-cell-ghost-valid {
+  background: rgba(76, 175, 80, 0.65);
+  box-shadow: inset 0 0 0 2px var(--accent-hover);
+}
+.bs-cell.bs-cell-ghost-invalid {
+  background: rgba(229, 57, 53, 0.55);
+  box-shadow: inset 0 0 0 2px #e53935;
+}
+
+/* Shot markers */
+.bs-cell.bs-cell-miss::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c0c8c0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.bs-cell.bs-cell-hit::after {
+  content: '✕';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff5252;
+  font-weight: 700;
+  font-size: 22px;
+  text-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+/* One-shot impact flash added by onEvent('SHOT_FIRED') only, never by
+   the state-driven paint loop — keeps the animation from replaying on
+   every update tick. */
+.bs-cell.bs-cell-hit-flash::after {
+  animation: bsImpact 0.2s ease-out;
+}
+@keyframes bsImpact {
+  0%   { transform: scale(1.8); opacity: 0; }
+  60%  { transform: scale(0.85); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Sunk: persistent ship outline + faint red wash */
+.bs-cell.bs-cell-sunk {
+  background: rgba(127, 29, 29, 0.85);
+  box-shadow: inset 0 0 0 1px #fca5a5;
+}
+.bs-cell.bs-cell-sunk-flash {
+  animation: bsSunkFlash 1s ease-out;
+}
+@keyframes bsSunkFlash {
+  0%   { background: #fef08a; }
+  100% { background: rgba(127, 29, 29, 0.85); }
+}
+
+.bs-cell.bs-cell-shot-disabled {
+  cursor: default;
+}
+
+/* ── section labels ─────────────────────────────────────────────────────── */
+
+.bs-section-label {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* ── setup phase ────────────────────────────────────────────────────────── */
+
+.bs-setup {
+  display: grid;
+  grid-template-columns: auto 280px;
+  gap: 24px;
+  align-items: start;
+  justify-content: center;
+}
+
+.bs-setup-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.bs-setup-status {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.bs-ready-btn {
+  margin-top: 10px;
+  width: fit-content;
+  padding: 10px 24px;
+  font-weight: 600;
+}
+
+.bs-unplaced-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 16px;
+}
+
+.bs-unplaced-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: grab;
+  transition: background 0.12s;
+}
+.bs-unplaced-row:hover {
+  background: var(--surface2);
+}
+.bs-unplaced-row.bs-unplaced-placing {
+  opacity: 0.55;
+  cursor: default;
+}
+.bs-unplaced-row:active {
+  cursor: grabbing;
+}
+
+.bs-ship-preview {
+  display: flex;
+  gap: 2px;
+}
+.bs-ship-seg {
+  width: 14px;
+  height: 14px;
+  background: var(--ship-color, var(--accent));
+  border-radius: 2px;
+}
+
+.bs-ship-label {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+.bs-ship-placing {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.bs-opp-placeholder {
+  position: relative;
+}
+.bs-opp-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  background: rgba(22, 41, 26, 0.75);
+  color: var(--text);
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+/* ── firing phase ───────────────────────────────────────────────────────── */
+
+.bs-firing {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 24px;
+  align-items: start;
+  justify-content: center;
+}
+
+.bs-firing-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.bs-firing-status {
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  min-height: 18px;
+}
+
+/* ── game-over banner ───────────────────────────────────────────────────── */
+
+.bs-game-over {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+.bs-game-over-headline {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.bs-game-over-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 /* ── Risk board ──────────────────────────────────────────────────────────── */
 
 .risk-wrapper {
