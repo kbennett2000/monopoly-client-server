@@ -5,7 +5,7 @@ Drop in any turn-based game by implementing a single interface; the framework ha
 
 Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/JavaScript** (client).
 
-**Bundled games:** Connect Four (2 players) · Tic-Tac-Toe (2 players) · Yahtzee (1–8 players) · Battleship (2 players) · Risk (2–6 players) · Monopoly (2–8 players)
+**Bundled games:** Tic-Tac-Toe (2 players) · Connect Four (2 players) · Battleship (2 players) · Yahtzee (1–8 players) · The Game of Life (2–6 players) · Monopoly (2–8 players) · Risk (2–6 players)
 
 ---
 
@@ -22,6 +22,7 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Tic-Tac-Toe](#tic-tac-toe)
    - [Yahtzee](#yahtzee)
    - [Battleship](#battleship)
+   - [The Game of Life](#the-game-of-life)
 6. [Adding a New Game](#adding-a-new-game)
 7. [Architecture](#architecture)
 8. [Configuration](#configuration)
@@ -35,6 +36,9 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Tic-Tac-Toe Settings](#tic-tac-toe-settings)
    - [Yahtzee Settings](#yahtzee-settings)
    - [Battleship Settings](#battleship-settings)
+   - [Life Settings](#life-settings)
+   - [Life Cards](#life-cards)
+   - [Life Board](#life-board)
 9. [API Reference](#api-reference)
 10. [Socket.io Events](#socketio-events)
 11. [Security Notes](#security-notes)
@@ -95,17 +99,33 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 - **First game with a simultaneous private setup phase** — both players place ships in parallel; the phase transitions to firing on a barrier (both Ready) rather than via a turn. Modelled as `status='playing'` + `turnState.phase='setup'` with `currentPlayerIndex=null`
 - **First game with fully hidden state per player** — opponents' ship positions are stripped by `getStateForPlayer` on every emit, not masked
 
+### The Game of Life
+- 64-square branching board with a start fork (Career vs College), main track, and two-path retirement choice (Countryside Acres vs Millionaire Estates)
+- 1–10 spinner (no dice) — CSS-animated wheel that decelerates and settles on the result
+- College path costs $40,000 in loans but unlocks degree-required careers; career path skips the loan but is locked out of degree careers
+- Marriage adds a spouse peg and collects $5,000 from each other player as wedding gifts
+- Children mechanic — single births (+$5k/player) and twins (+$10k/player); each child counts toward final scoring at $50k each
+- Insurance — auto and life, optional out-of-band purchases that nullify the matching accident squares
+- Stocks — pick a number 1–10; collect $10,000 whenever **any** player's spinner matches it (cross-turn payouts)
+- House purchase — pick from 2–3 offered house cards (cost vs scoring value); contributes to final score
+- Retirement is the strategic crux: Countryside Acres draws life tiles from a shrinking deck; Millionaire Estates is a cash gamble that resolves at game over
+- **First game with a branching, non-grid board** — squares are graph nodes with explicit `next[]` adjacency; the renderer places squares at hand-tuned grid coordinates with arrows showing direction
+- **First game with deferred-resolution game over** — ME retirees' win/loss is undetermined until the last player retires; documented in [docs/renderer-contract.md](docs/renderer-contract.md)
+- **First game with a "retired-but-still-in-game" pattern** — retired players stay in `state.players` and turn rotation skips past them; the game ends when every player is retired
+- Life tiles are hidden information per player (count visible to opponents, values masked until game over); revealed with a per-tile flip animation during the final score reveal
+
 ---
 
 ## Documentation
 
 In addition to this README, the project keeps three design docs under `docs/`:
 
-- **[Action descriptors](docs/action-descriptors.md)** — proposed optional interface
+- **[Action descriptors](docs/action-descriptors.md)** — optional interface
   for game-logic to supply dynamic action labels, enabled-state, and per-action
   data to renderers without forcing each renderer to mirror server-side rule
-  logic. Currently implemented for Battleship; Yahtzee and Risk migrations
-  pending.
+  logic. Implemented across the three pressuring games (Battleship, Risk,
+  Yahtzee); Life deliberately did not migrate (its action surface is large
+  enough that a descriptor migration would help but is its own session).
 - **[Renderer contract notes](docs/renderer-contract.md)** — running design memo
   tracking open and resolved questions about the client-side renderer interface
   as it has evolved across game implementations.
@@ -219,10 +239,20 @@ lan-games/
 │   │   │   ├── game-logic.js     ← Yahtzee rules + scoring (pure functions)
 │   │   │   └── config/
 │   │   │       └── settings.json ← dice count, rolls per turn, category bonuses
-│   │   └── battleship/
-│   │       ├── game-logic.js     ← Battleship rules + hidden-info filter (pure functions)
+│   │   ├── battleship/
+│   │   │   ├── game-logic.js     ← Battleship rules + hidden-info filter (pure functions)
+│   │   │   └── config/
+│   │   │       └── settings.json ← grid size, ship list, first-player selection
+│   │   └── life/
+│   │       ├── game-logic.js     ← Life rules + scoring + hidden-info filter
+│   │       ├── config-loader.js  ← loads & validates the six Life config files
 │   │       └── config/
-│   │           └── settings.json ← grid size, ship list, first-player selection
+│   │           ├── board.json    ← 64 squares with effect types + next[] adjacency
+│   │           ├── careers.json  ← 12 careers (6 degree-required, 6 not)
+│   │           ├── salaries.json ← 6 salary tiers with tax-by-salary amounts
+│   │           ├── houses.json   ← 5 houses (cost / scoring value pairs)
+│   │           ├── lifeTiles.json← 20 achievement tiles drawn at CA retirement
+│   │           └── settings.json ← starting cash, loan, gift / insurance / stock costs
 │   │
 │   └── src/                      ← game-agnostic framework
 │       ├── index.js              ← entry point; HTTP + Socket.io server
@@ -260,11 +290,16 @@ lan-games/
             ├── yahtzee/
             │   ├── renderer.js        ← lifecycle + dice tray + roll controls
             │   └── score-sheet.js     ← shared score-sheet table builder + painter
-            └── battleship/
-                ├── grid.js            ← shared 10×10 grid primitive
-                ├── setup-phase.js     ← drag-and-drop ship placement
-                ├── firing-phase.js    ← two-grid shooting + sunk-ship cache
-                └── renderer.js        ← lifecycle + phase routing
+            ├── battleship/
+            │   ├── grid.js            ← shared 10×10 grid primitive
+            │   ├── setup-phase.js     ← drag-and-drop ship placement
+            │   ├── firing-phase.js    ← two-grid shooting + sunk-ship cache
+            │   └── renderer.js        ← lifecycle + phase routing
+            └── life/
+                ├── renderer.js        ← lifecycle + phase routing + sidebar title
+                ├── board-view.js      ← 64-square board + player cars + movement queue
+                ├── action-panel.js    ← phase-dependent actions + CSS-animated spinner
+                └── card-display.js    ← inventory panel + game-over tile reveal animation
 ```
 
 ---
@@ -384,6 +419,55 @@ When all five ships are placed, click **Ready**. You can **Unready** until the o
 Your fleet is on the left, the opponent's waters are on the right. On your turn, click any unshot cell of the opponent's grid to fire. Misses are marked with a dot, hits with a cross, and sunk ships reveal their full position. Turn passes after every shot regardless of result.
 
 Sink all five of the opponent's ships to win. At game over both fleets are revealed.
+
+### The Game of Life
+
+Life plays in three phases: a start choice, the main track, and retirement. The board is a directed graph of 64 squares with branches and merges — your pawn (a small car with pegs for spouse and children) traverses it from the start square to one of two retirement terminals.
+
+#### Phase 1 — Start choice
+
+Your first action is **chooseBranch**: take the **Career** path or the **College** path.
+
+- **Career** skips the loan and earns immediately, but draws from the non-degree-required career pool (smaller payday bonuses on average).
+- **College** pays $40,000 in loans up front (your cash can go negative — that's fine) but unlocks the degree-required pool (Doctor, Lawyer, Computer Consultant, etc., with larger payday bonuses).
+
+The server offers 2 career cards filtered by your path, then 2 salary cards. Your first turn ends after both choices are made.
+
+#### Phase 2 — Main track
+
+Each turn: spin (1–10), animate movement square-by-square, resolve the landing square's effect. Square types include payday (collect salary + career bonus), buy-house (pick from 3 offered houses), marry, have-baby/have-twins, auto-accident, life-accident (illness), spin-again, and pay-tax-by-salary (consumes your salary's `taxDue`).
+
+Out-of-band actions available throughout your turn (when no decision is pending and you're not mid-spin-again):
+
+- **Buy Auto Insurance** ($10,000) — nullifies auto-accident squares.
+- **Buy Life Insurance** ($20,000) — nullifies life-accident squares.
+- **Buy Stock** — pick a number 1–10 for $50,000. From then on, **whenever any player's spinner matches your number**, you collect $10,000. Each number can be owned by at most one player.
+
+Marriage and children trigger collections from every other player: $5,000 wedding gift, $5,000 baby shower, $10,000 for twins. Your spouse and children show as pegs on your car for everyone to see.
+
+#### Phase 3 — Retirement
+
+Landing on the retirement-fork square pauses your turn for a deliberate choice:
+
+- **Countryside Acres** is the safe path. On arrival you draw up to 4 life tiles from a shrinking deck. Tile values count toward your final score.
+- **Millionaire Estates** is the gamble. No tiles. You retire with whatever cash you have, and the outcome **does not resolve until every player retires**. At game over, the highest-cash ME retiree wins the game outright; all other ME retirees score zero.
+
+The strategic crux is the **life-tile race** — the deck holds 20 tiles, while up to 6 players × 4 tiles each = 24 possible draws. Late CA retirees may find the deck empty. Retiring early is a gamble against your own future earnings; retiring late is a gamble against the deck.
+
+Retired players stay on the board (their cars sit on the terminal square with a "✓ Retired" badge) but are skipped in turn rotation. The game continues until every player has retired.
+
+#### Final scoring
+
+```
+finalScore = cash
+           + house.value
+           + sum(lifeTiles[].value)
+           + (children × $50,000)
+```
+
+If **any** player retired to Millionaire Estates, the highest-cash ME retiree(s) win outright and all other ME retirees score zero (regardless of their other holdings). If **no** player went ME, the highest-score Countryside Acres retiree wins. Ties produce a winners array — multiple winners share the championship.
+
+Life tiles flip face-up one at a time during the game-over reveal animation, with a running total updating as each tile lands.
 
 ---
 
@@ -518,6 +602,15 @@ function migrate(state) {
 | Immutable input | Never mutate `state` — always return a **new** object |
 | In-band errors | Return `{ state, events: [], error: 'reason' }` instead of throwing |
 | JSON-safe | `state` must survive `JSON.stringify` → `JSON.parse` |
+
+#### Pending-state shape (optional convention)
+
+The framework doesn't mandate how a game models "the player owes the server a follow-up action" — each game does what fits. Two shapes have emerged across the bundled games:
+
+- **Phase-specific state machinery** (Battleship, Risk, Monopoly) — `turnState.phase` plus per-phase fields encode where the player is in a multi-step turn. Each phase has its own valid action set.
+- **Discriminated-union pending field** (Life) — a single `player.pending = { type, options } \| null` field on each player record, where `type` is one of `'fork'`, `'career-draw'`, `'salary-draw'`, etc. The acting player's `getValidActions` switches on `pending.type`.
+
+Pick whichever maps cleanly to your game. Life chose the union because it had four mutually-exclusive pending types (start fork, career draw, salary draw, retirement fork, house draw) that all shared the same "offer N options, player picks one" shape — the union expressed that uniformity. Battleship's phases are more divergent (setup is drag-and-drop, firing is click-to-shoot) so the phase enum carries more weight.
 
 ### 3. Register in `game-registry.js`
 
@@ -655,7 +748,7 @@ Every game state object carries these top-level fields, regardless of game type:
   maxPlayers: number,
   players:    PlayerObject[], // game-specific player records
   turnState:  object,         // game-specific turn tracking
-  winner:     string | null,  // userId of winner, null for draw, undefined if Monopoly-style
+  winner:     string | string[] | null,  // userId, or array of userIds for ties (Yahtzee, Life); null for draw; undefined for in-progress Monopoly-style games
   log:        LogEntry[],     // [{ message, type, timestamp }]
 }
 ```
@@ -926,6 +1019,100 @@ Trading a card whose `territoryId` you currently own grants +2 extra armies on t
 
 ---
 
+### Life Settings
+
+`server/games/life/config/settings.json`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `startingCash` | 10000 | Cash each player begins with |
+| `collegeLoanAmount` | 40000 | Debited from cash on the college path's first square; cash may go negative |
+| `spinMin` | 1 | Lower bound of the spinner |
+| `spinMax` | 10 | Upper bound; also the count of stock numbers |
+| `startSquareId` | `"sq-000-start"` | Board square every player begins on |
+| `mainTrackEntrySquareId` | `"sq-m01-marry"` | First main-track square (where the college and career paths merge) |
+| `careerOptionsCount` | 2 | Career cards offered per draw |
+| `salaryOptionsCount` | 2 | Salary cards offered per draw |
+| `houseOptionsCount` | 3 | House cards offered per draw |
+| `weddingGiftPerPlayer` | 5000 | Marriage square: collected from each other active player |
+| `babyGiftPerPlayer` | 5000 | Baby square: collected from each other active player |
+| `twinsGiftPerPlayer` | 10000 | Twins square: doubled per-player collection (one baby shower for each twin) |
+| `autoInsuranceCost` | 10000 | Cost to buy auto insurance |
+| `autoAccidentCost` | 10000 | Charge on the auto-accident square (nullified by insurance) |
+| `lifeInsuranceCost` | 20000 | Cost to buy life insurance |
+| `lifeAccidentCost` | 20000 | Charge on the life-accident square (nullified by insurance) |
+| `stockCost` | 50000 | One-time cost to buy a stock (one per player) |
+| `stockPayoutAmount` | 10000 | Payout to the stock owner whenever **any** player's spinner matches |
+| `caTilesPerRetiree` | 4 | Life tiles drawn at Countryside Acres retirement (deck has 20 tiles total — capped at remaining) |
+| `childScoreBonus` | 50000 | Per-child bonus in the final score formula |
+| `minPlayers` | 2 | |
+| `maxPlayers` | 6 | |
+| `playerColors` | 6 entries | Array of `{ id, hex, label }` |
+| `playerTokens` | 🚗 🚙 🏎️ 🚕 🚐 🛻 | Vehicle emojis shown on player cars |
+
+### Life Cards
+
+Life ships four card decks, each loaded from its own JSON config and validated by `config-loader.js` (unique IDs, positive numeric fields, deck non-empty).
+
+`server/games/life/config/careers.json` — 12 careers, 6 with `degreeRequired: true` and 6 without. Filtering happens at draw time so the college path can only be offered degree-required cards and vice versa.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | unique |
+| `name` | string | display name (Doctor, Salesperson, …) |
+| `degreeRequired` | boolean | gates which path can draw the card |
+| `paydayBonus` | number | added to salary on every PAY DAY square |
+
+`server/games/life/config/salaries.json` — 6 salary tiers from $30k to $80k.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | unique |
+| `amount` | number | paid on every PAY DAY square |
+| `taxDue` | number | charged on the `pay-tax-by-salary` square |
+
+`server/games/life/config/houses.json` — 5 houses; cost is what the player pays, value is what the house contributes to final scoring.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | unique |
+| `name` | string | "Starter Home", "Mansion", … |
+| `cost` | number | deducted from cash on chooseHouse |
+| `value` | number | added to final score (typically > cost so houses are profitable) |
+
+`server/games/life/config/lifeTiles.json` — 20 achievement tiles drawn at Countryside Acres retirement.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | unique |
+| `name` | string | "Win Nobel Prize", "Climb Mt. Everest", … |
+| `value` | number | added to final score; $100,000–$300,000 |
+
+### Life Board
+
+`server/games/life/config/board.json` — 64 squares modelled as a directed graph. Each square is `{ id, type, label, next[], data? }`:
+
+- `id` — unique kebab-case identifier, e.g. `sq-c01-career-pick`.
+- `type` — effect identifier dispatched by the `EFFECTS` registry in `game-logic.js`. See list below.
+- `label` — human-readable name displayed by the renderer.
+- `next` — array of square IDs. Single entry = linear; multiple entries = a fork.
+- `data` — type-specific data (e.g. `{ amount: 5000 }` for pay-bank squares).
+
+The board is composed of:
+
+- **Start fork** (`sq-000-start`) — the only land-on fork that every player traverses. Two branches: `sq-c01-career-pick` (career path, 10 squares) and `sq-u01-college-loan` (college path, 12 squares).
+- **Path merge** — both paths terminate on the main-track entry square (`sq-m01-marry`) via their respective junction squares.
+- **Main track** (35 squares) — payday squares interleaved with life-event squares, accidents, taxes, and the buy-house, marry, have-baby, have-twins, retirement-fork squares.
+- **Retirement fork** (`sq-m35-retirement-fork`) — branches to `sq-r-countryside-01` or `sq-r-millionaire-01`. The terminal squares (`sq-r-countryside-end`, `sq-r-millionaire-end`) have empty `next` arrays — a retired player stays there.
+
+**Land-on forks only.** When the spinner moves a player through a fork mid-traversal, the server always takes `next[0]` automatically — passthrough forks aren't player choices. Only when a player **lands on** a fork (the start fork on their first turn, and the retirement fork) does the server pause for a `chooseBranch` action. This is a deliberate v1 simplification documented in [`game-logic.js`](server/games/life/game-logic.js).
+
+Known effect types (see `KNOWN_EFFECT_TYPES` in `config-loader.js`):
+
+`career-fork`, `draw-career-degree`, `draw-career-no-degree`, `draw-salary`, `pay-loans`, `pay-bank`, `pay-tax-by-salary`, `collect-bank`, `pay-each-player`, `collect-each-player`, `payday`, `spin-again`, `marry`, `have-baby`, `have-twins`, `buy-house`, `auto-accident`, `life-accident`, `retirement-fork`, `countryside-retirement`, `millionaire-retirement`.
+
+---
+
 ## API Reference
 
 All endpoints live under `/api`. Authenticated endpoints (`✓`) require:
@@ -1044,6 +1231,23 @@ Authorization: Bearer <jwt-token>
 | `endTurn` | — | fortify | End turn and draw a card if you conquered at least one territory |
 | `declareBankruptcy` | — | any | Eliminate yourself; all your territories become neutral and your cards are discarded |
 
+**The Game of Life**
+
+The active action depends on the player's `pending` field — a discriminated union of pending choices. When `pending` is `null` and it's your turn, you can `spin` plus any of the out-of-band purchase actions.
+
+| `action` | Extra payload | Valid when | Effect |
+|----------|--------------|------------|--------|
+| `spin` | — | `pending === null`, not retired | Generate 1–10, animate movement, resolve landing-square effect |
+| `chooseBranch` | `{ nextSquareId }` | `pending.type === 'fork' \|\| 'retirement-fork'` | Pick a fork direction (start fork or retirement fork) |
+| `chooseCareer` | `{ cardId }` | `pending.type === 'career-draw'` | Pick from 2 offered career cards; chains directly into the salary draw |
+| `chooseSalary` | `{ cardId }` | `pending.type === 'salary-draw'` | Pick from 2 offered salary cards |
+| `chooseHouse` | `{ houseId }` | `pending.type === 'house-draw'` | Pick from 3 offered house cards; rejects with an error if the chosen house is unaffordable (pending stays so you can pick a cheaper one) |
+| `buyAutoInsurance` | — | your turn, no pending, not mid-spin-again | $10,000; nullifies auto-accident squares |
+| `buyLifeInsurance` | — | same | $20,000; nullifies life-accident squares |
+| `buyStock` | `{ number }` | same; one stock per player; number 1–10 must not be already owned | $50,000; pays $10k whenever any player's spinner matches |
+| `endTurn` | — | your turn, no pending | Rarely needed — most turns auto-end after effect resolution |
+| `skipTurn` | (framework-internal) | your turn | Auto-skip on disconnect timer |
+
 ### Server → Client
 
 | Event | Payload | Description |
@@ -1103,7 +1307,32 @@ Each event has `{ type, data, timestamp }`. Clients use these for sounds, animat
 | `SETUP_COMPLETE` *(Battleship)* | `firstPlayer` — the username who fires first after both players Ready |
 | `SHOT_FIRED` *(Battleship)* | `shooter`, `target`, `cell: {x,y}`, `result: 'hit'|'miss'|'sunk'` |
 | `SHIP_SUNK` *(Battleship)* | `owner`, `shipId`, `shipName`, `length`, `cells[]` *(cell footprint revealed on sink — by rule, sunk ships are no longer hidden)* |
-| `GAME_OVER` | `winner` (userId, or array of userIds for ties, or `null` for draw); `finalScores[]` *(Yahtzee)*; `finalFleets` *(Battleship — `{ [userId]: ships[] }` revealing both players' full layouts at game over)* |
+| `SPINNER_RESULT` *(Life)* | `username`, `value` (1–10) |
+| `PLAYER_MOVED` *(Life variant)* | `username`, `from`, `to`, `reason?` (`'branch'` or `'post-marriage'` / `'post-baby'` / etc. for stub-bumps) |
+| `FORK_CHOICE_PENDING` *(Life)* | `username`, `squareId`, `kind?` (`'retirement-fork'` when applicable), `options[]: { id, label }` |
+| `BRANCH_CHOSEN` *(Life)* | `username`, `from`, `to` |
+| `CAREER_DRAW_OPTIONS` *(Life)* | `username`, `options[]: CareerCard` *(sent only inside the acting player's filtered state via pending state)* |
+| `SALARY_DRAW_OPTIONS` *(Life)* | `username`, `options[]: SalaryCard` |
+| `HOUSE_DRAW_OPTIONS` *(Life)* | `username`, `options[]: HouseCard` |
+| `CAREER_CHOSEN` *(Life)* | `username`, `card` |
+| `SALARY_CHOSEN` *(Life)* | `username`, `card` |
+| `HOUSE_PURCHASED` *(Life)* | `username`, `house` |
+| `PAYDAY` *(Life)* | `username`, `total`, `salary`, `careerBonus` |
+| `LOAN_PAID` *(Life)* | `username`, `amount`, `squareId` |
+| `MONEY_PAID` *(Life)* | `username`, `amount`, `to` (`'bank'`), `reason`, `taxBySalary?` |
+| `MONEY_RECEIVED` *(Life)* | `username`, `amount`, `from` (`'bank'`), `reason` |
+| `MONEY_TRANSFERRED` *(Life)* | `from`, `to`, `amount`, `reason` (e.g. `'wedding-gift'`, `'baby-gift'`, `'twins-gift'`, or the source square's label) |
+| `PLAYER_MARRIED` *(Life)* | `username`, `giftsCollected`, `contributors[]` |
+| `PLAYER_MARRIED_NO_EFFECT` *(Life)* | `username` *(emitted if a married player re-lands on the marriage square)* |
+| `PLAYER_HAD_BABY` *(Life)* | `username`, `childCount`, `totalChildren`, `giftsCollected`, `contributors[]`, `kind` (`'baby'` or `'twins'`) |
+| `INSURANCE_PURCHASED` *(Life)* | `username`, `insuranceType` (`'auto'` or `'life'`), `cost` |
+| `INSURANCE_COVERED` *(Life)* | `username`, `insuranceType`, `squareId`, `avoided` *(emitted on an accident square the player is insured against)* |
+| `STOCK_PURCHASED` *(Life)* | `username`, `number`, `cost` |
+| `STOCK_PAYOUT` *(Life)* | `username`, `number`, `amount` *(fires during **any** player's spin whose result matches `number`)* |
+| `SPIN_AGAIN_GRANTED` *(Life)* | `username` |
+| `PLAYER_RETIRED_CA` *(Life)* | `username`, `squareId`, `tilesDrawn` *(tile values deliberately omitted — they stay hidden until game over)* |
+| `PLAYER_RETIRED_ME` *(Life)* | `username`, `squareId`, `cashAtRetirement` |
+| `GAME_OVER` | `winner` (userId, or array of userIds for ties, or `null` for draw); `winnerUsername` *(Life — same shape, denormalised for display)*; `finalScores[]` *(Yahtzee)*; `finalScores: { [userId]: { cash, house, lifeTilesValue, childrenBonus, total, retiredTo, lifeTiles[] } }` *(Life — full breakdown including revealed tile values)*; `finalFleets` *(Battleship — `{ [userId]: ships[] }` revealing both players' full layouts at game over)* |
 
 ---
 
@@ -1198,7 +1427,7 @@ npm test                    # unit tests for every bundled game's game-logic
 npm run test:integration    # socket + persistence round-trip tests
 ```
 
-Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **376 unit tests across the six bundled games** plus the framework interface, and **22 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, and game-lifecycle round-trips.
+Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **538 unit tests across the seven bundled games** plus the framework interface, and **22 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, and game-lifecycle round-trips.
 
 The unit suite imports game-logic modules directly and never touches the network, database, or socket layer — making it fast and reliable. The integration suite spins up a real server, a real SQLite database, and real socket clients to verify full round-trips end-to-end.
 
@@ -1226,9 +1455,9 @@ Only games created *after* the reload will use the new config. In-progress games
 
 ## Roadmap
 
-- **More games** — Chess, Checkers, Scrabble, Catan, Coup, …
-- **Action descriptor contract** — implemented across all three pressuring games (Battleship, Risk, Yahtzee); the renderer-side rule mirrors are gone. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract and the patterns the three migrations established.
-- **Turn timer UI** — server emits absolute-deadline warnings via `game:turn_warning`; client-side countdown bar still to be built.
+- **More games** — Chess, Checkers, Scrabble, Catan, Coup, Liar's Dice, …
+- **Action descriptor contract** — implemented across the three pressuring games (Battleship, Risk, Yahtzee); the renderer-side rule mirrors are gone. The Game of Life deliberately did not migrate to descriptors — its action surface is large enough that a future descriptor migration would help, but is its own session. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract and the patterns the three migrations established.
+- **Turn timer UI** — server emits absolute-deadline warnings via `game:turn_warning`; the client-side countdown bar is implemented in [`client/js/turn-warning.js`](client/js/turn-warning.js).
 - **Spectator mode** — join a game room as a read-only observer
 - **AI players** — pluggable bot interface implementing the same `applyAction` contract
 - **Custom board themes** — CSS variable overrides per game type
