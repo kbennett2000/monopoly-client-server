@@ -368,3 +368,17 @@ record).
 ## Do not refactor based on this note
 
 This is the audit report, not the fix. The fix lives in a separate commit.
+
+## Follow-up: shared filter helper (commit `40992d7`)
+
+The duplicated filter logic introduced by `01209bd` was extracted into
+[server/src/state-filter.js](../server/src/state-filter.js) in commit
+`40992d7`. Both the socket pipeline (`socket-handler.js`) and the REST
+routes (`game.routes.js`) now route through a single `filterStateForUser`
+helper. The risk of the two copies drifting out of sync is eliminated.
+
+The socket pipeline still wraps the helper in a local `filteredFor`
+function that adds a per-recipient `validActions` decoration on top of
+the filter — that decoration is socket-only by design (the REST rejoin
+client computes its own action set). The shared helper handles the
+security-critical part; the wrapper handles the socket-only convenience.
