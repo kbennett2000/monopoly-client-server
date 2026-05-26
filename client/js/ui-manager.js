@@ -162,11 +162,20 @@ const UIManager = (() => {
     el.textContent = isMyTurn ? 'Your turn!' : `${currentPlayer.username}'s turn`;
     el.classList.toggle('my-turn', isMyTurn);
 
-    // Dice display
-    const [d1, d2]  = state.turnState.dice || [0, 0];
+    // Sidebar dice display is a Monopoly-only chrome element (2d6 pip
+    // display + doubles badge).  Yahtzee's turnState.dice is a 5-element
+    // array of its own dice and would render the first two as if they were
+    // Monopoly's, both in the sidebar and duplicated from the board area.
+    // Gate on gameType per the [[isBankrupt]] pattern.
     const diceEl    = document.getElementById('dice-display');
     const doublesEl = document.getElementById('doubles-badge');
     if (!diceEl) return;
+    const isMonopoly = state.gameType === 'monopoly';
+    if (!isMonopoly) {
+      diceEl.style.display = 'none';
+      return;
+    }
+    const [d1, d2] = state.turnState.dice || [0, 0];
     if (d1 === 0 && d2 === 0) {
       diceEl.style.display = 'none';
     } else {
