@@ -12,12 +12,14 @@ const ConnectFourRenderer = (() => {
 
   let _myUserId = null;
   let _emit     = null;
+  let _isSpectator = false;
 
   // ── init ────────────────────────────────────────────────────────────────────
 
-  function init(container, state, myUserId, emitAction) {
+  function init(container, state, myUserId, emitAction, options = {}) {
     _myUserId = myUserId;
     _emit     = emitAction;
+    _isSpectator = !!options.isSpectator;
 
     const { boardWidth, boardHeight } = state.config.settings;
 
@@ -40,7 +42,10 @@ const ConnectFourRenderer = (() => {
       btn.textContent = '▼';
       btn.dataset.col = String(c);
       btn.disabled    = true; // enabled by update() when it's my turn
-      btn.addEventListener('click', () => { if (_emit) _emit('dropPiece', { column: c }); });
+      btn.addEventListener('click', () => {
+        if (_isSpectator) return;
+        if (_emit) _emit('dropPiece', { column: c });
+      });
       colBtns.appendChild(btn);
     }
     wrapper.appendChild(colBtns);
@@ -104,11 +109,12 @@ const ConnectFourRenderer = (() => {
     const auctionEl = document.getElementById('auction-panel');
     if (auctionEl) auctionEl.style.display = 'none';
 
-    // Enable/disable column drop buttons
+    // Enable/disable column drop buttons.  Spectators always see disabled
+    // columns (the early-return in the click handler is the security gate).
     const colBtns = document.getElementById('cf-col-buttons');
     if (colBtns) {
       colBtns.querySelectorAll('.cf-col-btn').forEach((btn, c) => {
-        btn.disabled = !isMyTurn || !playing || state.board[0]?.[c] !== null;
+        btn.disabled = _isSpectator || !isMyTurn || !playing || state.board[0]?.[c] !== null;
       });
     }
   }
@@ -143,6 +149,7 @@ const ConnectFourRenderer = (() => {
     document.getElementById('connect-four-wrapper')?.remove();
     _myUserId = null;
     _emit     = null;
+    _isSpectator = false;
   }
 
   // ── public API ───────────────────────────────────────────────────────────────

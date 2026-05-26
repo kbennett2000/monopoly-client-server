@@ -64,6 +64,7 @@ const YahtzeeRenderer = (() => {
 
   let _myUserId = null;
   let _emit = null;
+  let _isSpectator = false;
   let _selectedCategory = null; // category awaiting second-click commit
   let _lastTurnKey = null; // for detecting turn change → clear selection
   let _animationToken = 0; // bumped on each roll to abort stale animations
@@ -81,9 +82,10 @@ const YahtzeeRenderer = (() => {
 
   // ─── init ────────────────────────────────────────────────────────────────
 
-  function init(container, state, myUserId, emitAction) {
+  function init(container, state, myUserId, emitAction, options = {}) {
     _myUserId = myUserId;
     _emit = emitAction;
+    _isSpectator = !!options.isSpectator;
     _selectedCategory = null;
     _lastTurnKey = null;
     _animationToken = 0;
@@ -230,6 +232,7 @@ const YahtzeeRenderer = (() => {
     document.getElementById('yahtzee-wrapper')?.remove();
     _myUserId = null;
     _emit = null;
+    _isSpectator = false;
     _selectedCategory = null;
     _lastTurnKey = null;
     _animationToken++; // invalidate any in-flight animations
@@ -240,6 +243,7 @@ const YahtzeeRenderer = (() => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   function onCellClick(category, userId) {
+    if (_isSpectator) return;
     if (userId !== _myUserId) return;
     const state = GameState.getState();
     if (!state || state.status !== 'playing') return;
@@ -273,7 +277,7 @@ const YahtzeeRenderer = (() => {
     const cur = state.players[state.turnState.currentPlayerIndex];
     const isMyTurn = cur?.userId === _myUserId;
     const playing = state.status === 'playing';
-    const canHold = isMyTurn && playing && rollsUsed >= 1 && rollsUsed < rollsPerTurn;
+    const canHold = !_isSpectator && isMyTurn && playing && rollsUsed >= 1 && rollsUsed < rollsPerTurn;
 
     for (let i = 0; i < diceCount; i++) {
       const die = document.getElementById(`yz-die-${i}`);
@@ -413,6 +417,7 @@ const YahtzeeRenderer = (() => {
   }
 
   function onRollClick() {
+    if (_isSpectator) return;
     _selectedCategory = null;
     const state = GameState.getState();
     if (!state) return;

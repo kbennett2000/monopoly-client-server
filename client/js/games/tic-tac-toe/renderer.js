@@ -11,12 +11,14 @@
 const TicTacToeRenderer = (() => {
   let _myUserId = null;
   let _emit = null;
+  let _isSpectator = false;
 
   // ── init ────────────────────────────────────────────────────────────────────
 
-  function init(container, state, myUserId, emitAction) {
+  function init(container, state, myUserId, emitAction, options = {}) {
     _myUserId = myUserId;
     _emit = emitAction;
+    _isSpectator = !!options.isSpectator;
 
     const size = state.config.settings.boardSize;
 
@@ -39,6 +41,7 @@ const TicTacToeRenderer = (() => {
         cell.dataset.col = String(c);
         cell.disabled = true; // update() enables on my turn
         cell.addEventListener('click', () => {
+          if (_isSpectator) return;
           if (_emit) _emit('markCell', { row: r, col: c });
         });
         grid.appendChild(cell);
@@ -91,12 +94,14 @@ const TicTacToeRenderer = (() => {
     const auctionEl = document.getElementById('auction-panel');
     if (auctionEl) auctionEl.style.display = 'none';
 
-    // Enable/disable cells: only empty cells, only on my turn, only while playing
+    // Enable/disable cells: only empty cells, only on my turn, only while
+    // playing.  Spectators always see fully-disabled cells (the early-return
+    // in the click handler is the security gate; this is the UX gate).
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         const cell = document.getElementById(`ttt-cell-${r}-${c}`);
         if (!cell) continue;
-        cell.disabled = !isMyTurn || !playing || state.board[r][c] !== null;
+        cell.disabled = _isSpectator || !isMyTurn || !playing || state.board[r][c] !== null;
       }
     }
   }
@@ -133,6 +138,7 @@ const TicTacToeRenderer = (() => {
     document.getElementById('tic-tac-toe-wrapper')?.remove();
     _myUserId = null;
     _emit = null;
+    _isSpectator = false;
   }
 
   return { init, update, onEvent, destroy };

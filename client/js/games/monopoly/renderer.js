@@ -12,6 +12,14 @@ const MonopolyRenderer = (() => {
 
   let _myUserId = null;
   let _emit     = null;
+  // Spectator mode: every Monopoly action button is rendered either inside
+  // the framework's #action-section (which UIManager.applySpectatorChrome
+  // hides for spectators) or inside the property/trade modals (whose
+  // canManage gates fail when the viewer isn't in state.players).  The
+  // flag is captured for symmetry with the other renderers and to allow
+  // future defense-in-depth checks; today no Monopoly click handler is
+  // reachable to a spectator that would emit a game:action.
+  let _isSpectator = false;
 
   // Sidebar 2d6 pip display — the framework's chrome contains the DOM
   // (#dice-display + per-pip-slot elements like #d1-tl, #d2-mm, …) but
@@ -122,9 +130,10 @@ const MonopolyRenderer = (() => {
 
   // ── init ────────────────────────────────────────────────────────────────────
 
-  function init(container, state, myUserId, emitAction) {
+  function init(container, state, myUserId, emitAction, options = {}) {
     _myUserId = myUserId;
     _emit     = emitAction;
+    _isSpectator = !!options.isSpectator;
 
     // Build the entire Monopoly board structure inside the framework-owned
     // container.  destroy() removes it.  These inner ids (free-parking-pot,
@@ -344,6 +353,7 @@ const MonopolyRenderer = (() => {
 
     _myUserId             = null;
     _emit                 = null;
+    _isSpectator          = false;
     _onClosePropertyModal = null;
     _onCloseMyPropsModal  = null;
     _onCloseTradeModal    = null;

@@ -46,17 +46,27 @@
 const LifeRenderer = (() => {
   let _myUserId = null;
   let _emit = null;
+  let _isSpectator = false;
   let _wrapper = null;
 
   // ── lifecycle ───────────────────────────────────────────────────────────
 
-  function init(container, state, myUserId, emitAction) {
+  function init(container, state, myUserId, emitAction, options = {}) {
     _myUserId = myUserId;
-    _emit = emitAction;
+    _isSpectator = !!options.isSpectator;
+    // Spectator-safe emit: LifeActionPanel's spin / chooseBranch /
+    // chooseCareer / chooseSalary / chooseHouse / buy* clicks all flow
+    // through `emit`.  Wrapping it makes spectator clicks no-ops; the
+    // pointer-events guard on the wrapper prevents the visual UI from
+    // appearing interactive.  The action panel itself is hidden by
+    // UIManager.applySpectatorChrome (it lives in #action-section),
+    // but defense-in-depth on the board/inventory side too.
+    _emit = _isSpectator ? () => {} : emitAction;
 
     _wrapper = document.createElement('div');
     _wrapper.id = 'life-wrapper';
     _wrapper.className = 'life-wrapper';
+    if (_isSpectator) _wrapper.style.pointerEvents = 'none';
     container.appendChild(_wrapper);
 
     // Two side-by-side regions inside the board wrapper: the board on the
@@ -114,6 +124,7 @@ const LifeRenderer = (() => {
     _wrapper = null;
     _myUserId = null;
     _emit = null;
+    _isSpectator = false;
   }
 
   // ── sidebar title ──────────────────────────────────────────────────────

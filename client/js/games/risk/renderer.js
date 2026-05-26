@@ -17,6 +17,7 @@ const RiskRenderer = (() => {
 
   let _myUserId      = null;
   let _emit          = null;
+  let _isSpectator   = false;
   let _svgLoaded     = false;
   let _selectedFrom  = null;   // territory id chosen as source (attack/fortify)
   let _wrapper       = null;
@@ -27,15 +28,22 @@ const RiskRenderer = (() => {
 
   // ── init ────────────────────────────────────────────────────────────────────
 
-  function init(container, state, myUserId, emitAction) {
+  function init(container, state, myUserId, emitAction, options = {}) {
     _myUserId     = myUserId;
-    _emit         = emitAction;
+    _isSpectator  = !!options.isSpectator;
+    // Spectator-safe emit: every game:action (placeReinforcement,
+    // attackTerritory, fortify, tradeCards, end*Phase, endTurn) is
+    // swallowed for spectators.  The wrapper's pointer-events: none
+    // (set below) means territory clicks don't even register, so the
+    // selection state machine never advances.
+    _emit         = _isSpectator ? () => {} : emitAction;
     _selectedFrom = null;
 
     // Create our wrapper fresh inside the framework-owned container.
     _wrapper = document.createElement('div');
     _wrapper.id        = 'risk-wrapper';
     _wrapper.className = 'risk-wrapper';
+    if (_isSpectator) _wrapper.style.pointerEvents = 'none';
     container.appendChild(_wrapper);
 
     // Inject loading message until SVG arrives
@@ -497,6 +505,7 @@ const RiskRenderer = (() => {
     _wrapper          = null;
     _myUserId         = null;
     _emit             = null;
+    _isSpectator      = false;
     _selectedFrom     = null;
     _svgLoaded        = false;
     _onTerritoryClick = null;

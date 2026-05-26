@@ -35,17 +35,27 @@
 const BattleshipRenderer = (() => {
   let _myUserId = null;
   let _emit = null;
+  let _isSpectator = false;
   let _wrapper = null;
   let _activeModule = null; // BattleshipSetup or BattleshipFiring
   let _lastPhase = null;
 
-  function init(container, state, myUserId, emitAction) {
+  function init(container, state, myUserId, emitAction, options = {}) {
     _myUserId = myUserId;
-    _emit = emitAction;
+    _isSpectator = !!options.isSpectator;
+    // Spectator-safe emit: every game:action originating from a sub-module
+    // (placeShip, fireShot, commitPlacement, …) is swallowed when the
+    // local viewer is spectating.  Sub-modules don't need to know they're
+    // running for a spectator — their `emit` just no-ops.  The CSS gate
+    // below prevents the visual UI (drag-and-drop, grid cell hover) from
+    // even appearing interactive, so spectators don't get confused by
+    // clicks that animate but don't commit.
+    _emit = _isSpectator ? () => {} : emitAction;
 
     _wrapper = document.createElement('div');
     _wrapper.id = 'battleship-wrapper';
     _wrapper.className = 'battleship-wrapper';
+    if (_isSpectator) _wrapper.style.pointerEvents = 'none';
     container.appendChild(_wrapper);
 
     mountPhase(state);
@@ -83,6 +93,7 @@ const BattleshipRenderer = (() => {
     _wrapper = null;
     _myUserId = null;
     _emit = null;
+    _isSpectator = false;
     _lastPhase = null;
   }
 
