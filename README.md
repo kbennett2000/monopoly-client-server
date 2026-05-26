@@ -5,7 +5,7 @@ Drop in any turn-based game by implementing a single interface; the framework ha
 
 Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/JavaScript** (client).
 
-**Bundled games:** Monopoly (2–8 players) · Connect Four (2 players) · Risk (2–6 players) · Tic-Tac-Toe (2 players) · Yahtzee (1–8 players)
+**Bundled games:** Connect Four (2 players) · Tic-Tac-Toe (2 players) · Yahtzee (1–8 players) · Battleship (2 players) · Risk (2–6 players) · Monopoly (2–8 players)
 
 ---
 
@@ -20,6 +20,7 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Risk](#risk)
    - [Tic-Tac-Toe](#tic-tac-toe)
    - [Yahtzee](#yahtzee)
+   - [Battleship](#battleship)
 5. [Adding a New Game](#adding-a-new-game)
 6. [Architecture](#architecture)
 7. [Configuration](#configuration)
@@ -32,6 +33,7 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Risk Cards](#risk-cards)
    - [Tic-Tac-Toe Settings](#tic-tac-toe-settings)
    - [Yahtzee Settings](#yahtzee-settings)
+   - [Battleship Settings](#battleship-settings)
 8. [API Reference](#api-reference)
 9. [Socket.io Events](#socketio-events)
 10. [Security Notes](#security-notes)
@@ -81,7 +83,16 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 - Up to 3 rolls per turn with arbitrary holds between rolls
 - All 13 categories (six upper + three-/four-of-a-kind, full house, two straights, Yahtzee, chance)
 - Upper-section bonus (+35 when subtotal ≥ 63); ties produce a shared-winner array
+- Two-click commit on category selection prevents accidental score-locking
 - **First non-board game** — UI is a shared score sheet (players as columns, categories as rows) plus a dice tray, all inside the renderer-owned board area
+
+### Battleship
+- Classic 2-player, 10×10 grid; five ships per side (Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2)
+- Drag-and-drop ship placement with **R-key rotation** during drag
+- Two-grid firing layout — your fleet on the left, opponent's waters on the right; fixed positions across turns with active/inactive treatment that flips
+- Both fleets revealed at game over (winner and loser see the layout that beat them)
+- **First game with a simultaneous private setup phase** — both players place ships in parallel; the phase transitions to firing on a barrier (both Ready) rather than via a turn. Modelled as `status='playing'` + `turnState.phase='setup'` with `currentPlayerIndex=null`
+- **First game with fully hidden state per player** — opponents' ship positions are stripped by `getStateForPlayer` on every emit, not masked
 
 ---
 
@@ -151,6 +162,10 @@ Find `<host-ip>` with `ip addr` (Linux/macOS) or `ipconfig` (Windows).
 ```
 lan-games/
 ├── README.md
+├── docs/                         ← design notes & active proposals
+│   ├── action-descriptors.md     ← optional rich-action interface (in active migration)
+│   ├── renderer-contract.md      ← renderer / framework DOM contract; open questions
+│   └── state-emission-audit.md   ← security audit of every state-bearing emit path
 │
 ├── server/
 │   ├── package.json
@@ -180,10 +195,14 @@ lan-games/
 │   │   │   ├── game-logic.js     ← Tic-Tac-Toe rules (pure functions)
 │   │   │   └── config/
 │   │   │       └── settings.json ← board size, win length, colours, tokens
-│   │   └── yahtzee/
-│   │       ├── game-logic.js     ← Yahtzee rules + scoring (pure functions)
+│   │   ├── yahtzee/
+│   │   │   ├── game-logic.js     ← Yahtzee rules + scoring (pure functions)
+│   │   │   └── config/
+│   │   │       └── settings.json ← dice count, rolls per turn, category bonuses
+│   │   └── battleship/
+│   │       ├── game-logic.js     ← Battleship rules + hidden-info filter (pure functions)
 │   │       └── config/
-│   │           └── settings.json ← dice count, rolls per turn, category bonuses
+│   │           └── settings.json ← grid size, ship list, first-player selection
 │   │
 │   └── src/                      ← game-agnostic framework
 │       ├── index.js              ← entry point; HTTP + Socket.io server
@@ -192,6 +211,7 @@ lan-games/
 │       ├── game-logic-interface.js ← interface contract + validateImplementation()
 │       ├── game-registry.js      ← maps game-type keys → logic modules
 │       ├── game-manager.js       ← in-memory sessions + SQLite persistence
+│       ├── state-filter.js       ← shared getStateForPlayer wrapper used by socket + REST
 │       ├── socket-handler.js     ← Socket.io event routing
 │       └── routes/
 │           ├── auth.routes.js    ← /api/auth/*
@@ -217,9 +237,14 @@ lan-games/
             ├── connect-four/renderer.js
             ├── risk/renderer.js
             ├── tic-tac-toe/renderer.js
-            └── yahtzee/
-                ├── renderer.js        ← lifecycle + dice tray + roll controls
-                └── score-sheet.js     ← shared score-sheet table builder + painter
+            ├── yahtzee/
+            │   ├── renderer.js        ← lifecycle + dice tray + roll controls
+            │   └── score-sheet.js     ← shared score-sheet table builder + painter
+            └── battleship/
+                ├── grid.js            ← shared 10×10 grid primitive
+                ├── setup-phase.js     ← drag-and-drop ship placement
+                ├── firing-phase.js    ← two-grid shooting + sunk-ship cache
+                └── renderer.js        ← lifecycle + phase routing
 ```
 
 ---
@@ -321,6 +346,24 @@ Players are columns, the 13 categories are rows. Your column shows live previews
 #### Winning
 
 After every player fills all 13 categories, the highest grand total wins. Ties produce a shared-winner array and the modal/log call out all tied players.
+
+---
+
+### Battleship
+
+Battleship plays in two phases.
+
+#### Setup phase
+
+Both players are in setup at the same time — there's no turn order. Drag a ship from the **Unplaced ships** panel onto your grid; press **R while dragging** to rotate horizontal ↔ vertical. Ships highlight green for a valid placement, red for invalid. Click a placed ship to pick it back up and reposition it.
+
+When all five ships are placed, click **Ready**. You can **Unready** until the opponent commits — once both players are Ready, the game transitions to firing.
+
+#### Firing phase
+
+Your fleet is on the left, the opponent's waters are on the right. On your turn, click any unshot cell of the opponent's grid to fire. Misses are marked with a dot, hits with a cross, and sunk ships reveal their full position. Turn passes after every shot regardless of result.
+
+Sink all five of the opponent's ships to win. At game over both fleets are revealed.
 
 ---
 
@@ -476,7 +519,17 @@ That's it. The framework automatically:
 
 ### 4. (Optional) Add a client renderer
 
-If your game has a visual board, create `client/js/games/<your-game>/renderer.js` and branch on `state.gameType` in `app.js` and `socket-client.js`, following the pattern established by `ConnectFourRenderer`.
+Create `client/js/games/<your-game>/renderer.js` implementing the `GameRenderer` interface defined in [`client/js/games/renderer-interface.js`](client/js/games/renderer-interface.js) — at minimum `init`, `update`, and `destroy`. Self-register at the bottom of the file:
+
+```js
+GameRendererRegistry.register('your-game', YourGameRenderer);
+```
+
+Add one `<script>` tag to `client/index.html`. No `app.js` or `socket-client.js` changes — the framework dispatches to the renderer via the registry based on `state.gameType`.
+
+### 5. (Optional) Implement `getActionDescriptors`
+
+If your game has dynamic action labels, score previews, or enabled-state logic that depends on game rules (the renderer would otherwise have to mirror server-side rule logic), implement the optional `getActionDescriptors(state, userId)` method. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract. The framework attaches the descriptor list to `state.actionDescriptors` on every socket emit when the method is present. Games that don't implement it stay on the simpler `getValidActions` contract.
 
 ---
 
@@ -489,7 +542,7 @@ If your game has a visual board, create `client/js/games/<your-game>/renderer.js
 │                     Browser (Client)                    │
 │  api.js ──── REST calls ────────────────────────────┐   │
 │  socket-client.js ── Socket.io ──────────────────┐  │   │
-│  board-renderer.js / connect-four/renderer.js    │  │   │
+│  games/<type>/renderer.js (via renderer-registry)│  │   │
 │  ui-manager.js · app.js · game-state.js          │  │   │
 └──────────────────────────────────────────────────┼──┼───┘
                                                    │  │
@@ -836,6 +889,23 @@ Trading a card whose `territoryId` you currently own grants +2 extra armies on t
 
 ---
 
+### Battleship Settings
+
+`server/games/battleship/config/settings.json`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `gridWidth` | 10 | Grid width in cells |
+| `gridHeight` | 10 | Grid height in cells |
+| `ships` | 5-entry array | Each entry is `{ id, name, length }`. Defaults are Carrier (5), Battleship (4), Cruiser (3), Submarine (3), Destroyer (2). |
+| `firstPlayerSelection` | `"random"` | Strategy for picking who fires first once both players are Ready. Only `"random"` is implemented in v1; other values are rejected by `loadConfig` with an explicit error. |
+| `minPlayers` | 2 | Battleship is 2-player; v1 does not support N-player variants. |
+| `maxPlayers` | 2 | |
+| `playerColors` | blue, red | Array of `{ id, hex }` |
+| `playerTokens` | ⚓ 🚢 | Emoji tokens shown in the player panel |
+
+---
+
 ## API Reference
 
 All endpoints live under `/api`. Authenticated endpoints (`✓`) require:
@@ -931,6 +1001,16 @@ Authorization: Bearer <jwt-token>
 | `rollDice` | `{ held? }` | Roll the dice; `held` is a boolean array indicating which dice carry over from the previous roll (omit on the first roll of a turn) |
 | `scoreCategory` | `{ category }` | Commit the current dice to the named category; locks the cell. Category strings: `ones`, `twos`, …, `sixes`, `threeOfAKind`, `fourOfAKind`, `fullHouse`, `smallStraight`, `largeStraight`, `yahtzee`, `chance` |
 
+**Battleship**
+
+| `action` | Extra payload | Valid in phase | Effect |
+|----------|--------------|----------------|--------|
+| `placeShip` | `{ shipId, origin: {x, y}, orientation }` | setup | Place or reposition one ship. Validates bounds, no-overlap, and not-yet-Ready. |
+| `removeShip` | `{ shipId }` | setup | Return a placed ship to the unplaced pool. |
+| `commitPlacement` | — | setup | Mark this player Ready. Requires all 5 ships placed. Auto-transitions to firing when both players are Ready. |
+| `uncommitPlacement` | — | setup | Un-Ready. Only valid while the phase is still `setup` (i.e. the opponent hasn't also Ready'd yet). |
+| `fireShot` | `{ cell: {x, y} }` | firing | Fire at a cell on the opponent's grid. Result (`hit` / `miss` / `sunk`) is recorded in both players' shot logs. Turn passes regardless of result. |
+
 **Risk**
 
 | `action` | Extra payload | Valid in phase | Effect |
@@ -994,9 +1074,16 @@ Each event has `{ type, data, timestamp }`. Clients use these for sounds, animat
 | `CELL_MARKED` *(Tic-Tac-Toe)* | `username`, `row`, `col`, `token` |
 | `DICE_ROLLED` *(Yahtzee variant)* | `username`, `dice[]`, `held[]`, `rollsUsed` |
 | `CATEGORY_SCORED` *(Yahtzee)* | `username`, `category`, `dice[]`, `points` |
-| `TURN_STARTED` *(Yahtzee)* | `username` |
+| `TURN_STARTED` *(Yahtzee/Battleship)* | `username` |
 | `TURN_ENDED` *(Yahtzee)* | `username` |
-| `GAME_OVER` | `winner` (userId, or array of userIds for ties, or `null` for draw); `finalScores[]` *(Yahtzee — `{ userId, username, upperSubtotal, upperBonus, lowerTotal, grandTotal }` per player)* |
+| `SHIP_PLACED` *(Battleship)* | `username`, `shipId` *(positions deliberately omitted — events are broadcast to both players)* |
+| `SHIP_REMOVED` *(Battleship)* | `username`, `shipId` |
+| `PLAYER_READY` *(Battleship)* | `username` |
+| `PLAYER_UNREADY` *(Battleship)* | `username` |
+| `SETUP_COMPLETE` *(Battleship)* | `firstPlayer` — the username who fires first after both players Ready |
+| `SHOT_FIRED` *(Battleship)* | `shooter`, `target`, `cell: {x,y}`, `result: 'hit'|'miss'|'sunk'` |
+| `SHIP_SUNK` *(Battleship)* | `owner`, `shipId`, `shipName`, `length`, `cells[]` *(cell footprint revealed on sink — by rule, sunk ships are no longer hidden)* |
+| `GAME_OVER` | `winner` (userId, or array of userIds for ties, or `null` for draw); `finalScores[]` *(Yahtzee)*; `finalFleets` *(Battleship — `{ [userId]: ships[] }` revealing both players' full layouts at game over)* |
 
 ---
 
@@ -1028,6 +1115,8 @@ Each event has `{ type, data, timestamp }`. Clients use these for sounds, animat
 - **Passwords** — hashed with bcrypt at 12 salt rounds; plaintext is never stored or logged.
 
 - **Server-side validation** — every action is validated on the server before being applied. Clients cannot manipulate state directly or forge another player's moves.
+
+- **State-emission boundary audited** — every state-bearing emission (both socket and REST) routes through `getStateForPlayer` via the shared [`filterStateForUser`](server/src/state-filter.js) helper. This is the security boundary that protects hidden-information games (Risk's card hands, Battleship's ship positions, future Coup-style games) from leaking opponent state. The full audit and the closure of a real leak in `GET /api/games/:id` is documented in [`docs/state-emission-audit.md`](docs/state-emission-audit.md).
 
 - **Offline by design** — once installed and configured, the server and client need **zero internet connectivity** to run. This is a deliberate property of the architecture, not an accident:
 
@@ -1089,7 +1178,9 @@ npm test                    # unit tests for every bundled game's game-logic
 npm run test:integration    # socket + persistence round-trip tests
 ```
 
-Tests live in `server/test/`. The unit suite imports game-logic modules directly and never touches the network, database, or socket layer — making it fast and reliable. The integration suite spins up a real server, a real SQLite database, and real socket clients to verify full round-trips end-to-end.
+Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **376 unit tests across the six bundled games** plus the framework interface, and **22 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, and game-lifecycle round-trips.
+
+The unit suite imports game-logic modules directly and never touches the network, database, or socket layer — making it fast and reliable. The integration suite spins up a real server, a real SQLite database, and real socket clients to verify full round-trips end-to-end.
 
 ### Hot-reloading config
 
@@ -1107,17 +1198,18 @@ Only games created *after* the reload will use the new config. In-progress games
 - [ ] `server/games/<name>/game-logic.js` — implements all required interface methods; calls `validateImplementation` at the bottom
 - [ ] `server/games/<name>/config/settings.json` — minimum viable config
 - [ ] `server/src/game-registry.js` — one new line in the `registry` object
-- [ ] (optional) `client/js/games/<name>/renderer.js` — visual board renderer
-- [ ] (optional) Branch `enterGameScreen` in `client/js/app.js` and `handleFullStateUpdate` in `client/js/socket-client.js` for the renderer
+- [ ] (optional) `client/js/games/<name>/renderer.js` — visual renderer; self-registers via `GameRendererRegistry.register('<name>', …)` at the bottom of the file
+- [ ] (optional) One `<script>` tag in `client/index.html` to load the renderer
+- [ ] (optional) Implement `getActionDescriptors` if the renderer needs dynamic labels / enabled-state logic; see [`docs/action-descriptors.md`](docs/action-descriptors.md)
 
 ---
 
 ## Roadmap
 
 - **More games** — Chess, Checkers, Scrabble, Catan, Coup, …
-- **Turn timer UI** — countdown bar visible to all players during a disconnected player's timeout
+- **Action descriptor migration** — Yahtzee and Risk renderers migrate to consume the optional `getActionDescriptors` contract; see [`docs/action-descriptors.md`](docs/action-descriptors.md). Battleship already migrated.
+- **Turn timer UI** — server emits absolute-deadline warnings via `game:turn_warning`; client-side countdown bar still to be built.
 - **Spectator mode** — join a game room as a read-only observer
-- **Per-game renderer protocol** — formal client-side interface so game renderers can be self-contained drop-ins
 - **AI players** — pluggable bot interface implementing the same `applyAction` contract
 - **Custom board themes** — CSS variable overrides per game type
 - **Mobile optimisation** — touch-friendly controls for handheld players
