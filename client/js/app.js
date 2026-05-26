@@ -98,13 +98,25 @@
     await Promise.all([refreshGameList(), refreshGameTypes()]);
   }
 
+  // gameTypeMeta is set by refreshGameTypes and read by the change-handler
+  // and the lobby's ? button so we don't refetch metadata on every interaction.
+  let gameTypeMeta = {};
+
+  function updateGameTypeDescription(gameType) {
+    const el = document.getElementById('game-type-description');
+    if (!el) return;
+    el.textContent = gameTypeMeta[gameType]?.description || '';
+  }
+
   async function refreshGameTypes() {
     try {
       const { types } = await API.getGameTypes();
       const select = document.getElementById('game-type');
       if (!select || !types) return;
       select.innerHTML = '';
+      gameTypeMeta = {};
       for (const t of types) {
+        gameTypeMeta[t.key] = t;
         const opt = document.createElement('option');
         opt.value       = t.key;
         opt.textContent = t.name || t.key;
@@ -112,6 +124,7 @@
       }
       // Trigger visibility update for whichever type is now selected
       updateMonopolyConfigVisibility(select.value);
+      updateGameTypeDescription(select.value);
     } catch {
       // If the endpoint fails, the default <option> from HTML stays
     }
@@ -124,6 +137,14 @@
 
   document.getElementById('game-type').addEventListener('change', function () {
     updateMonopolyConfigVisibility(this.value);
+    updateGameTypeDescription(this.value);
+  });
+
+  // Lobby help button: opens rules for whichever game type is currently
+  // selected in the create-game dropdown.
+  document.getElementById('game-type-help-btn').addEventListener('click', () => {
+    const gameType = document.getElementById('game-type').value;
+    if (gameType) HelpSystem.open(gameType);
   });
 
   async function refreshGameList() {
@@ -341,6 +362,14 @@
 
   document.getElementById('save-game-btn').addEventListener('click', () => {
     SocketClient.saveGame();
+  });
+
+  // In-game help button: opens the rules overlay for whatever game is active.
+  // The overlay is non-blocking; the game continues and the player's turn
+  // timer (if any) keeps running while help is open.
+  document.getElementById('game-help-btn').addEventListener('click', () => {
+    const gameType = GameState.getState()?.gameType;
+    if (gameType) HelpSystem.open(gameType);
   });
 
   document.getElementById('quit-game-btn').addEventListener('click', () => {

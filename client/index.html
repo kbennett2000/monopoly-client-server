@@ -99,9 +99,13 @@
 
         <div class="form-group">
           <label for="game-type">Game type</label>
-          <select id="game-type">
-            <option value="monopoly">Monopoly</option>
-          </select>
+          <div class="game-type-row">
+            <select id="game-type">
+              <option value="monopoly">Monopoly</option>
+            </select>
+            <button type="button" id="game-type-help-btn" class="help-btn" title="How to play">?</button>
+          </div>
+          <p class="game-type-description" id="game-type-description"></p>
         </div>
 
         <div class="config-section" id="monopoly-config-section">
@@ -181,6 +185,7 @@
     </div>
     <div class="game-header-right">
       <button id="mute-btn"        class="btn btn-sm btn-outline" title="Toggle sound">🔊</button>
+      <button id="game-help-btn"  class="btn btn-sm btn-outline" title="How to play">? Help</button>
       <button id="save-game-btn"  class="btn btn-sm btn-outline">💾 Save</button>
       <button id="quit-game-btn"  class="btn btn-sm btn-outline">✕ Quit</button>
     </div>

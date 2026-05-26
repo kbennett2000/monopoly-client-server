@@ -2112,6 +2112,25 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   border-color: var(--accent);
 }
 
+/* Lobby: the select + ? button sit on one row; the type's metadata
+   description shows underneath the row as a one-line hint. */
+.game-type-row { display: flex; align-items: center; gap: 6px; }
+.game-type-row select { flex: 1; }
+.game-type-description {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  min-height: 16px;
+}
+
+/* Per-card "?" button on game-card listings — sits inside the badge cluster. */
+.game-card .help-btn {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  margin-left: 4px;
+}
+
 .help-overlay {
   position: fixed;
   inset: 0;

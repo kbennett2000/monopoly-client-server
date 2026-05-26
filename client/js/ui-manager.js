@@ -360,6 +360,23 @@ const UIManager = (() => {
         <span class="game-card-status ${statusClass}">${statusLabel}</span>
       `;
 
+      // Inline "?" button next to the game-type badge — opens the rules
+      // overlay for this card's gameType.  Only added if HelpSystem is
+      // available so this UI module stays usable without it loaded.
+      const badge = card.querySelector('.game-type-badge');
+      if (badge && typeof HelpSystem !== 'undefined') {
+        const help = document.createElement('button');
+        help.type        = 'button';
+        help.className   = 'help-btn';
+        help.title       = 'How to play';
+        help.textContent = '?';
+        help.addEventListener('click', (e) => {
+          e.stopPropagation();
+          HelpSystem.open(gameType);
+        });
+        badge.insertAdjacentElement('afterend', help);
+      }
+
       const canJoin   = g.status === 'waiting' || g.status === 'paused';
       const canRejoin = allowRejoin && g.status === 'playing';
 
