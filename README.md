@@ -12,18 +12,19 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 ## Table of Contents
 
 1. [Features](#features)
-2. [Quick Start](#quick-start)
-3. [Project Structure](#project-structure)
-4. [How to Play](#how-to-play)
+2. [Documentation](#documentation)
+3. [Quick Start](#quick-start)
+4. [Project Structure](#project-structure)
+5. [How to Play](#how-to-play)
    - [Monopoly](#monopoly)
    - [Connect Four](#connect-four)
    - [Risk](#risk)
    - [Tic-Tac-Toe](#tic-tac-toe)
    - [Yahtzee](#yahtzee)
    - [Battleship](#battleship)
-5. [Adding a New Game](#adding-a-new-game)
-6. [Architecture](#architecture)
-7. [Configuration](#configuration)
+6. [Adding a New Game](#adding-a-new-game)
+7. [Architecture](#architecture)
+8. [Configuration](#configuration)
    - [Monopoly Settings](#monopoly-settings)
    - [Monopoly Board](#monopoly-board--properties)
    - [Monopoly Cards](#monopoly-cards)
@@ -34,11 +35,11 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Tic-Tac-Toe Settings](#tic-tac-toe-settings)
    - [Yahtzee Settings](#yahtzee-settings)
    - [Battleship Settings](#battleship-settings)
-8. [API Reference](#api-reference)
-9. [Socket.io Events](#socketio-events)
-10. [Security Notes](#security-notes)
-11. [Development](#development)
-12. [Roadmap](#roadmap)
+9. [API Reference](#api-reference)
+10. [Socket.io Events](#socketio-events)
+11. [Security Notes](#security-notes)
+12. [Development](#development)
+13. [Roadmap](#roadmap)
 
 ---
 
@@ -93,6 +94,25 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 - Both fleets revealed at game over (winner and loser see the layout that beat them)
 - **First game with a simultaneous private setup phase** — both players place ships in parallel; the phase transitions to firing on a barrier (both Ready) rather than via a turn. Modelled as `status='playing'` + `turnState.phase='setup'` with `currentPlayerIndex=null`
 - **First game with fully hidden state per player** — opponents' ship positions are stripped by `getStateForPlayer` on every emit, not masked
+
+---
+
+## Documentation
+
+In addition to this README, the project keeps three design docs under `docs/`:
+
+- **[Action descriptors](docs/action-descriptors.md)** — proposed optional interface
+  for game-logic to supply dynamic action labels, enabled-state, and per-action
+  data to renderers without forcing each renderer to mirror server-side rule
+  logic. Currently implemented for Battleship; Yahtzee and Risk migrations
+  pending.
+- **[Renderer contract notes](docs/renderer-contract.md)** — running design memo
+  tracking open and resolved questions about the client-side renderer interface
+  as it has evolved across game implementations.
+- **[State-emission audit](docs/state-emission-audit.md)** — security audit that
+  inventoried every state-bearing emit (socket and REST) and confirmed each
+  routes through `getStateForPlayer`. Includes the audit's confidence statement
+  and the closure of a real leak that was active when the audit ran.
 
 ---
 
@@ -428,8 +448,8 @@ validateImplementation(module.exports);
 
 | Game type | What to do |
 |-----------|-----------|
-| **Perfect information** (Monopoly, Connect Four, Chess) — every player sees the whole board | Use `defaultGetStateForPlayer` exported by the interface module |
-| **Hidden information** (Poker, Coup, Stratego) — players have private cards or roles | Write a real filter that masks other players' private fields |
+| **Perfect information** (Monopoly, Connect Four, Tic-Tac-Toe, Yahtzee) — every player sees the whole board | Use `defaultGetStateForPlayer` exported by the interface module |
+| **Hidden information** (Battleship, Risk) — players have private board state or private cards | Write a real filter that masks other players' private fields |
 
 ```js
 // ✓ Perfect-information game — one line, done.
@@ -1035,7 +1055,7 @@ Authorization: Bearer <jwt-token>
 | `trade:incoming` | `{ from, payload }` | Targeted directly to the trade recipient |
 | `chat:message` | `{ username, text, timestamp }` | Chat message broadcast to the room |
 | `lobby:update` | — | Broadcast to all sockets; clients on the lobby screen refresh their game list |
-| `game:turn_warning` | `{ username, secondsRemaining }` | Disconnected player's turn will auto-skip |
+| `game:turn_warning` | `{ username, deadlineTimestamp }` | Disconnected player's turn will auto-skip; `deadlineTimestamp` is Unix ms when the skip fires |
 | `auth:error` | `{ message }` | Auth failure; socket is disconnected after this |
 
 #### Game events (inside `game:update → events[]`)
