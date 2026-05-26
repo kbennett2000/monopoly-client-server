@@ -1,26 +1,28 @@
 'use strict';
 
 /**
- * game-logic.js — The Game of Life (server-side, through session 2a).
+ * game-logic.js — The Game of Life (server-side, through session 2b).
  *
  * Implements the GameLogic interface defined in server/src/game-logic-interface.js.
  *
  * ─── Sessions ────────────────────────────────────────────────────────────────
  *
- * Session 1 (shipped): board, spinner, college/career fork, career/salary card
- *   draws, pending-choice state machine, basic pay/collect effect handlers.
+ * Session 1: board, spinner, college/career fork, career/salary card draws,
+ *   pending-choice state machine, basic pay/collect effect handlers.
  *
- * Session 2a (this): real implementations of marriage, children (baby and
- *   twins), auto and life insurance, and stocks.  Stock payouts trigger on
- *   any spinner match across ALL players' turns.  The board's mid-game
- *   stubs are replaced with the real handlers, and two pay-bank squares
- *   are reclassified to auto-accident and life-accident.  Insurance and
- *   stock purchases are out-of-band actions a player can take at the
- *   start of their turn (not mid-spin, not during a pending choice).
+ * Session 2a: real implementations of marriage, children (baby and twins),
+ *   auto and life insurance, and stocks.  Stock payouts trigger on any
+ *   spinner match across ALL players' turns.
  *
- * Session 2b (deferred): retirement choice, the retired-but-still-in-game
- *   pattern, life tiles, and end-of-game scoring.  The retirement-fork
- *   and terminal squares remain stubbed until then.
+ * Session 2b (this): end-game.  Real retirement-fork handler.  Countryside
+ *   Acres and Millionaire Estates as the two terminal retirement tracks.
+ *   Retired-but-still-in-game pattern: retired players are skipped in turn
+ *   rotation but stay in state until everyone retires.  Life tiles (drawn
+ *   at CA retirement, revealed at game over) implemented with hidden
+ *   information from non-self viewpoints.  Final scoring formula and the
+ *   ME cash-gamble (highest cash among ME retirees wins outright; losing
+ *   ME retirees score zero).  pay-tax-by-salary effect type added to wire
+ *   up the previously-dead taxDue field on salary cards.
  *
  * Session 3 (deferred): renderer (client/).
  *
@@ -34,7 +36,11 @@
  *   careerDiscard: string[],  pile drawn from when the deck empties
  *   salaryDeck: string[],
  *   salaryDiscard: string[],
- *   winner: null,             populated in session 2b
+ *   lifeTileDeck: string[],   (session 2b) shuffled remaining life-tile IDs;
+ *                             drawn from at CA retirement.  Late retirees may
+ *                             find the deck empty — that's the strategic
+ *                             incentive to retire early to CA.
+ *   winner: string | string[] | null,   set on game over
  *   log: LogEntry[]
  * }
  *
@@ -58,18 +64,17 @@
  *                                  type ∈ { 'fork', 'career-draw', 'salary-draw' }
  *                                  options carries square IDs for forks, card IDs for draws
  *   spinAgain: boolean   true when a spin-again square just fired; cleared on next spin
- *   retired:   boolean   session 2b placeholder
- *   lifeTiles: any[]     session 2b placeholder
+ *   retired:   boolean   (session 2b) true after crossing a retirement terminal
+ *   retiredTo: 'countryside-acres' | 'millionaire-estates' | null   (session 2b)
+ *   lifeTiles: LifeTile[]   (session 2b) populated at CA retirement; values
+ *                            masked from opponents until game over.
  * }
  */
 
 const configLoader = require('./config-loader');
-const {
-  validateImplementation,
-  defaultGetStateForPlayer,
-} = require('../../src/game-logic-interface');
+const { validateImplementation } = require('../../src/game-logic-interface');
 
-const STATE_VERSION = 3;
+const STATE_VERSION = 4;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -169,6 +174,30 @@ function applyPayLoans(state, playerIdx, square) {
   return [event('LOAN_PAID', { username: player.username, amount, squareId: square.id })];
 }
 
+function applyPayTaxBySalary(state, playerIdx, square) {
+  // The tax is whatever the player's current salary card carries on its
+  // taxDue field.  A player who somehow lands here without a salary (the
+  // board layout doesn't allow this from a normal traversal, but be
+  // defensive) pays zero.
+  const player = state.players[playerIdx];
+  const amount = player.salary?.taxDue ?? 0;
+  player.cash -= amount;
+  log(
+    state,
+    `${player.username} paid $${amount} in income tax (salary tier ${player.salary?.id ?? 'none'})`,
+    'money',
+  );
+  return [
+    event('MONEY_PAID', {
+      username: player.username,
+      amount,
+      to: 'bank',
+      reason: square.label,
+      taxBySalary: true,
+    }),
+  ];
+}
+
 function applyPayEachPlayer(state, playerIdx, square) {
   const events = [];
   const payer = state.players[playerIdx];
@@ -259,20 +288,68 @@ function applyDrawSalary(state, playerIdx, _square) {
   return drawSalaryCards(state, playerIdx);
 }
 
-function applyTerminal(state, playerIdx, square) {
-  // Reached a retirement terminal.  Session 1 just announces the arrival;
-  // session 2 will tally the final score and mark the player retired.
+// ── session-2b retirement handlers ───────────────────────────────────────────
+
+/**
+ * Countryside Acres retirement.  Sets the player to retired/CA, draws up to
+ * `caTilesPerRetiree` life tiles from the top of the shuffled deck.  The
+ * deck size is intentionally smaller than maxPlayers * tiles-per-retiree —
+ * late CA retirees may find the deck empty and walk away with fewer (or
+ * zero) tiles.  That's the strategic incentive baked into CA.
+ */
+function applyCountrysideRetirement(state, playerIdx, square) {
+  const events = [];
   const player = state.players[playerIdx];
+  const target = state.config.settings.caTilesPerRetiree;
+  const drawnIds = [];
+  while (drawnIds.length < target && state.lifeTileDeck.length > 0) {
+    drawnIds.push(state.lifeTileDeck.shift());
+  }
+  const tilesById = {};
+  for (const t of state.config.lifeTiles) tilesById[t.id] = t;
+  const drawnTiles = drawnIds.map((id) => tilesById[id]);
+  player.retired = true;
+  player.retiredTo = 'countryside-acres';
+  player.lifeTiles = drawnTiles;
   log(
     state,
-    `${player.username} arrived at ${square.label} (terminal — session 2 scoring TBD)`,
-    'info',
+    `${player.username} retired to Countryside Acres with ${drawnTiles.length} life tile(s)`,
+    'event',
   );
-  return [
-    event('TERMINAL_REACHED', {
+  // Emit only the count, not the tile values — they're face-down until game
+  // over.  Renderer shows "Alice retired with 4 life tiles."
+  events.push(
+    event('PLAYER_RETIRED_CA', {
       username: player.username,
       squareId: square.id,
-      label: square.label,
+      tilesDrawn: drawnTiles.length,
+    }),
+  );
+  return events;
+}
+
+/**
+ * Millionaire Estates retirement.  Sets the player to retired/ME with no
+ * life tiles.  The ME cash gamble doesn't resolve here — it resolves at
+ * game over, when highest cash among ME retirees wins outright and the
+ * other ME retirees score zero.  Until then ME players just look like
+ * "retired with $X cash."
+ */
+function applyMillionaireRetirement(state, playerIdx, square) {
+  const player = state.players[playerIdx];
+  player.retired = true;
+  player.retiredTo = 'millionaire-estates';
+  player.lifeTiles = [];
+  log(
+    state,
+    `${player.username} retired to Millionaire Estates with $${player.cash} (gamble resolves at game over)`,
+    'event',
+  );
+  return [
+    event('PLAYER_RETIRED_ME', {
+      username: player.username,
+      squareId: square.id,
+      cashAtRetirement: player.cash,
     }),
   ];
 }
@@ -476,31 +553,25 @@ function applyLifeAccident(state, playerIdx, square) {
 
 // ── session-2b stubs (retirement) ────────────────────────────────────────────
 
-function applyRetirementForkStub(state, playerIdx, square) {
-  // Still stubbed in session 2a; the real fork choice + scoring is session 2b.
+function applyRetirementFork(state, playerIdx, square) {
+  // Real session-2b retirement fork: gate the turn on a player choice
+  // between Countryside Acres and Millionaire Estates.  Same shape as the
+  // start fork — sets player.pending = { type: 'retirement-fork', options }
+  // and the chooseBranch action handles validation and advancement.
   const player = state.players[playerIdx];
-  const dest = square.next[0] || square.id;
-  const events = [
-    event('SQUARE_EFFECT_DEFERRED', {
+  player.pending = { type: 'retirement-fork', options: square.next.slice() };
+  log(state, `${player.username} reached the retirement fork — choose CA or ME`, 'fork');
+  return [
+    event('FORK_CHOICE_PENDING', {
       username: player.username,
       squareId: square.id,
-      reason: 'session-2b-stub',
       kind: 'retirement-fork',
+      options: square.next.map((nid) => {
+        const sq = state.config.boardById[nid];
+        return { id: nid, label: sq.label };
+      }),
     }),
   ];
-  if (dest !== square.id) {
-    events.push(
-      event('PLAYER_MOVED', {
-        username: player.username,
-        from: square.id,
-        to: dest,
-        reason: 'stub-bump',
-      }),
-    );
-    player.position = dest;
-  }
-  log(state, `${player.username} reached the retirement fork (stubbed until session 2b)`, 'info');
-  return events;
 }
 
 const EFFECTS = {
@@ -510,6 +581,7 @@ const EFFECTS = {
   'draw-salary': applyDrawSalary,
   'pay-loans': applyPayLoans,
   'pay-bank': applyPayBank,
+  'pay-tax-by-salary': applyPayTaxBySalary,
   'collect-bank': applyCollectBank,
   'pay-each-player': applyPayEachPlayer,
   'collect-each-player': applyCollectEachPlayer,
@@ -520,8 +592,9 @@ const EFFECTS = {
   'have-twins': applyHaveTwins,
   'auto-accident': applyAutoAccident,
   'life-accident': applyLifeAccident,
-  'retirement-fork': applyRetirementForkStub,
-  terminal: applyTerminal,
+  'retirement-fork': applyRetirementFork,
+  'countryside-retirement': applyCountrysideRetirement,
+  'millionaire-retirement': applyMillionaireRetirement,
 };
 
 function resolveEffect(state, playerIdx, square) {
@@ -614,18 +687,140 @@ function drawSalaryCards(state, playerIdx) {
 
 // ── turn advancement ─────────────────────────────────────────────────────────
 
+// ── final scoring (session 2b) ───────────────────────────────────────────────
+
+/**
+ * Compute a player's components of the final score.  Pure: depends only on
+ * the player's own record + the configured childScoreBonus, no other state.
+ *
+ *   total = cash + house + sum(lifeTiles[].value) + (children * childScoreBonus)
+ *
+ * `player.house?.value` is intentionally optional — session 1's sq-m03 was
+ * a flat pay-bank, not a tracked house purchase, so the field doesn't
+ * exist yet.  When the buy-house mechanic is wired up, scoring picks it
+ * up automatically.  Until then, the house component is always 0.
+ */
+function computeFinalScore(player, settings) {
+  const cash = player.cash;
+  const house = player.house?.value ?? 0;
+  const lifeTilesValue = (player.lifeTiles || []).reduce((s, t) => s + (t.value || 0), 0);
+  const childrenBonus = (player.children || 0) * settings.childScoreBonus;
+  return {
+    cash,
+    house,
+    lifeTilesValue,
+    childrenBonus,
+    total: cash + house + lifeTilesValue + childrenBonus,
+  };
+}
+
+/**
+ * Finalize the game when every player has retired (or been deactivated).
+ * Sets state.status = 'finished', state.winner, and appends a GAME_OVER
+ * event to `events`.  Mutates state.
+ *
+ * Winner determination (locked at prompt-writing):
+ *
+ *   • If ANY player retired to Millionaire Estates, the highest-cash ME
+ *     retiree(s) win outright.  All other ME retirees score zero — they
+ *     lost the gamble.  CA retirees are runners-up regardless of their
+ *     own totals.
+ *   • If NO player retired to ME, the highest-final-score CA retiree(s)
+ *     win.  Standard score formula above.
+ *   • Ties → array of winners, mirroring Yahtzee/Battleship convention.
+ *
+ * The GAME_OVER event includes `finalScores` for EVERY player (including
+ * ME losers, whose `total` is forced to zero per the gamble) and reveals
+ * every player's `lifeTiles` — hidden until now, surfaced at game over
+ * the same way Battleship reveals fleets.
+ */
+function finalizeGame(state, events) {
+  state.status = 'finished';
+
+  const meRetirees = state.players.filter((p) => p.retiredTo === 'millionaire-estates');
+  const caRetirees = state.players.filter((p) => p.retiredTo === 'countryside-acres');
+
+  // Compute raw scores for every player.  ME-loser totals will be forced
+  // to 0 below.
+  const rawScores = {};
+  for (const p of state.players) {
+    rawScores[p.userId] = computeFinalScore(p, state.config.settings);
+  }
+
+  // Determine winners.
+  let winners = [];
+  if (meRetirees.length > 0) {
+    const maxCash = Math.max(...meRetirees.map((p) => p.cash));
+    winners = meRetirees.filter((p) => p.cash === maxCash);
+  } else if (caRetirees.length > 0) {
+    const maxTotal = Math.max(...caRetirees.map((p) => rawScores[p.userId].total));
+    winners = caRetirees.filter((p) => rawScores[p.userId].total === maxTotal);
+  } else {
+    // No retirees at all — shouldn't reach finalizeGame in that case, but
+    // be defensive.  No winner.
+    winners = [];
+  }
+
+  // Build the finalScores payload.  ME losers have their total zeroed
+  // per the cash-gamble rule.
+  const winnerIdSet = new Set(winners.map((p) => p.userId));
+  const finalScores = {};
+  for (const p of state.players) {
+    const score = rawScores[p.userId];
+    const isMeLoser = p.retiredTo === 'millionaire-estates' && !winnerIdSet.has(p.userId);
+    finalScores[p.userId] = {
+      cash: score.cash,
+      house: score.house,
+      lifeTilesValue: score.lifeTilesValue,
+      childrenBonus: score.childrenBonus,
+      total: isMeLoser ? 0 : score.total,
+      retiredTo: p.retiredTo,
+      lifeTiles: p.lifeTiles || [],
+    };
+  }
+
+  const winnerIds = winners.map((p) => p.userId);
+  const winnerUsernames = winners.map((p) => p.username);
+  state.winner = winnerIds.length === 1 ? winnerIds[0] : winnerIds;
+
+  if (winnerUsernames.length === 1) {
+    log(state, `${winnerUsernames[0]} wins the game!`, 'game');
+  } else if (winnerUsernames.length > 0) {
+    log(state, `Tie! ${winnerUsernames.join(' & ')} all win.`, 'game');
+  } else {
+    log(state, 'Game over — no winner', 'game');
+  }
+  events.push(
+    event('GAME_OVER', {
+      winner: state.winner,
+      winnerUsername: winnerUsernames.length === 1 ? winnerUsernames[0] : winnerUsernames,
+      finalScores,
+    }),
+  );
+}
+
 function advanceTurn(state, fromIdx, events) {
-  // Mutates state and the supplied events array.  Picks the next active
-  // player in cyclic order; if all other players are inactive the current
-  // player retains their turn.
+  // Mutates state and the supplied events array.  Picks the next active,
+  // non-retired player in cyclic order.  If every player has retired, the
+  // game ends and finalizeGame populates state.winner + GAME_OVER.
   const cur = state.players[fromIdx];
   cur.midTurn = false; // the outgoing player's mid-resolution flag is cleared on turn end
   events.push(event('TURN_ENDED', { username: cur.username }));
 
+  // Game-over check: every remaining active player is retired.  This is the
+  // session-2b end-game trigger.  finalizeGame mutates state.status,
+  // state.winner, and appends GAME_OVER to events.
+  const allRetired = state.players.every((p) => p.active === false || p.retired === true);
+  if (allRetired) {
+    finalizeGame(state, events);
+    return;
+  }
+
   let nextIdx = (fromIdx + 1) % state.players.length;
   let hops = 0;
   while (hops < state.players.length) {
-    if (state.players[nextIdx].active !== false) break;
+    const candidate = state.players[nextIdx];
+    if (candidate.active !== false && candidate.retired !== true) break;
     nextIdx = (nextIdx + 1) % state.players.length;
     hops++;
   }
@@ -721,7 +916,10 @@ function chooseBranch(state, userId, nextSquareId) {
   const playerIdx = state.turnState.currentPlayerIndex;
   const player = state.players[playerIdx];
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
-  if (!player.pending || player.pending.type !== 'fork') {
+  if (
+    !player.pending ||
+    (player.pending.type !== 'fork' && player.pending.type !== 'retirement-fork')
+  ) {
     return { state, events, error: 'No pending fork choice' };
   }
   if (!player.pending.options.includes(nextSquareId)) {
@@ -994,6 +1192,7 @@ function createInitialPlayer(user, existingPlayers = [], config = null) {
     stockNumber: null,
     midTurn: false,
     retired: false,
+    retiredTo: null,
     lifeTiles: [],
     pending: null,
     spinAgain: false,
@@ -1020,6 +1219,7 @@ function initGame(gameId, name, playerList, config) {
     stockNumber: null,
     midTurn: false,
     retired: false,
+    retiredTo: null,
     lifeTiles: [],
     // Each player owes the server a Career-vs-College decision before
     // their first spin.  Setting it on all players up front means the
@@ -1041,12 +1241,20 @@ function initGame(gameId, name, playerList, config) {
     careerDiscard: [],
     salaryDeck: shuffle(cfg.salaries.map((c) => c.id)),
     salaryDiscard: [],
+    lifeTileDeck: shuffle(cfg.lifeTiles.map((t) => t.id)),
     winner: null,
     log: [{ timestamp: Date.now(), message: 'Game started!', type: 'info' }],
   };
 }
 
 function applyAction(state, userId, action, payload = {}) {
+  // A retired player has reached the end of their road — no more actions.
+  // The framework's turn rotation skips them, but a misdirected client
+  // action lands here and we reject it cleanly.
+  const acting = state.players.find((p) => p.userId === userId);
+  if (acting?.retired === true) {
+    return { state, events: [], error: 'You are retired — no further actions' };
+  }
   switch (action) {
     case 'spin':
       return spinAction(state, userId);
@@ -1074,7 +1282,10 @@ function applyAction(state, userId, action, payload = {}) {
 function getCurrentPlayer(state) {
   if (!state || state.status !== 'playing') return null;
   const cur = state.players?.[state.turnState?.currentPlayerIndex];
-  if (!cur || cur.active === false) return null;
+  // A retired player is "in the game" but not "the current player" — the
+  // framework uses null to mean "no one is acting right now," which is the
+  // right signal while the rotation skips past retired players.
+  if (!cur || cur.active === false || cur.retired === true) return null;
   return { userId: cur.userId, username: cur.username };
 }
 
@@ -1090,7 +1301,9 @@ function getValidActions(state, userId) {
   if (!state || state.status !== 'playing') return [];
   const cur = state.players?.[state.turnState?.currentPlayerIndex];
   if (!cur || cur.userId !== userId) return [];
-  if (cur.pending?.type === 'fork') return ['chooseBranch'];
+  if (cur.pending?.type === 'fork' || cur.pending?.type === 'retirement-fork') {
+    return ['chooseBranch'];
+  }
   if (cur.pending?.type === 'career-draw') return ['chooseCareer'];
   if (cur.pending?.type === 'salary-draw') return ['chooseSalary'];
   const actions = ['spin'];
@@ -1169,12 +1382,60 @@ function migrate(state) {
       stateVersion: 3,
     };
   }
+  if (s.stateVersion < 4) {
+    // v3 → v4 (session 2b): add retiredTo + lifeTileDeck.  `retired` and
+    // `lifeTiles` already existed as session-2b placeholders since session
+    // 1, so we only need to add the new fields with safe defaults.
+    s = {
+      ...s,
+      players: s.players.map((p) => ({
+        ...p,
+        retiredTo: typeof p.retiredTo === 'string' ? p.retiredTo : null,
+        lifeTiles: Array.isArray(p.lifeTiles) ? p.lifeTiles : [],
+      })),
+      lifeTileDeck: Array.isArray(s.lifeTileDeck) ? s.lifeTileDeck : [],
+      stateVersion: 4,
+    };
+  }
   if (s.stateVersion !== STATE_VERSION) {
     throw new Error(
       `[life] No migration path from stateVersion ${state.stateVersion} to ${STATE_VERSION}`,
     );
   }
   return s;
+}
+
+/**
+ * Filter game state for a specific player.  Life is mostly perfect-information,
+ * but life tiles (drawn at CA retirement) are hidden information until game
+ * over — the same way Battleship hides fleet placement until the game ends.
+ *
+ * For each player that isn't `userId`, replace their `lifeTiles` array with
+ * a `lifeTilesCount: number` and drop the values.  Once `state.status` is
+ * `'finished'`, every tile is revealed — game-over erases the hidden-info
+ * convention by design.
+ *
+ * Waiting-room safety: optional chaining throughout; safe to call on
+ * pre-initGame states where `players` or per-player fields may be missing.
+ */
+function getStateForPlayer(state, userId) {
+  // Pre-initGame waiting-room safety: if the state isn't well-formed yet,
+  // hand it back unchanged.  The framework calls this with placeholder
+  // states before initGame has populated player records.
+  if (!state || !Array.isArray(state.players)) {
+    return state;
+  }
+  // Game over reveals all tiles — same convention as Battleship's fleet
+  // reveal.  The hidden-info filter is only meaningful during play.
+  if (state.status === 'finished') return state;
+  return {
+    ...state,
+    players: state.players.map((p) => {
+      if (p.userId === userId) return p;
+      const { lifeTiles, ...rest } = p;
+      return { ...rest, lifeTilesCount: Array.isArray(lifeTiles) ? lifeTiles.length : 0 };
+    }),
+  };
 }
 
 module.exports = {
@@ -1190,8 +1451,8 @@ module.exports = {
   getGameMetadata,
   loadConfig,
   getConfigCopy,
-  // Life is perfect-information — every player sees the full state.
-  getStateForPlayer: defaultGetStateForPlayer,
+  // Custom filter — life tiles are hidden until game over.  See above.
+  getStateForPlayer,
   migrate,
 
   // ── Internal helpers (exported for tests) ────────────────────────────────
@@ -1199,8 +1460,15 @@ module.exports = {
   resolveEffect,
   drawOptionsFromDeck,
   hasPendingChoice,
+  computeFinalScore,
 };
 
 validateImplementation(module.exports, {
-  internalExports: ['EFFECTS', 'resolveEffect', 'drawOptionsFromDeck', 'hasPendingChoice'],
+  internalExports: [
+    'EFFECTS',
+    'resolveEffect',
+    'drawOptionsFromDeck',
+    'hasPendingChoice',
+    'computeFinalScore',
+  ],
 });

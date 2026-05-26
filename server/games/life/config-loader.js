@@ -30,6 +30,7 @@ const KNOWN_EFFECT_TYPES = new Set([
   'draw-salary',
   'pay-loans',
   'pay-bank',
+  'pay-tax-by-salary',
   'collect-bank',
   'pay-each-player',
   'collect-each-player',
@@ -41,7 +42,8 @@ const KNOWN_EFFECT_TYPES = new Set([
   'auto-accident',
   'life-accident',
   'retirement-fork',
-  'terminal',
+  'countryside-retirement',
+  'millionaire-retirement',
 ]);
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -113,12 +115,37 @@ function validateBoard(board, settings) {
     }
   }
 
-  // Squares of type 'terminal' must have an empty `next` (or self-loop).
+  // Retirement-terminal squares must have an empty `next` (or self-loop):
+  // a player who has retired stays there until game-over.
   for (const sq of board) {
-    if (sq.type !== 'terminal') continue;
+    if (sq.type !== 'countryside-retirement' && sq.type !== 'millionaire-retirement') continue;
     const ok = sq.next.length === 0 || (sq.next.length === 1 && sq.next[0] === sq.id);
     if (!ok) {
-      throw new Error(`board.json: terminal square "${sq.id}" must have empty next or a self-loop`);
+      throw new Error(
+        `board.json: retirement square "${sq.id}" must have empty next or a self-loop`,
+      );
+    }
+  }
+}
+
+function validateLifeTiles(tiles) {
+  if (!tiles || !Array.isArray(tiles.tiles) || tiles.tiles.length === 0) {
+    throw new Error('lifeTiles.json: must contain a non-empty "tiles" array');
+  }
+  const seen = new Set();
+  for (const t of tiles.tiles) {
+    if (!t.id || typeof t.id !== 'string') {
+      throw new Error('lifeTiles.json: every tile must have a string id');
+    }
+    if (seen.has(t.id)) {
+      throw new Error(`lifeTiles.json: duplicate tile id "${t.id}"`);
+    }
+    seen.add(t.id);
+    if (typeof t.value !== 'number' || t.value <= 0) {
+      throw new Error(`lifeTiles.json: tile "${t.id}".value must be a positive number`);
+    }
+    if (!t.name || typeof t.name !== 'string') {
+      throw new Error(`lifeTiles.json: tile "${t.id}".name must be a non-empty string`);
     }
   }
 }
@@ -230,17 +257,20 @@ function loadConfig(force = false) {
   const careers = readJSON('careers.json');
   const salaries = readJSON('salaries.json');
   const settings = readJSON('settings.json');
+  const lifeTiles = readJSON('lifeTiles.json');
 
   // Settings first — board validation needs settings.startSquareId.
   validateSettings(settings);
   validateBoard(board, settings);
   validateCareers(careers);
   validateSalaries(salaries);
+  validateLifeTiles(lifeTiles);
 
   _cachedConfig = {
     board,
     careers: careers.cards,
     salaries: salaries.cards,
+    lifeTiles: lifeTiles.tiles,
     settings,
     boardById: buildBoardIndex(board),
   };
@@ -266,5 +296,6 @@ module.exports = {
     validateCareers,
     validateSalaries,
     validateSettings,
+    validateLifeTiles,
   },
 };

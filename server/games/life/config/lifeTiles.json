@@ -1,0 +1,26 @@
+{
+  "_comment": "Life tiles — drawn at Countryside Acres retirement, revealed at game over. Values range $100,000 - $300,000. 20 tiles total: with the 6-player maximum each drawing 4, the last to retire risks getting fewer than 4 (deck depletes). That's the strategic incentive to retire to CA early.",
+
+  "tiles": [
+    { "id": "tile-001", "name": "Win Nobel Prize",            "value": 300000 },
+    { "id": "tile-002", "name": "Solution for World Hunger",  "value": 250000 },
+    { "id": "tile-003", "name": "Cure for the Common Cold",   "value": 250000 },
+    { "id": "tile-004", "name": "Run for President",          "value": 200000 },
+    { "id": "tile-005", "name": "Pulitzer Prize",             "value": 200000 },
+    { "id": "tile-006", "name": "Olympic Gold Medal",         "value": 200000 },
+    { "id": "tile-007", "name": "Discover a New Species",     "value": 180000 },
+    { "id": "tile-008", "name": "Climb Mt. Everest",          "value": 150000 },
+    { "id": "tile-009", "name": "Write a Bestseller",         "value": 150000 },
+    { "id": "tile-010", "name": "Become a Movie Star",        "value": 150000 },
+    { "id": "tile-011", "name": "Save an Endangered Species", "value": 150000 },
+    { "id": "tile-012", "name": "Start a Charity",            "value": 150000 },
+    { "id": "tile-013", "name": "Build the Tallest Building", "value": 120000 },
+    { "id": "tile-014", "name": "Sail Around the World",      "value": 120000 },
+    { "id": "tile-015", "name": "Invent a New Game",          "value": 120000 },
+    { "id": "tile-016", "name": "Open a Restaurant",          "value": 100000 },
+    { "id": "tile-017", "name": "Lead a Symphony",            "value": 100000 },
+    { "id": "tile-018", "name": "Master a Foreign Language",  "value": 100000 },
+    { "id": "tile-019", "name": "Tour with a Rock Band",      "value": 100000 },
+    { "id": "tile-020", "name": "Visit Every Continent",      "value": 100000 }
+  ]
+}

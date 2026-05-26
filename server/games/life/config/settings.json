@@ -24,6 +24,9 @@
   "stockCost": 50000,
   "stockPayoutAmount": 10000,
 
+  "caTilesPerRetiree": 4,
+  "childScoreBonus": 50000,
+
   "minPlayers": 2,
   "maxPlayers": 6,
 

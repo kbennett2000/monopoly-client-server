@@ -522,21 +522,23 @@ describe('Life — effect handlers', () => {
     );
   });
 
-  test('retirement-fork remains stubbed until session 2b', () => {
-    // marry / have-baby / have-twins were stubs in session 1 and are real
-    // handlers from session 2a onward — see the Session 2a describe blocks.
-    // retirement-fork is still a stub; this asserts the stub contract.
+  test('retirement-fork is a real land-on fork in session 2b (no longer stubbed)', () => {
+    // Session 2b made retirement-fork a real fork like the start fork — it
+    // sets pending = { type: 'retirement-fork', options: [CA, ME] } and the
+    // player chooses via chooseBranch.  See the Session 2b retirement-fork
+    // describe block for the full contract.
     let s = completeFirstTurn(makeGame(), 'u1');
     s = completeFirstTurn(s, 'u2');
     s = setCurrent(s, 'u1');
     s = placePlayerAt(s, 'u1', 'sq-m34-payday');
     const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
-    const deferred = r.events.find((e) => e.type === 'SQUARE_EFFECT_DEFERRED');
-    expect(deferred).toBeDefined();
-    expect(deferred.data.kind).toBe('retirement-fork');
-    expect(deferred.data.reason).toBe('session-2b-stub');
-    // Stub still bumps to next[0] (countryside-01) for session 2a.
-    expect(r.state.players[0].position).toBe('sq-r-countryside-01');
+    expect(r.state.players[0].pending).toEqual({
+      type: 'retirement-fork',
+      options: ['sq-r-countryside-01', 'sq-r-millionaire-01'],
+    });
+    // Player stays on the retirement-fork square until they choose.
+    expect(r.state.players[0].position).toBe('sq-m35-retirement-fork');
+    expect(r.events.map((e) => e.type)).toContain('FORK_CHOICE_PENDING');
   });
 });
 
@@ -1193,5 +1195,453 @@ describe('Life — migration', () => {
       options: ['salary-50', 'salary-60'],
     });
     expect(migrated.players[1].pending).toBeNull();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+//                            SESSION 2B TESTS
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Drive a single player to the retirement-fork square (sq-m35) so a 1-spin
+ * lands them on it.  Wraps readyAllPlayers + setCurrent + placePlayerAt.
+ */
+function setupAtRetirementFork(n = 2, userId = 'u1') {
+  let s = readyAllPlayers(n);
+  s = setCurrent(s, userId);
+  s = placePlayerAt(s, userId, 'sq-m34-payday'); // next-1 → sq-m35-retirement-fork
+  return s;
+}
+
+/** Place a player on sq-r-countryside-02 (one spin from the CA terminal). */
+function setupBeforeCATerminal(s, userId) {
+  s = setCurrent(s, userId);
+  return placePlayerAt(s, userId, 'sq-r-countryside-02');
+}
+
+/** Place a player on sq-r-millionaire-02 (one spin from the ME terminal). */
+function setupBeforeMETerminal(s, userId) {
+  s = setCurrent(s, userId);
+  return placePlayerAt(s, userId, 'sq-r-millionaire-02');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — retirement fork (session 2b)', () => {
+  test('landing on retirement-fork sets pending = { type: retirement-fork, options }', () => {
+    const s = setupAtRetirementFork(2);
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].pending).toEqual({
+      type: 'retirement-fork',
+      options: ['sq-r-countryside-01', 'sq-r-millionaire-01'],
+    });
+    expect(r.state.players[0].position).toBe('sq-m35-retirement-fork');
+  });
+
+  test('chooseBranch with a valid retirement target advances the player', () => {
+    let s = setupAtRetirementFork(2);
+    let r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    r = gl.applyAction(r.state, 'u1', 'chooseBranch', { nextSquareId: 'sq-r-countryside-01' });
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].position).toBe('sq-r-countryside-01');
+    expect(r.state.players[0].pending).toBeNull();
+  });
+
+  test('chooseBranch with an invalid retirement target is rejected', () => {
+    let s = setupAtRetirementFork(2);
+    let r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    r = gl.applyAction(r.state, 'u1', 'chooseBranch', { nextSquareId: 'sq-c01-career-pick' });
+    expect(r.error).toMatch(/Invalid branch/);
+    // Player remains on the fork square with pending still set.
+    expect(r.state.players[0].position).toBe('sq-m35-retirement-fork');
+    expect(r.state.players[0].pending.type).toBe('retirement-fork');
+  });
+
+  test('after choosing, getValidActions returns spin (or the player retires this turn)', () => {
+    let s = setupAtRetirementFork(2);
+    let r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    r = gl.applyAction(r.state, 'u1', 'chooseBranch', { nextSquareId: 'sq-r-countryside-01' });
+    // Choosing CA-01 moves the player there (a collect-bank square), the
+    // effect resolves, and the turn advances.  u1 is no longer current.
+    expect(r.state.turnState.currentPlayerIndex).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — Countryside Acres retirement (session 2b)', () => {
+  test('landing on the CA terminal sets retired=true and retiredTo=countryside-acres', () => {
+    let s = readyAllPlayers(2);
+    s = setupBeforeCATerminal(s, 'u1');
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].retired).toBe(true);
+    expect(r.state.players[0].retiredTo).toBe('countryside-acres');
+  });
+
+  test('CA retiree draws caTilesPerRetiree life tiles from the deck', () => {
+    let s = readyAllPlayers(2);
+    s = setupBeforeCATerminal(s, 'u1');
+    const before = s.lifeTileDeck.length;
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    const target = CFG.settings.caTilesPerRetiree;
+    expect(r.state.players[0].lifeTiles).toHaveLength(target);
+    expect(r.state.lifeTileDeck).toHaveLength(before - target);
+    // Tiles drawn are full objects with name + value, not just IDs.
+    for (const tile of r.state.players[0].lifeTiles) {
+      expect(typeof tile.id).toBe('string');
+      expect(typeof tile.value).toBe('number');
+    }
+  });
+
+  test('late CA retirees draw fewer tiles when the deck runs short', () => {
+    let s = readyAllPlayers(2);
+    // Pre-drain the deck to leave only 2 tiles remaining.
+    s.lifeTileDeck = s.lifeTileDeck.slice(0, 2);
+    s = setupBeforeCATerminal(s, 'u1');
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].lifeTiles).toHaveLength(2);
+    expect(r.state.lifeTileDeck).toHaveLength(0);
+  });
+
+  test('CA retiree with empty deck draws zero tiles without error', () => {
+    let s = readyAllPlayers(2);
+    s.lifeTileDeck = []; // drained
+    s = setupBeforeCATerminal(s, 'u1');
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].retired).toBe(true);
+    expect(r.state.players[0].lifeTiles).toEqual([]);
+  });
+
+  test('PLAYER_RETIRED_CA event fires with tilesDrawn count but NO tile values', () => {
+    let s = readyAllPlayers(2);
+    s = setupBeforeCATerminal(s, 'u1');
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    const ev = r.events.find((e) => e.type === 'PLAYER_RETIRED_CA');
+    expect(ev).toBeDefined();
+    expect(ev.data.tilesDrawn).toBe(CFG.settings.caTilesPerRetiree);
+    // Sanity check: the event payload deliberately omits tile values so
+    // they stay hidden until game over.
+    expect(ev.data.tiles).toBeUndefined();
+    expect(ev.data.lifeTiles).toBeUndefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — Millionaire Estates retirement (session 2b)', () => {
+  test('landing on the ME terminal sets retired=true and retiredTo=millionaire-estates', () => {
+    let s = readyAllPlayers(2);
+    s = setupBeforeMETerminal(s, 'u1');
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].retired).toBe(true);
+    expect(r.state.players[0].retiredTo).toBe('millionaire-estates');
+  });
+
+  test('ME retiree draws no life tiles', () => {
+    let s = readyAllPlayers(2);
+    const beforeDeck = s.lifeTileDeck.length;
+    s = setupBeforeMETerminal(s, 'u1');
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].lifeTiles).toEqual([]);
+    expect(r.state.lifeTileDeck).toHaveLength(beforeDeck); // unchanged
+  });
+
+  test('PLAYER_RETIRED_ME event fires with cashAtRetirement', () => {
+    let s = readyAllPlayers(2);
+    s = setupBeforeMETerminal(s, 'u1');
+    s.players[0].cash = 75000;
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    const ev = r.events.find((e) => e.type === 'PLAYER_RETIRED_ME');
+    expect(ev).toBeDefined();
+    expect(ev.data.cashAtRetirement).toBe(75000);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — retired-player pattern (session 2b)', () => {
+  test('getCurrentPlayer returns null when the current-index player is retired', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s.players[0].retired = true;
+    expect(gl.getCurrentPlayer(s)).toBeNull();
+  });
+
+  test('turn advancement skips retired players (active rotates from u2 directly to u1 wraps over retired u3)', () => {
+    let s = readyAllPlayers(3);
+    s = setCurrent(s, 'u2');
+    s.players[2].retired = true; // u3 is retired
+    s.players[2].retiredTo = 'countryside-acres';
+    // u2 spins something innocuous and ends their turn.  Advance should go
+    // to u1 (skipping u3, who is retired).
+    s = placePlayerAt(s, 'u2', 'sq-c04-buy-car');
+    s.players[1].cash = 50000;
+    const r = withSpin(1, () => gl.applyAction(s, 'u2', 'spin', {}));
+    expect(r.state.turnState.currentPlayerIndex).toBe(0); // u1
+  });
+
+  test('a retired player attempting any action gets rejected with "You are retired"', () => {
+    let s = readyAllPlayers(2);
+    s.players[0].retired = true;
+    s.players[0].retiredTo = 'countryside-acres';
+    s = setCurrent(s, 'u2');
+    const r = gl.applyAction(s, 'u1', 'spin', {});
+    expect(r.error).toMatch(/retired/);
+  });
+
+  test('two players, one retired: only the unretired can act', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s.players[1].retired = true;
+    s.players[1].retiredTo = 'countryside-acres';
+    expect(gl.getValidActions(s, 'u1').length).toBeGreaterThan(0);
+    expect(gl.getValidActions(s, 'u2')).toEqual([]);
+  });
+
+  test('all players retired triggers status=finished via advanceTurn', () => {
+    let s = readyAllPlayers(2);
+    s.players[0].retired = true;
+    s.players[0].retiredTo = 'countryside-acres';
+    s.players[0].pending = null;
+    s = setupBeforeCATerminal(s, 'u2');
+    const r = withSpin(1, () => gl.applyAction(s, 'u2', 'spin', {}));
+    expect(r.state.status).toBe('finished');
+    expect(r.events.map((e) => e.type)).toContain('GAME_OVER');
+  });
+
+  test('a retired player produces no current-player signal (framework gets null and skips timers)', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s.players[0].retired = true;
+    // The framework's turn-timer / disconnect logic calls getCurrentPlayer
+    // and acts on null by doing nothing — so a disconnected retired player
+    // doesn't trigger any turn-skip cascade.
+    expect(gl.getCurrentPlayer(s)).toBeNull();
+    expect(gl.isTurnTimerBlocked(s)).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — life tiles (session 2b)', () => {
+  test('the tile deck initializes with all 20 tiles from config (shuffled)', () => {
+    const s = makeGame();
+    expect(s.lifeTileDeck).toHaveLength(CFG.lifeTiles.length);
+    // Every config tile ID appears in the deck.
+    const tileIds = new Set(CFG.lifeTiles.map((t) => t.id));
+    for (const id of s.lifeTileDeck) {
+      expect(tileIds.has(id)).toBe(true);
+    }
+  });
+
+  test('lifeTiles.json validation catches missing or duplicate tile IDs', () => {
+    const { _validators } = configLoader;
+    expect(() =>
+      _validators.validateLifeTiles({
+        tiles: [
+          { id: 'a', name: 'A', value: 1 },
+          { id: 'a', name: 'B', value: 2 },
+        ],
+      }),
+    ).toThrow(/duplicate/);
+    expect(() => _validators.validateLifeTiles({ tiles: [{ name: 'No ID', value: 1 }] })).toThrow(
+      /string id/,
+    );
+    expect(() => _validators.validateLifeTiles({ tiles: [] })).toThrow(/non-empty/);
+  });
+
+  test('getStateForPlayer returns full tile values to self but only a count to opponents', () => {
+    let s = readyAllPlayers(2);
+    s = setupBeforeCATerminal(s, 'u1');
+    const after = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {})).state;
+    // u1 is the retired CA player; check u2's view of u1.
+    const viewByU2 = gl.getStateForPlayer(after, 'u2');
+    const u1AsSeenByU2 = viewByU2.players.find((p) => p.userId === 'u1');
+    expect(u1AsSeenByU2.lifeTiles).toBeUndefined();
+    expect(u1AsSeenByU2.lifeTilesCount).toBe(after.players[0].lifeTiles.length);
+    // u1's own view shows full tiles.
+    const viewByU1 = gl.getStateForPlayer(after, 'u1');
+    const u1AsSeenByU1 = viewByU1.players.find((p) => p.userId === 'u1');
+    expect(u1AsSeenByU1.lifeTiles).toEqual(after.players[0].lifeTiles);
+  });
+
+  test('after status=finished, getStateForPlayer reveals every player’s tile values', () => {
+    let s = readyAllPlayers(2);
+    s.status = 'finished';
+    s.players[0].lifeTiles = [{ id: 'x', name: 'X', value: 100000 }];
+    const viewByU2 = gl.getStateForPlayer(s, 'u2');
+    expect(viewByU2.players[0].lifeTiles).toEqual([{ id: 'x', name: 'X', value: 100000 }]);
+  });
+
+  test('GAME_OVER event payload reveals every retiree’s life tiles', () => {
+    let s = readyAllPlayers(2);
+    s.players[0].retired = true;
+    s.players[0].retiredTo = 'countryside-acres';
+    s.players[0].lifeTiles = [
+      { id: 't1', name: 'Nobel', value: 300000 },
+      { id: 't2', name: 'Pulitzer', value: 200000 },
+    ];
+    s.players[0].pending = null;
+    s = setupBeforeCATerminal(s, 'u2');
+    const r = withSpin(1, () => gl.applyAction(s, 'u2', 'spin', {}));
+    const gameOver = r.events.find((e) => e.type === 'GAME_OVER');
+    expect(gameOver).toBeDefined();
+    expect(gameOver.data.finalScores['u1'].lifeTiles).toEqual([
+      { id: 't1', name: 'Nobel', value: 300000 },
+      { id: 't2', name: 'Pulitzer', value: 200000 },
+    ]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — final scoring (session 2b)', () => {
+  test('computeFinalScore: cash + house + tiles + children*50000', () => {
+    const player = {
+      cash: 100000,
+      house: { value: 50000 },
+      lifeTiles: [{ value: 200000 }, { value: 150000 }],
+      children: 3,
+    };
+    const score = gl.computeFinalScore(player, CFG.settings);
+    expect(score.cash).toBe(100000);
+    expect(score.house).toBe(50000);
+    expect(score.lifeTilesValue).toBe(350000);
+    expect(score.childrenBonus).toBe(150000); // 3 * 50k
+    expect(score.total).toBe(650000);
+  });
+
+  test('computeFinalScore handles zero values (no house, no tiles, no children)', () => {
+    const player = { cash: 10000, lifeTiles: [], children: 0 };
+    const score = gl.computeFinalScore(player, CFG.settings);
+    expect(score.house).toBe(0);
+    expect(score.lifeTilesValue).toBe(0);
+    expect(score.childrenBonus).toBe(0);
+    expect(score.total).toBe(10000);
+  });
+
+  test('ME-only game: highest cash among MEs wins outright; losers score zero', () => {
+    let s = readyAllPlayers(2);
+    s.players[0].retired = true;
+    s.players[0].retiredTo = 'millionaire-estates';
+    s.players[0].cash = 80000;
+    s.players[0].pending = null;
+    s.players[1].cash = 200000; // u2 has more cash and is about to retire to ME
+    s = setupBeforeMETerminal(s, 'u2');
+    const r = withSpin(1, () => gl.applyAction(s, 'u2', 'spin', {}));
+    const go = r.events.find((e) => e.type === 'GAME_OVER');
+    expect(go.data.winner).toBe('u2');
+    expect(go.data.finalScores['u1'].total).toBe(0); // ME loser
+    expect(go.data.finalScores['u2'].total).toBeGreaterThan(0);
+  });
+
+  test('mixed CA + ME with an ME winner: ME wins regardless of CA’s total', () => {
+    let s = readyAllPlayers(2);
+    s.players[0].retired = true;
+    s.players[0].retiredTo = 'countryside-acres';
+    // Give u1 a monster CA total to test the rule strictly.
+    s.players[0].lifeTiles = [
+      { value: 300000 },
+      { value: 300000 },
+      { value: 300000 },
+      { value: 300000 },
+    ];
+    s.players[0].cash = 500000;
+    s.players[0].children = 5;
+    s.players[0].pending = null;
+    // u2 retires to ME with much less cash — but ME with ≥1 retiree always
+    // wins per the locked rule.
+    s.players[1].cash = 50000;
+    s = setupBeforeMETerminal(s, 'u2');
+    const r = withSpin(1, () => gl.applyAction(s, 'u2', 'spin', {}));
+    const go = r.events.find((e) => e.type === 'GAME_OVER');
+    expect(go.data.winner).toBe('u2');
+  });
+
+  test('no ME retirees: highest-final-score CA retiree wins', () => {
+    let s = readyAllPlayers(2);
+    s.players[0].retired = true;
+    s.players[0].retiredTo = 'countryside-acres';
+    s.players[0].lifeTiles = [{ value: 100000 }];
+    s.players[0].cash = 20000;
+    s.players[0].children = 0;
+    s.players[0].pending = null;
+    // u2 will retire to CA with bigger total.
+    s.players[1].cash = 60000;
+    s.players[1].children = 2;
+    s.lifeTileDeck = []; // deck drained — u2 gets no tiles but still wins
+    s = setupBeforeCATerminal(s, 'u2');
+    const r = withSpin(1, () => gl.applyAction(s, 'u2', 'spin', {}));
+    const go = r.events.find((e) => e.type === 'GAME_OVER');
+    // u1 total: 20000 + 100000 + 0 = 120000
+    // u2 total: 60000 + 0 + (2 * 50000) = 160000
+    expect(go.data.winner).toBe('u2');
+  });
+
+  test('tie at the top among ME retirees: winner is an array of userIds', () => {
+    let s = readyAllPlayers(2);
+    s.players[0].retired = true;
+    s.players[0].retiredTo = 'millionaire-estates';
+    s.players[0].cash = 100000;
+    s.players[0].pending = null;
+    s.players[1].cash = 100000; // exact tie
+    s = setupBeforeMETerminal(s, 'u2');
+    const r = withSpin(1, () => gl.applyAction(s, 'u2', 'spin', {}));
+    const go = r.events.find((e) => e.type === 'GAME_OVER');
+    expect(Array.isArray(go.data.winner)).toBe(true);
+    expect(go.data.winner).toEqual(expect.arrayContaining(['u1', 'u2']));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — pay-tax-by-salary (session 2b)', () => {
+  test('pay-tax-by-salary debits the player’s salary.taxDue from cash', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    // The board’s sq-m10-pay-tax is now pay-tax-by-salary.
+    // sq-m09-baby-gifts → next-1 → sq-m10-pay-tax.
+    s = placePlayerAt(s, 'u1', 'sq-m09-baby-gifts');
+    const cashBefore = (s.players[0].cash = 50000);
+    const expectedTax = s.players[0].salary.taxDue;
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].position).toBe('sq-m10-pay-tax');
+    expect(r.state.players[0].cash).toBe(cashBefore - expectedTax);
+  });
+
+  test('pay-tax-by-salary is a no-op when the player has no salary card', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s.players[0].salary = null; // pathological — shouldn’t happen in normal play
+    s = placePlayerAt(s, 'u1', 'sq-m09-baby-gifts');
+    s.players[0].cash = 50000;
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].cash).toBe(50000); // unchanged
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — migration (session 2b)', () => {
+  test('v3 → v4 adds retiredTo, lifeTiles, and lifeTileDeck', () => {
+    const v3 = {
+      stateVersion: 3,
+      players: [
+        {
+          userId: 'a',
+          username: 'A',
+          retired: false,
+          // no retiredTo / lifeTiles
+        },
+      ],
+      // no lifeTileDeck
+    };
+    const migrated = gl.migrate(v3);
+    expect(migrated.stateVersion).toBe(gl.STATE_VERSION);
+    expect(migrated.players[0].retiredTo).toBeNull();
+    expect(migrated.players[0].lifeTiles).toEqual([]);
+    expect(Array.isArray(migrated.lifeTileDeck)).toBe(true);
   });
 });

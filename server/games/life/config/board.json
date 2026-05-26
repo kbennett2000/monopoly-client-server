@@ -223,10 +223,9 @@
   },
   {
     "id": "sq-m10-pay-tax",
-    "type": "pay-bank",
+    "type": "pay-tax-by-salary",
     "label": "Pay income tax",
-    "next": ["sq-m11-payday"],
-    "data": { "amount": 5000 }
+    "next": ["sq-m11-payday"]
   },
   {
     "id": "sq-m11-payday",
@@ -412,7 +411,7 @@
   },
   {
     "id": "sq-r-countryside-end",
-    "type": "terminal",
+    "type": "countryside-retirement",
     "label": "Countryside Acres",
     "next": []
   },
@@ -433,7 +432,7 @@
   },
   {
     "id": "sq-r-millionaire-end",
-    "type": "terminal",
+    "type": "millionaire-retirement",
     "label": "Millionaire Estates",
     "next": []
   }
