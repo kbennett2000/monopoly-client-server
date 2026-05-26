@@ -1655,6 +1655,7 @@ describe('Life — buy-house (session 3 prelude)', () => {
     let s = readyAllPlayers(2);
     s = setCurrent(s, 'u1');
     s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts'); // next-1 → sq-m03-buy-home
+    s.players[0].cash = 500000; // afford anything, so the buy-home draw is not auto-skipped
     const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
     expect(r.state.players[0].position).toBe('sq-m03-buy-home');
     expect(r.state.players[0].pending).not.toBeNull();
@@ -1684,21 +1685,58 @@ describe('Life — buy-house (session 3 prelude)', () => {
     expect(r.events.map((e) => e.type)).toContain('HOUSE_PURCHASED');
   });
 
-  test('chooseHouse rejected when the player cannot afford the chosen house; pending stays', () => {
+  test('chooseHouse rejected when the player cannot afford the picked option; pending stays', () => {
+    // Partial-affordability: player has cash for the cheapest house but
+    // picks an expensive one from the same draw.  Server rejects the
+    // unaffordable pick and leaves pending open so the player can try
+    // a cheaper option.  The all-unaffordable case is auto-skipped
+    // upstream in applyBuyHouse and is covered by its own test below.
     let s = readyAllPlayers(2);
     s = setCurrent(s, 'u1');
     s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts');
-    s.players[0].cash = 0; // can't afford anything
+    s.players[0].cash = 80000; // affords Starter only ($80k); Mansion is $220k
+    // Stub the deck so the draw is a known mix of affordable +
+    // unaffordable.  Without this the random shuffle could pull 3
+    // all-unaffordable houses, which now correctly auto-skip.
+    s = {
+      ...s,
+      houseDeck: ['house-starter', 'house-mansion', 'house-victorian'],
+      houseDiscard: [],
+    };
     let r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
-    const someOption = r.state.players[0].pending.options[0];
     const before = r.state.players[0].pending;
-    r = gl.applyAction(r.state, 'u1', 'chooseHouse', { houseId: someOption });
+    expect(before).not.toBeNull();
+    // Picking the mansion (way over budget) — server rejects, pending survives.
+    r = gl.applyAction(r.state, 'u1', 'chooseHouse', { houseId: 'house-mansion' });
     expect(r.error).toMatch(/Cannot afford/);
-    // Pending stays so the player can try another option (no current
-    // option is affordable in this test, but the contract is "pending
-    // survives an unaffordable rejection").
     expect(r.state.players[0].house).toBeNull();
     expect(r.state.players[0].pending).toEqual(before);
+  });
+
+  test('buy-house square auto-skipped when player cannot afford any drawn option', () => {
+    // The wedged-state fix: previously a cash-broke player landing on
+    // buy-house had no out — every chooseHouse pick was rejected and
+    // no skipHouse action existed.  applyBuyHouse now detects the gap
+    // up front and skips automatically: no pending, no house bought,
+    // cash preserved, HOUSE_DRAW_SKIPPED event fired, turn advances.
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts'); // next-1 → sq-m03-buy-home
+    s.players[0].cash = 0; // can't afford anything
+    const deckSizeBefore = s.houseDeck.length;
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].pending).toBeNull();
+    expect(r.state.players[0].house).toBeNull();
+    expect(r.state.players[0].cash).toBe(0);
+    const skip = r.events.find((e) => e.type === 'HOUSE_DRAW_SKIPPED');
+    expect(skip).toBeDefined();
+    expect(skip.data).toMatchObject({ username: 'P1', reason: 'unaffordable' });
+    expect(Array.isArray(skip.data.offeredHouseIds)).toBe(true);
+    expect(skip.data.offeredHouseIds.length).toBeGreaterThan(0);
+    // The drawn cards went back to the deck — net change is zero.
+    expect(r.state.houseDeck.length).toBe(deckSizeBefore);
+    // Turn flow continued (no pending → maybeAdvanceTurn advanced).
+    expect(r.state.turnState.currentPlayerIndex).toBe(1);
   });
 });
 
@@ -1853,6 +1891,15 @@ describe('Life — getActionDescriptors (session 3 prelude)', () => {
       s = setCurrent(s, 'u1');
       s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts'); // next-1 → sq-m03-buy-home
       s.players[0].cash = 100000; // affords starter ($80k) + cottage ($100k) but not victorian+
+      // Stub the deck so the 3 drawn houses are a known mix of affordable
+      // and unaffordable.  Without this the random shuffle could draw 3
+      // all-unaffordable houses (1-in-10 chance with the default deck),
+      // which would trigger the auto-skip and clear pending.
+      s = {
+        ...s,
+        houseDeck: ['house-starter', 'house-cottage', 'house-mansion'],
+        houseDiscard: [],
+      };
       const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
       const me = r.state.players[0];
       expect(me.pending.type).toBe('house-draw');
@@ -1879,20 +1926,20 @@ describe('Life — getActionDescriptors (session 3 prelude)', () => {
       }
     });
 
-    test('house-draw stuck state: player cash too low for every option → every descriptor disabled', () => {
-      // This documents the stuck state the spec asked to surface: server's
-      // chooseHouse rejects unaffordable picks and leaves pending open, with
-      // no skipHouse action available.  Descriptors faithfully report the
-      // wedged state; resolving the gap is out of scope for this migration.
+    test('house-draw all-unaffordable: square auto-skipped upstream → zero chooseHouse descriptors', () => {
+      // Counterpart to the buy-house auto-skip test.  Because applyBuyHouse
+      // resolves the no-affordable-options case without ever setting
+      // pending, getActionDescriptors emits no chooseHouse descriptors
+      // for the next current player.  The previously-wedged "all
+      // descriptors disabled" state no longer occurs.
       let s = readyAllPlayers(2);
       s = setCurrent(s, 'u1');
       s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts');
       s.players[0].cash = 0;
       const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
-      const d = gl.getActionDescriptors(r.state, 'u1');
-      const houseDs = byAction(d, 'chooseHouse');
-      expect(houseDs.length).toBeGreaterThan(0);
-      expect(houseDs.every((h) => h.enabled === false)).toBe(true);
+      // u1's pending is cleared; descriptors for u1 (now not current) are empty.
+      expect(r.state.players[0].pending).toBeNull();
+      expect(byAction(gl.getActionDescriptors(r.state, 'u1'), 'chooseHouse')).toEqual([]);
     });
 
     test('chooseHouse descriptors absent when no house-draw is pending', () => {

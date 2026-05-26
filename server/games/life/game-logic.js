@@ -565,13 +565,46 @@ function applyBuyHouse(state, playerIdx, _square) {
   // shuffled deck, set pending = { type: 'house-draw', options }, and let
   // chooseHouse resolve the choice + cash deduction.  Unlike career/salary
   // (where every option is affordable in principle), house cost varies
-  // wildly — chooseHouse rejects when the chosen card is unaffordable, so
-  // a player may need to wait for a cheaper draw on a subsequent turn.
+  // wildly.
+  //
+  // Affordability auto-skip: if the player's cash falls below the cost of
+  // every drawn option, the player previously had no out — chooseHouse
+  // rejected each unaffordable pick and no skip action existed, leaving
+  // the turn wedged.  We resolve that here by detecting the gap up front:
+  // return the drawn cards to the deck, leave pending null, and emit
+  // HOUSE_DRAW_SKIPPED so the log and renderer can explain what happened.
+  // The turn continues naturally because hasPendingChoice() stays false.
   const player = state.players[playerIdx];
   const housesById = {};
   for (const h of state.config.houses) housesById[h.id] = h;
   const n = state.config.settings.houseOptionsCount;
   const ids = drawOptionsFromDeck(state.houseDeck, state.houseDiscard, n, () => true);
+
+  // Math.min on an empty array is Infinity, so a zero-card draw (deck +
+  // discard both empty — rare but possible across many turns) routes here
+  // the same as the all-unaffordable case.  Single 'unaffordable' reason
+  // covers both: in either case there is no house the player can buy.
+  const cheapestCost =
+    ids.length === 0 ? Infinity : Math.min(...ids.map((id) => housesById[id].cost));
+  if (player.cash < cheapestCost) {
+    // Return the drawn cards to the bottom of the deck so future
+    // buy-house squares may re-surface them.  Mirrors chooseHouse's
+    // "unchosen options go back to the deck" pattern.
+    for (const id of ids) state.houseDeck.push(id);
+    log(
+      state,
+      `${player.username} skipped the home purchase — cannot afford any of the options`,
+      'card',
+    );
+    return [
+      event('HOUSE_DRAW_SKIPPED', {
+        username: player.username,
+        reason: 'unaffordable',
+        offeredHouseIds: ids.slice(),
+      }),
+    ];
+  }
+
   player.pending = { type: 'house-draw', options: ids };
   log(state, `${player.username} is choosing a home from ${ids.length} option(s)`, 'card');
   return [
@@ -1434,12 +1467,11 @@ function getValidActions(state, userId) {
  * Returns [] for: non-current players, retired players, finished games,
  * pre-initGame waiting-room states.
  *
- * KNOWN GAP — house-draw stuck state. The server's chooseHouse rejects an
- * unaffordable pick and leaves pending open so the player can try another
- * card. If ALL drawn cards are unaffordable (cash collapsed mid-game),
- * every descriptor is enabled=false and the player has no out — there is
- * no `skipHouse` action. The descriptor faithfully represents the stuck
- * state; the gap is in the game's action surface, not in this function.
+ * House-draw partial-affordability: when the player can afford SOME but
+ * not all offered houses, the unaffordable ones have `enabled: false`
+ * with a shortfall hint. The all-unaffordable case is handled upstream
+ * in applyBuyHouse, which auto-skips the square before any pending state
+ * is set — so no chooseHouse descriptors are emitted in that case.
  */
 function getActionDescriptors(state, userId) {
   if (!state || state.status !== 'playing') return [];
