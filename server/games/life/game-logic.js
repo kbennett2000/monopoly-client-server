@@ -14,7 +14,11 @@
  *   auto and life insurance, and stocks.  Stock payouts trigger on any
  *   spinner match across ALL players' turns.
  *
- * Session 2b (this): end-game.  Real retirement-fork handler.  Countryside
+ * Session 3 prelude: buy-house mechanic.  sq-m03-buy-home is now a real
+ *   house-card draw — player picks one of N offered houses, pays its cost,
+ *   gets the value added to final scoring.
+ *
+ * Session 2b: end-game.  Real retirement-fork handler.  Countryside
  *   Acres and Millionaire Estates as the two terminal retirement tracks.
  *   Retired-but-still-in-game pattern: retired players are skipped in turn
  *   rotation but stay in state until everyone retires.  Life tiles (drawn
@@ -61,8 +65,11 @@
  *                                  Set on entry to spin/choose actions and
  *                                  cleared when the turn fully ends.
  *   pending:                   { type, options } | null   discriminated union
- *                                  type ∈ { 'fork', 'career-draw', 'salary-draw' }
+ *                                  type ∈ { 'fork', 'career-draw', 'salary-draw',
+ *                                           'retirement-fork', 'house-draw' }
  *                                  options carries square IDs for forks, card IDs for draws
+ *   house:    HouseCard | null   (session 3 prelude) populated on buy-home;
+ *                                its value flows into the final score.
  *   spinAgain: boolean   true when a spin-again square just fired; cleared on next spin
  *   retired:   boolean   (session 2b) true after crossing a retirement terminal
  *   retiredTo: 'countryside-acres' | 'millionaire-estates' | null   (session 2b)
@@ -74,7 +81,7 @@
 const configLoader = require('./config-loader');
 const { validateImplementation } = require('../../src/game-logic-interface');
 
-const STATE_VERSION = 4;
+const STATE_VERSION = 5;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -551,6 +558,30 @@ function applyLifeAccident(state, playerIdx, square) {
   return events;
 }
 
+// ── session-3 prelude (buy-house) ────────────────────────────────────────────
+
+function applyBuyHouse(state, playerIdx, _square) {
+  // Same shape as draw-career-no-degree: offer the player N houses from the
+  // shuffled deck, set pending = { type: 'house-draw', options }, and let
+  // chooseHouse resolve the choice + cash deduction.  Unlike career/salary
+  // (where every option is affordable in principle), house cost varies
+  // wildly — chooseHouse rejects when the chosen card is unaffordable, so
+  // a player may need to wait for a cheaper draw on a subsequent turn.
+  const player = state.players[playerIdx];
+  const housesById = {};
+  for (const h of state.config.houses) housesById[h.id] = h;
+  const n = state.config.settings.houseOptionsCount;
+  const ids = drawOptionsFromDeck(state.houseDeck, state.houseDiscard, n, () => true);
+  player.pending = { type: 'house-draw', options: ids };
+  log(state, `${player.username} is choosing a home from ${ids.length} option(s)`, 'card');
+  return [
+    event('HOUSE_DRAW_OPTIONS', {
+      username: player.username,
+      options: ids.map((id) => housesById[id]),
+    }),
+  ];
+}
+
 // ── session-2b stubs (retirement) ────────────────────────────────────────────
 
 function applyRetirementFork(state, playerIdx, square) {
@@ -592,6 +623,7 @@ const EFFECTS = {
   'have-twins': applyHaveTwins,
   'auto-accident': applyAutoAccident,
   'life-accident': applyLifeAccident,
+  'buy-house': applyBuyHouse,
   'retirement-fork': applyRetirementFork,
   'countryside-retirement': applyCountrysideRetirement,
   'millionaire-retirement': applyMillionaireRetirement,
@@ -1026,6 +1058,51 @@ function chooseSalary(state, userId, cardId) {
   return { state, events };
 }
 
+function chooseHouse(state, userId, houseId) {
+  const events = [];
+  const playerIdx = state.turnState.currentPlayerIndex;
+  const player = state.players[playerIdx];
+  if (player.userId !== userId) return { state, events, error: 'Not your turn' };
+  if (!player.pending || player.pending.type !== 'house-draw') {
+    return { state, events, error: 'No pending house choice' };
+  }
+  if (!player.pending.options.includes(houseId)) {
+    return { state, events, error: `Invalid house choice "${houseId}"` };
+  }
+
+  const housesById = {};
+  for (const h of state.config.houses) housesById[h.id] = h;
+  const chosen = housesById[houseId];
+  if (player.cash < chosen.cost) {
+    // Player picked a house they can't afford — bounce, leave pending so
+    // they can pick a different (cheaper) option from the same draw.
+    return {
+      state,
+      events,
+      error: `Cannot afford ${chosen.name} ($${chosen.cost}) — pick a cheaper option`,
+    };
+  }
+
+  state = clone(state);
+  const cur = state.players[playerIdx];
+  cur.midTurn = true;
+  cur.cash -= chosen.cost;
+  cur.house = { ...chosen };
+
+  // Unchosen options go back to the bottom of the deck — mirrors the
+  // career/salary "return to deck" pattern.
+  for (const otherId of cur.pending.options) {
+    if (otherId !== houseId) state.houseDeck.push(otherId);
+  }
+  cur.pending = null;
+
+  log(state, `${cur.username} bought ${chosen.name} for $${chosen.cost}`, 'card');
+  events.push(event('HOUSE_PURCHASED', { username: cur.username, house: chosen }));
+
+  maybeAdvanceTurn(state, playerIdx, events);
+  return { state, events };
+}
+
 function endTurnAction(state, userId) {
   const events = [];
   const playerIdx = state.turnState.currentPlayerIndex;
@@ -1194,6 +1271,7 @@ function createInitialPlayer(user, existingPlayers = [], config = null) {
     retired: false,
     retiredTo: null,
     lifeTiles: [],
+    house: null,
     pending: null,
     spinAgain: false,
   };
@@ -1221,6 +1299,7 @@ function initGame(gameId, name, playerList, config) {
     retired: false,
     retiredTo: null,
     lifeTiles: [],
+    house: null,
     // Each player owes the server a Career-vs-College decision before
     // their first spin.  Setting it on all players up front means the
     // gating logic doesn't need a special "first turn" case.
@@ -1242,6 +1321,8 @@ function initGame(gameId, name, playerList, config) {
     salaryDeck: shuffle(cfg.salaries.map((c) => c.id)),
     salaryDiscard: [],
     lifeTileDeck: shuffle(cfg.lifeTiles.map((t) => t.id)),
+    houseDeck: shuffle(cfg.houses.map((h) => h.id)),
+    houseDiscard: [],
     winner: null,
     log: [{ timestamp: Date.now(), message: 'Game started!', type: 'info' }],
   };
@@ -1264,6 +1345,8 @@ function applyAction(state, userId, action, payload = {}) {
       return chooseCareer(state, userId, payload.cardId);
     case 'chooseSalary':
       return chooseSalary(state, userId, payload.cardId);
+    case 'chooseHouse':
+      return chooseHouse(state, userId, payload.houseId);
     case 'buyAutoInsurance':
       return buyAutoInsurance(state, userId);
     case 'buyLifeInsurance':
@@ -1306,6 +1389,7 @@ function getValidActions(state, userId) {
   }
   if (cur.pending?.type === 'career-draw') return ['chooseCareer'];
   if (cur.pending?.type === 'salary-draw') return ['chooseSalary'];
+  if (cur.pending?.type === 'house-draw') return ['chooseHouse'];
   const actions = ['spin'];
   // Out-of-band purchases are only valid at the start of a clean turn —
   // not during a spin-again chain (midTurn=true) and not during any
@@ -1395,6 +1479,25 @@ function migrate(state) {
       })),
       lifeTileDeck: Array.isArray(s.lifeTileDeck) ? s.lifeTileDeck : [],
       stateVersion: 4,
+    };
+  }
+  if (s.stateVersion < 5) {
+    // v4 → v5 (session 3 prelude): add player.house + houseDeck/Discard.
+    // Existing games (no buy-house mechanic yet) start with no house and
+    // an empty deck; the deck will be populated lazily on next initGame
+    // since migrate doesn't have access to the config.  In practice
+    // migration runs on persisted games and our games don't persist yet,
+    // so the empty deck is fine — sq-m03-buy-home won't fire usefully
+    // on a v4-migrated game, but that's the migration's limit.
+    s = {
+      ...s,
+      players: s.players.map((p) => ({
+        ...p,
+        house: p.house || null,
+      })),
+      houseDeck: Array.isArray(s.houseDeck) ? s.houseDeck : [],
+      houseDiscard: Array.isArray(s.houseDiscard) ? s.houseDiscard : [],
+      stateVersion: 5,
     };
   }
   if (s.stateVersion !== STATE_VERSION) {

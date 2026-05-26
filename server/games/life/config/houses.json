@@ -1,0 +1,11 @@
+{
+  "_comment": "House cards. cost is what the player pays at buy-home; value is what counts toward final scoring (canonical Life resale > cost = profit). Player draws houseOptionsCount cards from this deck and chooses one.",
+
+  "houses": [
+    { "id": "house-starter",   "name": "Starter Home",      "cost": 80000,  "value": 100000 },
+    { "id": "house-cottage",   "name": "Country Cottage",   "cost": 100000, "value": 130000 },
+    { "id": "house-victorian", "name": "Victorian House",   "cost": 120000, "value": 180000 },
+    { "id": "house-modern",    "name": "Modern Home",       "cost": 150000, "value": 220000 },
+    { "id": "house-mansion",   "name": "Mansion",           "cost": 220000, "value": 300000 }
+  ]
+}

@@ -1645,3 +1645,59 @@ describe('Life — migration (session 2b)', () => {
     expect(Array.isArray(migrated.lifeTileDeck)).toBe(true);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+//                       SESSION 3 PRELUDE TESTS
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('Life — buy-house (session 3 prelude)', () => {
+  test('landing on buy-home sets pending = { type: house-draw, options }', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts'); // next-1 → sq-m03-buy-home
+    const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    expect(r.state.players[0].position).toBe('sq-m03-buy-home');
+    expect(r.state.players[0].pending).not.toBeNull();
+    expect(r.state.players[0].pending.type).toBe('house-draw');
+    expect(r.state.players[0].pending.options.length).toBeGreaterThan(0);
+    expect(r.events.map((e) => e.type)).toContain('HOUSE_DRAW_OPTIONS');
+  });
+
+  test('chooseHouse with a valid affordable option deducts cost, sets house, clears pending', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts');
+    s.players[0].cash = 500000; // plenty
+    let r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    // Pick the cheapest offered option so we know the test passes regardless
+    // of which 3 houses were drawn.
+    const housesById = Object.fromEntries(CFG.houses.map((h) => [h.id, h]));
+    const cheapestId = r.state.players[0].pending.options
+      .slice()
+      .sort((a, b) => housesById[a].cost - housesById[b].cost)[0];
+    const cost = housesById[cheapestId].cost;
+    r = gl.applyAction(r.state, 'u1', 'chooseHouse', { houseId: cheapestId });
+    expect(r.error).toBeUndefined();
+    expect(r.state.players[0].house).toEqual(expect.objectContaining({ id: cheapestId, cost }));
+    expect(r.state.players[0].cash).toBe(500000 - cost);
+    expect(r.state.players[0].pending).toBeNull();
+    expect(r.events.map((e) => e.type)).toContain('HOUSE_PURCHASED');
+  });
+
+  test('chooseHouse rejected when the player cannot afford the chosen house; pending stays', () => {
+    let s = readyAllPlayers(2);
+    s = setCurrent(s, 'u1');
+    s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts');
+    s.players[0].cash = 0; // can't afford anything
+    let r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+    const someOption = r.state.players[0].pending.options[0];
+    const before = r.state.players[0].pending;
+    r = gl.applyAction(r.state, 'u1', 'chooseHouse', { houseId: someOption });
+    expect(r.error).toMatch(/Cannot afford/);
+    // Pending stays so the player can try another option (no current
+    // option is affordable in this test, but the contract is "pending
+    // survives an unaffordable rejection").
+    expect(r.state.players[0].house).toBeNull();
+    expect(r.state.players[0].pending).toEqual(before);
+  });
+});

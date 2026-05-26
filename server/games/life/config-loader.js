@@ -39,6 +39,7 @@ const KNOWN_EFFECT_TYPES = new Set([
   'marry',
   'have-baby',
   'have-twins',
+  'buy-house',
   'auto-accident',
   'life-accident',
   'retirement-fork',
@@ -128,6 +129,31 @@ function validateBoard(board, settings) {
   }
 }
 
+function validateHouses(houses) {
+  if (!houses || !Array.isArray(houses.houses) || houses.houses.length === 0) {
+    throw new Error('houses.json: must contain a non-empty "houses" array');
+  }
+  const seen = new Set();
+  for (const h of houses.houses) {
+    if (!h.id || typeof h.id !== 'string') {
+      throw new Error('houses.json: every house must have a string id');
+    }
+    if (seen.has(h.id)) {
+      throw new Error(`houses.json: duplicate house id "${h.id}"`);
+    }
+    seen.add(h.id);
+    if (typeof h.cost !== 'number' || h.cost <= 0) {
+      throw new Error(`houses.json: house "${h.id}".cost must be a positive number`);
+    }
+    if (typeof h.value !== 'number' || h.value <= 0) {
+      throw new Error(`houses.json: house "${h.id}".value must be a positive number`);
+    }
+    if (!h.name || typeof h.name !== 'string') {
+      throw new Error(`houses.json: house "${h.id}".name must be a non-empty string`);
+    }
+  }
+}
+
 function validateLifeTiles(tiles) {
   if (!tiles || !Array.isArray(tiles.tiles) || tiles.tiles.length === 0) {
     throw new Error('lifeTiles.json: must contain a non-empty "tiles" array');
@@ -203,6 +229,7 @@ function validateSettings(settings) {
     'spinMax',
     'careerOptionsCount',
     'salaryOptionsCount',
+    'houseOptionsCount',
     'weddingGiftPerPlayer',
     'babyGiftPerPlayer',
     'twinsGiftPerPlayer',
@@ -258,6 +285,7 @@ function loadConfig(force = false) {
   const salaries = readJSON('salaries.json');
   const settings = readJSON('settings.json');
   const lifeTiles = readJSON('lifeTiles.json');
+  const houses = readJSON('houses.json');
 
   // Settings first — board validation needs settings.startSquareId.
   validateSettings(settings);
@@ -265,12 +293,14 @@ function loadConfig(force = false) {
   validateCareers(careers);
   validateSalaries(salaries);
   validateLifeTiles(lifeTiles);
+  validateHouses(houses);
 
   _cachedConfig = {
     board,
     careers: careers.cards,
     salaries: salaries.cards,
     lifeTiles: lifeTiles.tiles,
+    houses: houses.houses,
     settings,
     boardById: buildBoardIndex(board),
   };
@@ -297,5 +327,6 @@ module.exports = {
     validateSalaries,
     validateSettings,
     validateLifeTiles,
+    validateHouses,
   },
 };

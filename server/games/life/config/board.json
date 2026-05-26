@@ -176,10 +176,9 @@
   },
   {
     "id": "sq-m03-buy-home",
-    "type": "pay-bank",
-    "label": "Buy starter home",
-    "next": ["sq-m04-payday"],
-    "data": { "amount": 20000 }
+    "type": "buy-house",
+    "label": "Buy a home",
+    "next": ["sq-m04-payday"]
   },
   {
     "id": "sq-m04-payday",
