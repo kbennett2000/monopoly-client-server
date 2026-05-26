@@ -309,6 +309,69 @@ whether the right shape is e.g. `getActivePlayers(state) → userId[]`
 or something else entirely. One instance plus a future hypothetical
 isn't enough.
 
+## Life's contributions
+
+The Game of Life shipped across four sessions and surfaced two patterns
+worth recording. Neither warrants extraction yet — see notes below.
+
+### Retired-but-still-in-game (single instance)
+
+A player whose `retired === true` is skipped in turn rotation but stays
+in `state.players`; the game ends only when every player is retired.
+Implemented entirely game-locally: `getCurrentPlayer` returns `null`
+when the current index lands on a retired player, and Life's
+`advanceTurn` skips past retired players when rotating. The framework's
+turn-timer and disconnect handling absorbed the `null` gracefully — no
+framework code changed for this pattern.
+
+This sits next to the simultaneous-actors gap and feels related, but
+the two are structurally distinct:
+
+|                                | Simultaneous-actors                       | Retired-but-still-in-game             |
+|--------------------------------|-------------------------------------------|---------------------------------------|
+| Who is the current player?     | Nobody — multiple players act in parallel | Exactly one — but some never can be  |
+| Concrete instance              | Battleship setup phase                    | Life's CA/ME retirement               |
+| Hypothetical extraction shape  | `getActivePlayers(state) → userId[]`      | `isPlayerSkippable(player) → boolean` |
+
+Both feel like "the single-current-player model is too narrow," but
+the abstractions that would fix them point in different directions —
+parallel actors vs. graceful exit. The simultaneous-actors counter
+stays at two instances (Battleship, hypothetical Coup). Life's retired
+pattern stands alone for now. Watch for a second "graceful exit" sighting
+(a future game with player elimination that keeps the eliminated player
+present, perhaps as a kingmaker observer) before considering extraction.
+
+### Deferred-resolution game-over (first instance)
+
+Millionaire Estates retirees in Life have their win/loss status deferred
+until every player has retired. At that moment, ME retirees compete on
+cash; the highest-cash ME retiree wins outright and the others score
+zero. A player can retire to ME on turn 12 and not learn whether they
+won until turn 30.
+
+This is the first time in the framework that a player's eventual
+outcome is undetermined for an extended period. Battleship, Yahtzee,
+Risk, and Connect Four all resolve game-over incrementally — at the
+moment the last ship sinks, the last category is scored, the last
+territory is captured, or the four-in-a-row is detected, the result is
+known. Life's ME mechanic introduces a "pending judgment" model where
+final outcomes are knowable only at terminal game state.
+
+Implementation-wise this absorbed cleanly: `finalizeGame` computes the
+zero-out of ME losers at the moment the last player retires, and the
+`GAME_OVER` event carries the full `finalScores` map. The renderer's
+reveal animation reads from the event payload — no mid-game prediction.
+
+The renderer surfaces the deferred-judgment model to the player when
+they pick ME: a confirmation prompt notes "outcome decided at game
+over." Without that hint, the model is genuinely surprising — players
+expect "I retired with the most cash, I won" to resolve immediately.
+
+One instance is too few to extract a pattern. Watch for a second: a
+future game with a hidden-victory-condition card revealed at game end,
+or a betting mechanic that resolves at game over rather than
+incrementally, would be the same shape.
+
 ## Do not refactor based on this note
 
 Pure capture. Nothing in this document is a green light to move code.
