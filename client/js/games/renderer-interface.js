@@ -65,7 +65,10 @@
  *    • Wiring and teardown of all game-specific UI listeners
  *
  *  FRAMEWORK owns (do not touch from renderer code):
- *    • #players-panel / .player-panel — per-player money/status sidebar
+ *    • #players-panel / .player-panel — per-player roster card chrome (color
+ *      dot, username, AFK badge, active-turn highlight).  Game-specific
+ *      contents (money, badges, subtext) flow in via the optional
+ *      getPlayerCardData hook below.
  *    • #game-turn-indicator           — whose turn it is
  *    • #chat-panel                    — chat input and message list
  *    • #game-log                      — log entries for generic events
@@ -281,6 +284,72 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
+ * @function getPlayerCardData  [OPTIONAL]
+ * @description
+ * Return the per-player data the framework should render inside the chrome's
+ * player-roster card.  The framework owns the visual treatment (color dot,
+ * username, AFK badge, active-turn highlight); the renderer owns *what
+ * game-specific data* gets displayed alongside.
+ *
+ * If a renderer doesn't implement this method, the framework uses a
+ * default-empty shape — the player card shows just the framework-owned
+ * elements.  That's the right answer for games whose roster card has no
+ * game-specific content (Tic-Tac-Toe, Connect Four, Yahtzee, Battleship,
+ * Risk all currently fall in this bucket — the player's score, ships, or
+ * armies live on the board itself, not in the side roster).
+ *
+ * Called once per player per state push from ui-manager.updatePlayerPanels.
+ * Pure read — no DOM access, no side effects.
+ *
+ * @param {object}    player - The player to describe (one entry from
+ *                             state.players).
+ * @param {GameState} state  - Full game state for context (looking up other
+ *                             players, reading state.properties or similar).
+ * @returns {PlayerCardData}
+ *
+ * @typedef {object} PlayerCardData
+ * @property {string}        [primaryValue] - Headline value rendered prominently
+ *                                            in the card header (e.g. `'$1500'`
+ *                                            for Monopoly).  Omit or empty
+ *                                            string for "no primary value."
+ *                                            The renderer formats — caller may
+ *                                            include currency symbols, units, etc.
+ * @property {PlayerBadge[]} [badges]       - Status badges (JAIL, BANKRUPT,
+ *                                            RETIRED, …).  Rendered as small
+ *                                            pills next to the username.
+ * @property {string}        [subtext]      - Short secondary line below the
+ *                                            header (e.g. `'5 properties · 2 jail card(s)'`).
+ * @property {boolean}       [dimmed]       - When true the framework applies
+ *                                            its `.bankrupt`/dimmed visual
+ *                                            treatment to the whole card.
+ *                                            Use for "out of contention"
+ *                                            states (bankrupt, retired).
+ *
+ * @typedef {object} PlayerBadge
+ * @property {string} label   - Short ALL-CAPS text, e.g. `'JAIL'`.
+ * @property {string} [color] - Optional CSS color (hex or var()) used as the
+ *                              badge background.  Omit for the framework's
+ *                              default badge color.
+ *
+ * @example
+ * // Monopoly
+ * function getPlayerCardData(player, state) {
+ *   const props = state.properties || {};
+ *   const owned = Object.values(props).filter(p => p.ownerId === player.userId).length;
+ *   const badges = [];
+ *   if (player.inJail)     badges.push({ label: 'JAIL' });
+ *   if (player.isBankrupt) badges.push({ label: 'OUT' });
+ *   return {
+ *     primaryValue: `$${player.money.toLocaleString()}`,
+ *     badges,
+ *     subtext: `${owned} propert${owned === 1 ? 'y' : 'ies'}` +
+ *              (player.jailCards > 0 ? ` · ${player.jailCards} jail card(s)` : ''),
+ *     dimmed: !!player.isBankrupt,
+ *   };
+ * }
+ */
+
+/**
  * @function onEvent  [OPTIONAL]
  * @description
  * Called for each event in the events array of a game:update message, in order,
@@ -335,7 +404,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 const RENDERER_REQUIRED_METHODS = ['init', 'update', 'destroy'];
-const RENDERER_OPTIONAL_METHODS = ['onEvent'];
+const RENDERER_OPTIONAL_METHODS = ['onEvent', 'getPlayerCardData'];
 
 /**
  * validateRenderer(renderer, name)

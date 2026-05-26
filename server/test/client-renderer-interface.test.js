@@ -54,6 +54,27 @@ describe('validateRenderer', () => {
     expect(() => validateRenderer(withEvent, 'test-game')).not.toThrow();
   });
 
+  test('accepts a renderer that includes the optional getPlayerCardData method', () => {
+    const withCard = { ...noopRenderer, getPlayerCardData: () => ({}) };
+    expect(() => validateRenderer(withCard, 'test-game')).not.toThrow();
+  });
+
+  test('accepts a renderer that includes both optional methods', () => {
+    const withBoth = {
+      ...noopRenderer,
+      onEvent: () => {},
+      getPlayerCardData: () => ({ primaryValue: '', badges: [] }),
+    };
+    expect(() => validateRenderer(withBoth, 'test-game')).not.toThrow();
+  });
+
+  test('does NOT throw when the optional getPlayerCardData is absent', () => {
+    // No-op renderer omits getPlayerCardData entirely — this is the
+    // expected shape for games that have nothing to put in the roster
+    // card beyond the framework chrome.
+    expect(() => validateRenderer(noopRenderer, 'test-game')).not.toThrow();
+  });
+
   test('throws when renderer is null', () => {
     expect(() => validateRenderer(null, 'test-game')).toThrow(/must be a plain object/i);
   });
@@ -90,8 +111,9 @@ describe('validateRenderer', () => {
     expect(RENDERER_REQUIRED_METHODS).toHaveLength(3);
   });
 
-  test('RENDERER_OPTIONAL_METHODS contains onEvent', () => {
+  test('RENDERER_OPTIONAL_METHODS contains onEvent and getPlayerCardData', () => {
     expect(RENDERER_OPTIONAL_METHODS).toContain('onEvent');
+    expect(RENDERER_OPTIONAL_METHODS).toContain('getPlayerCardData');
   });
 });
 
