@@ -24,6 +24,26 @@
  * gamble.  Picking Millionaire Estates pops a small confirmation —
  * "Outcome decided at game over" — before sending the action.
  *
+ * ─── Action sourcing ────────────────────────────────────────────────────────
+ *
+ * Buttons (labels, enabled state, disabled-reason hints, supporting data
+ * like stock takenNumbers and house cost/value) come from the server-side
+ * action descriptors in `state.actionDescriptors`.  See
+ * docs/action-descriptors.md for the contract.  Renderer-side state still
+ * decides layout, button-class choices, and the local "I clicked Spin and
+ * am waiting" disable — but the rule arithmetic (affordability, already-
+ * owned, mid-turn purchase gating, fork option labels) lives only on the
+ * server now.
+ *
+ * Per the contract, ABSENT descriptors mean the action isn't currently
+ * available — there is no client-side fallback to rule logic.  An empty
+ * descriptor list during a state we'd expect actions for is shown as a
+ * blank panel rather than reconstructed locally.
+ *
+ * The branch on `player.pending?.type` is kept here (not in descriptors)
+ * per the contract — the retirement-fork's special UI treatment is a
+ * renderer concern, and `pending.type` is the clean signal for it.
+ *
  * ─── Spinner wheel ──────────────────────────────────────────────────────────
  *
  * A round element with 10 numbered segments (1-10) and a pointer at the top.
@@ -52,6 +72,19 @@ const LifeActionPanel = (() => {
   // button between click and the resulting state update.  Reset on every
   // update() so a state push from any source restores the panel.
   let _spinPending = false;
+
+  // ── descriptor lookup helpers ───────────────────────────────────────────
+  //
+  // The renderer uses two shapes:
+  //   • single-instance actions (spin, buyAutoInsurance, …) → findDescriptor
+  //   • multi-instance actions (chooseBranch, chooseCareer, …)  → filterDescriptors
+
+  function findDescriptor(state, action) {
+    return (state.actionDescriptors || []).find((d) => d.action === action);
+  }
+  function filterDescriptors(state, action) {
+    return (state.actionDescriptors || []).filter((d) => d.action === action);
+  }
 
   // ── mount/update/unmount ────────────────────────────────────────────────
 
@@ -166,104 +199,105 @@ const LifeActionPanel = (() => {
       return;
     }
 
-    // It's my turn.  Branch on pending.
+    // It's my turn.  Branch on pending.type — kept here (not in descriptors)
+    // because the retirement-fork's special UI treatment is renderer concern.
     if (me.pending?.type === 'fork') {
-      renderForkChoices(actionsEl, state, me, /* isRetirement */ false);
+      renderForkChoices(actionsEl, state, /* isRetirement */ false);
       return;
     }
     if (me.pending?.type === 'retirement-fork') {
-      renderForkChoices(actionsEl, state, me, /* isRetirement */ true);
+      renderForkChoices(actionsEl, state, /* isRetirement */ true);
       return;
     }
     if (me.pending?.type === 'career-draw') {
-      renderCareerChoices(actionsEl, state, me);
+      renderCareerChoices(actionsEl, state);
       return;
     }
     if (me.pending?.type === 'salary-draw') {
-      renderSalaryChoices(actionsEl, state, me);
+      renderSalaryChoices(actionsEl, state);
       return;
     }
     if (me.pending?.type === 'house-draw') {
-      renderHouseChoices(actionsEl, state, me);
+      renderHouseChoices(actionsEl, state);
       return;
     }
 
     // No pending — default to Spin + out-of-band purchases.
-    renderDefaultActions(actionsEl, state, me);
+    renderDefaultActions(actionsEl, state);
   }
 
-  function renderDefaultActions(parent, state, me) {
-    // The spin button is the headline.  Disabled while a spin is pending
-    // (between click and server response) so we don't double-fire.
-    const spinBtn = document.createElement('button');
-    spinBtn.className = 'btn btn-primary btn-full life-spin-btn';
-    spinBtn.textContent = me.spinAgain ? 'Spin again!' : 'Spin';
-    spinBtn.disabled = _spinPending;
-    spinBtn.addEventListener('click', () => {
-      _spinPending = true;
-      spinBtn.disabled = true;
-      _emit('spin', {});
-    });
-    parent.appendChild(spinBtn);
+  function renderDefaultActions(parent, state) {
+    // Spin button — label comes from descriptor (flips to "Spin again" on
+    // bonus spins via the server's spinAgain flag).
+    const spin = findDescriptor(state, 'spin');
+    if (spin) {
+      const spinBtn = document.createElement('button');
+      spinBtn.className = 'btn btn-primary btn-full life-spin-btn';
+      spinBtn.textContent = spin.label;
+      // Local "click in flight" guard layered on top of the descriptor's
+      // enabled flag — _spinPending alone never re-enables; the next
+      // state push from the server resets it.
+      spinBtn.disabled = _spinPending || !spin.enabled;
+      if (spin.hint) spinBtn.title = spin.hint;
+      spinBtn.addEventListener('click', () => {
+        _spinPending = true;
+        spinBtn.disabled = true;
+        _emit('spin', {});
+      });
+      parent.appendChild(spinBtn);
+    }
 
-    // Out-of-band purchases.  midTurn (spin-again chain) blocks them per
-    // the server's rule — the buttons hide rather than show-and-error so
-    // the UI matches getValidActions exactly.
-    if (!me.midTurn) {
-      const { autoInsuranceCost, lifeInsuranceCost, stockCost } = state.config.settings;
-
-      if (!me.autoInsurance) {
-        const btn = makePurchaseBtn(
-          `Auto insurance — $${autoInsuranceCost.toLocaleString()}`,
-          me.cash >= autoInsuranceCost,
-          () => _emit('buyAutoInsurance', {}),
-        );
-        parent.appendChild(btn);
-      }
-      if (!me.lifeInsurance) {
-        const btn = makePurchaseBtn(
-          `Life insurance — $${lifeInsuranceCost.toLocaleString()}`,
-          me.cash >= lifeInsuranceCost,
-          () => _emit('buyLifeInsurance', {}),
-        );
-        parent.appendChild(btn);
-      }
-      if (me.stockNumber == null) {
-        const btn = makePurchaseBtn(
-          `Buy a stock — $${stockCost.toLocaleString()}`,
-          me.cash >= stockCost,
-          () => openStockPicker(parent, state, me),
-        );
-        parent.appendChild(btn);
-      }
+    // Out-of-band purchases.  Each descriptor is rendered as a button;
+    // missing descriptors (already-owned items, mid-turn block) show as
+    // no button at all per the contract's "absence is meaningful" rule.
+    const auto = findDescriptor(state, 'buyAutoInsurance');
+    if (auto) {
+      parent.appendChild(
+        makePurchaseBtn(auto, () => _emit('buyAutoInsurance', {})),
+      );
+    }
+    const life = findDescriptor(state, 'buyLifeInsurance');
+    if (life) {
+      parent.appendChild(
+        makePurchaseBtn(life, () => _emit('buyLifeInsurance', {})),
+      );
+    }
+    const stock = findDescriptor(state, 'buyStock');
+    if (stock) {
+      parent.appendChild(
+        makePurchaseBtn(stock, () => openStockPicker(parent, state, stock)),
+      );
     }
   }
 
-  function makePurchaseBtn(label, enabled, onClick) {
+  function makePurchaseBtn(descriptor, onClick) {
     const btn = document.createElement('button');
     btn.className = 'btn btn-outline btn-full life-purchase-btn';
-    btn.textContent = label;
-    btn.disabled = !enabled;
-    if (enabled) btn.addEventListener('click', onClick);
+    btn.textContent = descriptor.label;
+    btn.disabled = !descriptor.enabled;
+    if (descriptor.hint) btn.title = descriptor.hint;
+    if (descriptor.enabled) btn.addEventListener('click', onClick);
     return btn;
   }
 
-  function openStockPicker(parent, state, me) {
-    // Replace the panel briefly with an inline picker showing the 10
-    // possible stock numbers; the player picks one or cancels.  Other
-    // players' owned numbers are disabled.
-    const taken = new Set(
-      state.players.filter((p) => p.userId !== me.userId).map((p) => p.stockNumber),
-    );
+  function openStockPicker(parent, state, stockDescriptor) {
+    // The descriptor's data.takenNumbers carries the numbers other players
+    // already own — used to grey out claimed cells in the picker.  No
+    // client-side derivation needed.
+    const taken = new Set(stockDescriptor.data?.takenNumbers || []);
+    const { spinMin, spinMax } = stockDescriptor.data || {};
+    const lo = spinMin || 1;
+    const hi = spinMax || 10;
+
     parent.innerHTML = '';
     const title = document.createElement('p');
     title.className = 'life-actions-message';
-    title.textContent = 'Pick a number 1-10:';
+    title.textContent = `Pick a number ${lo}-${hi}:`;
     parent.appendChild(title);
 
     const grid = document.createElement('div');
     grid.className = 'life-stock-grid';
-    for (let n = 1; n <= 10; n++) {
+    for (let n = lo; n <= hi; n++) {
       const btn = document.createElement('button');
       btn.className = 'btn btn-outline life-stock-cell';
       btn.textContent = String(n);
@@ -286,8 +320,8 @@ const LifeActionPanel = (() => {
 
   // ── pending-state surfaces ─────────────────────────────────────────────
 
-  function renderForkChoices(parent, state, me, isRetirement) {
-    const options = me.pending.options || [];
+  function renderForkChoices(parent, state, isRetirement) {
+    const branches = filterDescriptors(state, 'chooseBranch');
     if (isRetirement) {
       const banner = document.createElement('div');
       banner.className = 'life-retirement-banner';
@@ -297,19 +331,21 @@ const LifeActionPanel = (() => {
         'Millionaire Estates is a gamble — only the highest-cash ME retiree wins.';
       parent.appendChild(banner);
     }
-    for (const nextId of options) {
-      const sq = state.config.boardById[nextId];
+    for (const d of branches) {
       const btn = document.createElement('button');
       btn.className = isRetirement
         ? 'btn btn-primary btn-full life-retirement-choice'
         : 'btn btn-primary btn-full life-fork-choice';
-      btn.textContent = sq?.label || nextId;
-      btn.addEventListener('click', () => onForkPick(state, nextId, isRetirement));
+      btn.textContent = d.label;
+      btn.disabled = !d.enabled;
+      if (d.hint) btn.title = d.hint;
+      btn.addEventListener('click', () => onForkPick(d.data?.nextSquareId, isRetirement));
       parent.appendChild(btn);
     }
   }
 
-  function onForkPick(state, nextId, isRetirement) {
+  function onForkPick(nextId, isRetirement) {
+    if (!nextId) return;
     if (isRetirement && nextId.includes('millionaire')) {
       // The deferred-resolution model is the most non-obvious feature of
       // ME — surface it before the player commits.  This isn't a "are you
@@ -323,52 +359,55 @@ const LifeActionPanel = (() => {
     _emit('chooseBranch', { nextSquareId: nextId });
   }
 
-  function renderCareerChoices(parent, state, me) {
-    const careersById = Object.fromEntries((state.config.careers || []).map((c) => [c.id, c]));
-    for (const cardId of me.pending.options || []) {
-      const card = careersById[cardId];
-      if (!card) continue;
+  function renderCareerChoices(parent, state) {
+    const draws = filterDescriptors(state, 'chooseCareer');
+    for (const d of draws) {
       const btn = document.createElement('button');
       btn.className = 'btn btn-outline btn-full life-card-choice';
+      btn.disabled = !d.enabled;
+      if (d.hint) btn.title = d.hint;
+      const bonus = d.data?.paydayBonus || 0;
       btn.innerHTML =
-        `<strong>${escapeHtml(card.name)}</strong><br>` +
-        `<small>Payday bonus: $${(card.paydayBonus || 0).toLocaleString()}</small>`;
-      btn.addEventListener('click', () => _emit('chooseCareer', { cardId }));
+        `<strong>${escapeHtml(d.data?.cardName || d.label)}</strong><br>` +
+        `<small>Payday bonus: $${bonus.toLocaleString()}</small>`;
+      btn.addEventListener('click', () => _emit('chooseCareer', { cardId: d.data?.cardId }));
       parent.appendChild(btn);
     }
   }
 
-  function renderSalaryChoices(parent, state, me) {
-    const salariesById = Object.fromEntries(
-      (state.config.salaries || []).map((c) => [c.id, c]),
-    );
-    for (const cardId of me.pending.options || []) {
-      const card = salariesById[cardId];
-      if (!card) continue;
+  function renderSalaryChoices(parent, state) {
+    const draws = filterDescriptors(state, 'chooseSalary');
+    for (const d of draws) {
       const btn = document.createElement('button');
       btn.className = 'btn btn-outline btn-full life-card-choice';
+      btn.disabled = !d.enabled;
+      if (d.hint) btn.title = d.hint;
+      const amount = d.data?.amount || 0;
+      const tax = d.data?.taxDue || 0;
       btn.innerHTML =
-        `<strong>$${card.amount.toLocaleString()}</strong><br>` +
-        `<small>Tax due on tax squares: $${card.taxDue.toLocaleString()}</small>`;
-      btn.addEventListener('click', () => _emit('chooseSalary', { cardId }));
+        `<strong>$${amount.toLocaleString()}</strong><br>` +
+        `<small>Tax due on tax squares: $${tax.toLocaleString()}</small>`;
+      btn.addEventListener('click', () => _emit('chooseSalary', { cardId: d.data?.cardId }));
       parent.appendChild(btn);
     }
   }
 
-  function renderHouseChoices(parent, state, me) {
-    const housesById = Object.fromEntries((state.config.houses || []).map((h) => [h.id, h]));
-    for (const houseId of me.pending.options || []) {
-      const house = housesById[houseId];
-      if (!house) continue;
-      const affordable = me.cash >= house.cost;
+  function renderHouseChoices(parent, state) {
+    const draws = filterDescriptors(state, 'chooseHouse');
+    for (const d of draws) {
       const btn = document.createElement('button');
       btn.className = 'btn btn-outline btn-full life-card-choice';
-      btn.disabled = !affordable;
+      btn.disabled = !d.enabled;
+      // The hint already carries the shortfall amount when disabled by cash.
+      if (d.hint) btn.title = d.hint;
+      const cost = d.data?.cost || 0;
+      const value = d.data?.value || 0;
       btn.innerHTML =
-        `<strong>${escapeHtml(house.name)}</strong><br>` +
-        `<small>Cost $${house.cost.toLocaleString()} · scoring value $${house.value.toLocaleString()}</small>`;
-      if (!affordable) btn.title = "You can't afford this one";
-      if (affordable) btn.addEventListener('click', () => _emit('chooseHouse', { houseId }));
+        `<strong>${escapeHtml(d.data?.name || d.label)}</strong><br>` +
+        `<small>Cost $${cost.toLocaleString()} · scoring value $${value.toLocaleString()}</small>`;
+      if (d.enabled) {
+        btn.addEventListener('click', () => _emit('chooseHouse', { houseId: d.data?.houseId }));
+      }
       parent.appendChild(btn);
     }
   }

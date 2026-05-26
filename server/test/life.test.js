@@ -1701,3 +1701,321 @@ describe('Life — buy-house (session 3 prelude)', () => {
     expect(r.state.players[0].pending).toEqual(before);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Life — getActionDescriptors (session 3 prelude)', () => {
+  // Helper — return the subset of descriptors with the given action name.
+  function byAction(descriptors, action) {
+    return descriptors.filter((d) => d.action === action);
+  }
+
+  describe('spin descriptor', () => {
+    test("present and enabled on the current player's clean turn (no pending)", () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      const d = gl.getActionDescriptors(s, 'u1');
+      const spins = byAction(d, 'spin');
+      expect(spins).toHaveLength(1);
+      expect(spins[0]).toMatchObject({ label: 'Spin', enabled: true });
+    });
+
+    test('absent for the non-current player', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      expect(gl.getActionDescriptors(s, 'u2')).toEqual([]);
+    });
+
+    test('absent during any pending choice', () => {
+      // start-fork pending — straight from makeGame, u1 has type=fork
+      const s = makeGame();
+      const d = gl.getActionDescriptors(s, 'u1');
+      expect(byAction(d, 'spin')).toEqual([]);
+    });
+
+    test('label flips to "Spin again" when player.spinAgain is true', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s = placePlayerAt(s, 'u1', 'sq-c07-traffic-ticket'); // next-1 → sq-c08-spin-again
+      const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+      expect(r.state.players[0].spinAgain).toBe(true);
+      const spins = byAction(gl.getActionDescriptors(r.state, 'u1'), 'spin');
+      expect(spins).toHaveLength(1);
+      expect(spins[0].label).toBe('Spin again');
+      expect(spins[0].enabled).toBe(true);
+    });
+  });
+
+  describe('chooseBranch descriptors', () => {
+    test('start-fork: one chooseBranch descriptor per fork option', () => {
+      // makeGame leaves every player with the start-fork pending.
+      const s = makeGame();
+      const d = gl.getActionDescriptors(s, 'u1');
+      const branches = byAction(d, 'chooseBranch');
+      const expectedOptions = s.players[0].pending.options;
+      expect(branches).toHaveLength(expectedOptions.length);
+      const nextIds = branches.map((b) => b.data.nextSquareId);
+      expect(nextIds.sort()).toEqual(expectedOptions.slice().sort());
+      // Each descriptor's label matches the target square's label.
+      for (const b of branches) {
+        const sq = s.config.boardById[b.data.nextSquareId];
+        expect(b.label).toBe(sq.label);
+        expect(b.data.squareLabel).toBe(sq.label);
+        expect(b.enabled).toBe(true);
+      }
+    });
+
+    test('retirement-fork: same shape — chooseBranch descriptors, one per option', () => {
+      const s0 = setupAtRetirementFork(2, 'u1');
+      const r = withSpin(1, () => gl.applyAction(s0, 'u1', 'spin', {}));
+      const me = r.state.players[0];
+      expect(me.pending.type).toBe('retirement-fork');
+      const d = gl.getActionDescriptors(r.state, 'u1');
+      const branches = byAction(d, 'chooseBranch');
+      expect(branches).toHaveLength(me.pending.options.length);
+      // No leakage of a `data.isRetirementFork` flag — the contract is that
+      // the renderer reads player.pending.type rather than encoding it in
+      // the descriptor.  Verify the data shape is consistent with start-fork.
+      for (const b of branches) {
+        expect(Object.keys(b.data).sort()).toEqual(['nextSquareId', 'squareLabel']);
+      }
+    });
+
+    test('absent when no fork is pending', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      const d = gl.getActionDescriptors(s, 'u1');
+      expect(byAction(d, 'chooseBranch')).toEqual([]);
+    });
+  });
+
+  describe('chooseCareer / chooseSalary descriptors', () => {
+    test('career-draw: one descriptor per offered card with card metadata', () => {
+      // makeGame → chooseBranch → career-draw pending.
+      let s = makeGame();
+      s = setCurrent(s, 'u1');
+      let r = gl.applyAction(s, 'u1', 'chooseBranch', { nextSquareId: 'sq-c01-career-pick' });
+      expect(r.state.players[0].pending.type).toBe('career-draw');
+      const d = gl.getActionDescriptors(r.state, 'u1');
+      const draws = byAction(d, 'chooseCareer');
+      const options = r.state.players[0].pending.options;
+      expect(draws).toHaveLength(options.length);
+      const careersById = Object.fromEntries(CFG.careers.map((c) => [c.id, c]));
+      for (const dr of draws) {
+        const card = careersById[dr.data.cardId];
+        expect(card).toBeDefined();
+        expect(dr.label).toBe(card.name);
+        expect(dr.data).toMatchObject({
+          cardId: card.id,
+          cardName: card.name,
+          paydayBonus: card.paydayBonus || 0,
+        });
+        expect(dr.enabled).toBe(true);
+      }
+    });
+
+    test('salary-draw: one descriptor per offered card with amount + taxDue', () => {
+      let s = makeGame();
+      s = setCurrent(s, 'u1');
+      let r = gl.applyAction(s, 'u1', 'chooseBranch', { nextSquareId: 'sq-c01-career-pick' });
+      r = gl.applyAction(r.state, 'u1', 'chooseCareer', {
+        cardId: r.state.players[0].pending.options[0],
+      });
+      expect(r.state.players[0].pending.type).toBe('salary-draw');
+      const d = gl.getActionDescriptors(r.state, 'u1');
+      const draws = byAction(d, 'chooseSalary');
+      const options = r.state.players[0].pending.options;
+      expect(draws).toHaveLength(options.length);
+      const salariesById = Object.fromEntries(CFG.salaries.map((c) => [c.id, c]));
+      for (const dr of draws) {
+        const card = salariesById[dr.data.cardId];
+        expect(card).toBeDefined();
+        expect(dr.data).toMatchObject({
+          cardId: card.id,
+          amount: card.amount,
+          taxDue: card.taxDue,
+        });
+        expect(dr.label).toContain(card.amount.toLocaleString());
+        expect(dr.enabled).toBe(true);
+      }
+    });
+
+    test('chooseCareer descriptors absent when no career-draw is pending', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      expect(byAction(gl.getActionDescriptors(s, 'u1'), 'chooseCareer')).toEqual([]);
+    });
+  });
+
+  describe('chooseHouse descriptors', () => {
+    test('house-draw: one descriptor per option with cost + value; enabled reflects affordability', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts'); // next-1 → sq-m03-buy-home
+      s.players[0].cash = 100000; // affords starter ($80k) + cottage ($100k) but not victorian+
+      const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+      const me = r.state.players[0];
+      expect(me.pending.type).toBe('house-draw');
+      const d = gl.getActionDescriptors(r.state, 'u1');
+      const houseDs = byAction(d, 'chooseHouse');
+      expect(houseDs).toHaveLength(me.pending.options.length);
+
+      const housesById = Object.fromEntries(CFG.houses.map((h) => [h.id, h]));
+      for (const dr of houseDs) {
+        const house = housesById[dr.data.houseId];
+        expect(house).toBeDefined();
+        expect(dr.label).toBe(house.name);
+        expect(dr.data).toMatchObject({
+          houseId: house.id,
+          name: house.name,
+          cost: house.cost,
+          value: house.value,
+        });
+        // Affordability reflects the player's cash.
+        expect(dr.enabled).toBe(me.cash >= house.cost);
+        if (!dr.enabled) {
+          expect(dr.hint).toMatch(/Need \$/);
+        }
+      }
+    });
+
+    test('house-draw stuck state: player cash too low for every option → every descriptor disabled', () => {
+      // This documents the stuck state the spec asked to surface: server's
+      // chooseHouse rejects unaffordable picks and leaves pending open, with
+      // no skipHouse action available.  Descriptors faithfully report the
+      // wedged state; resolving the gap is out of scope for this migration.
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s = placePlayerAt(s, 'u1', 'sq-m02-wedding-gifts');
+      s.players[0].cash = 0;
+      const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+      const d = gl.getActionDescriptors(r.state, 'u1');
+      const houseDs = byAction(d, 'chooseHouse');
+      expect(houseDs.length).toBeGreaterThan(0);
+      expect(houseDs.every((h) => h.enabled === false)).toBe(true);
+    });
+
+    test('chooseHouse descriptors absent when no house-draw is pending', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      expect(byAction(gl.getActionDescriptors(s, 'u1'), 'chooseHouse')).toEqual([]);
+    });
+  });
+
+  describe('purchase descriptors (auto/life insurance, stock)', () => {
+    test('present at start of clean turn, all enabled with adequate cash', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s.players[0].cash = 200000;
+      const d = gl.getActionDescriptors(s, 'u1');
+      expect(byAction(d, 'buyAutoInsurance')).toHaveLength(1);
+      expect(byAction(d, 'buyLifeInsurance')).toHaveLength(1);
+      expect(byAction(d, 'buyStock')).toHaveLength(1);
+      for (const dr of [
+        ...byAction(d, 'buyAutoInsurance'),
+        ...byAction(d, 'buyLifeInsurance'),
+        ...byAction(d, 'buyStock'),
+      ]) {
+        expect(dr.enabled).toBe(true);
+        expect(dr.hint).toBeUndefined();
+      }
+    });
+
+    test('omitted entirely once owned (not disabled — absent)', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s.players[0].autoInsurance = true;
+      s.players[0].lifeInsurance = true;
+      s.players[0].stockNumber = 4;
+      const d = gl.getActionDescriptors(s, 'u1');
+      expect(byAction(d, 'buyAutoInsurance')).toEqual([]);
+      expect(byAction(d, 'buyLifeInsurance')).toEqual([]);
+      expect(byAction(d, 'buyStock')).toEqual([]);
+      // spin is still present though.
+      expect(byAction(d, 'spin')).toHaveLength(1);
+    });
+
+    test('disabled with a shortfall hint when the player cannot afford', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      const cost = CFG.settings.autoInsuranceCost;
+      s.players[0].cash = cost - 1;
+      const d = gl.getActionDescriptors(s, 'u1');
+      const auto = byAction(d, 'buyAutoInsurance')[0];
+      expect(auto).toBeDefined();
+      expect(auto.enabled).toBe(false);
+      expect(auto.hint).toMatch(/Need \$1 more/);
+    });
+
+    test("buyStock.data.takenNumbers lists OTHER players' stocks (not the active player's)", () => {
+      let s = readyAllPlayers(3);
+      s = setCurrent(s, 'u1');
+      s.players[1].stockNumber = 3;
+      s.players[2].stockNumber = 7;
+      const d = gl.getActionDescriptors(s, 'u1');
+      const stock = byAction(d, 'buyStock')[0];
+      expect(stock).toBeDefined();
+      expect(stock.data.takenNumbers.sort()).toEqual([3, 7]);
+      expect(stock.data.cost).toBe(CFG.settings.stockCost);
+      expect(stock.data.spinMin).toBe(CFG.settings.spinMin);
+      expect(stock.data.spinMax).toBe(CFG.settings.spinMax);
+    });
+
+    test('purchase descriptors absent during any pending choice', () => {
+      const s = makeGame(); // u1 has start-fork pending
+      const d = gl.getActionDescriptors(s, 'u1');
+      expect(byAction(d, 'buyAutoInsurance')).toEqual([]);
+      expect(byAction(d, 'buyLifeInsurance')).toEqual([]);
+      expect(byAction(d, 'buyStock')).toEqual([]);
+    });
+
+    test('purchase descriptors absent during a spin-again chain (midTurn=true)', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s = placePlayerAt(s, 'u1', 'sq-c07-traffic-ticket'); // next-1 → sq-c08-spin-again
+      const r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
+      expect(r.state.players[0].midTurn).toBe(true);
+      const d = gl.getActionDescriptors(r.state, 'u1');
+      expect(byAction(d, 'buyAutoInsurance')).toEqual([]);
+      expect(byAction(d, 'buyLifeInsurance')).toEqual([]);
+      expect(byAction(d, 'buyStock')).toEqual([]);
+      // Only spin descriptor remains.
+      expect(d.map((x) => x.action)).toEqual(['spin']);
+    });
+  });
+
+  describe('cross-cutting cases', () => {
+    test('retired player gets zero descriptors', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s.players[0].retired = true;
+      s.players[0].retiredTo = 'countryside-acres';
+      expect(gl.getActionDescriptors(s, 'u1')).toEqual([]);
+    });
+
+    test('finished game emits zero descriptors', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u1');
+      s = { ...s, status: 'finished' };
+      expect(gl.getActionDescriptors(s, 'u1')).toEqual([]);
+    });
+
+    test('not-your-turn emits zero descriptors', () => {
+      let s = readyAllPlayers(2);
+      s = setCurrent(s, 'u2');
+      expect(gl.getActionDescriptors(s, 'u1')).toEqual([]);
+    });
+
+    test('safe on pre-initGame waiting-room states (no turnState, no players)', () => {
+      expect(gl.getActionDescriptors(null, 'u1')).toEqual([]);
+      expect(gl.getActionDescriptors({ status: 'waiting' }, 'u1')).toEqual([]);
+      expect(gl.getActionDescriptors({ status: 'playing' }, 'u1')).toEqual([]);
+      expect(
+        gl.getActionDescriptors(
+          { status: 'playing', players: [], turnState: { currentPlayerIndex: 0 } },
+          'u1',
+        ),
+      ).toEqual([]);
+    });
+  });
+});

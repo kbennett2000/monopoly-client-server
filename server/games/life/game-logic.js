@@ -1403,6 +1403,198 @@ function getValidActions(state, userId) {
   return actions;
 }
 
+/**
+ * Rich action descriptors for the Life renderer. See docs/action-descriptors.md
+ * for the contract.
+ *
+ * Shape choices documented per-phase:
+ *   • pending = null, no midTurn — one `spin` descriptor + one descriptor per
+ *     out-of-band purchase the player doesn't yet own. Purchase descriptors
+ *     carry `enabled` that reflects affordability and `hint` that names the
+ *     shortfall amount when disabled. The `buyStock` descriptor's data
+ *     carries `takenNumbers` so the renderer's number picker can grey out
+ *     numbers other players already own without re-deriving them.
+ *   • pending = null, midTurn = true (spin-again chain) — ONLY the `spin`
+ *     descriptor. Out-of-band purchases are omitted; matches the server's
+ *     own getValidActions rule that midTurn blocks purchases.
+ *   • pending.type = 'fork' or 'retirement-fork' — one `chooseBranch`
+ *     descriptor per option, with `data.nextSquareId` and `data.squareLabel`.
+ *     The two fork types share the same descriptor shape; the renderer reads
+ *     player.pending.type to decide whether to apply the retirement-fork
+ *     stakes banner.
+ *   • pending.type = 'career-draw' / 'salary-draw' / 'house-draw' — one
+ *     `chooseCareer` / `chooseSalary` / `chooseHouse` descriptor per offered
+ *     card. House descriptors' `enabled` reflects affordability.
+ *
+ * Already-owned purchases (auto/life insurance, stock) are OMITTED rather
+ * than emitted with enabled=false — the renderer rule is "no descriptor
+ * means no button," matching the Yahtzee precedent (filled scoreCategory
+ * rows are omitted, not disabled).
+ *
+ * Returns [] for: non-current players, retired players, finished games,
+ * pre-initGame waiting-room states.
+ *
+ * KNOWN GAP — house-draw stuck state. The server's chooseHouse rejects an
+ * unaffordable pick and leaves pending open so the player can try another
+ * card. If ALL drawn cards are unaffordable (cash collapsed mid-game),
+ * every descriptor is enabled=false and the player has no out — there is
+ * no `skipHouse` action. The descriptor faithfully represents the stuck
+ * state; the gap is in the game's action surface, not in this function.
+ */
+function getActionDescriptors(state, userId) {
+  if (!state || state.status !== 'playing') return [];
+  if (!state.turnState || !Array.isArray(state.players)) return [];
+  const idx = state.players.findIndex((p) => p.userId === userId);
+  if (idx < 0) return [];
+  if (state.turnState.currentPlayerIndex !== idx) return [];
+
+  const me = state.players[idx];
+  if (!me || me.active === false) return [];
+  if (me.retired === true) return [];
+
+  // ── Pending-choice branches — exactly one action type per pending kind ──
+  if (me.pending && Array.isArray(me.pending.options)) {
+    return buildPendingDescriptors(state, me);
+  }
+
+  // ── No pending: spin + (out-of-band purchases when not midTurn) ─────────
+  const out = [];
+
+  out.push({
+    action: 'spin',
+    label: me.spinAgain ? 'Spin again' : 'Spin',
+    enabled: true,
+    hint: me.spinAgain ? 'Bonus spin earned — go again.' : undefined,
+  });
+
+  if (!me.midTurn) {
+    const { autoInsuranceCost, lifeInsuranceCost, stockCost, spinMin, spinMax } =
+      state.config.settings;
+
+    if (!me.autoInsurance) {
+      const aff = me.cash >= autoInsuranceCost;
+      out.push({
+        action: 'buyAutoInsurance',
+        label: `Auto insurance — $${autoInsuranceCost.toLocaleString()}`,
+        enabled: aff,
+        hint: aff ? undefined : `Need $${(autoInsuranceCost - me.cash).toLocaleString()} more`,
+        data: { cost: autoInsuranceCost },
+      });
+    }
+
+    if (!me.lifeInsurance) {
+      const aff = me.cash >= lifeInsuranceCost;
+      out.push({
+        action: 'buyLifeInsurance',
+        label: `Life insurance — $${lifeInsuranceCost.toLocaleString()}`,
+        enabled: aff,
+        hint: aff ? undefined : `Need $${(lifeInsuranceCost - me.cash).toLocaleString()} more`,
+        data: { cost: lifeInsuranceCost },
+      });
+    }
+
+    if (me.stockNumber === null || me.stockNumber === undefined) {
+      const aff = me.cash >= stockCost;
+      const takenNumbers = state.players
+        .filter((p) => p.userId !== userId && typeof p.stockNumber === 'number')
+        .map((p) => p.stockNumber);
+      out.push({
+        action: 'buyStock',
+        label: `Buy a stock — $${stockCost.toLocaleString()}`,
+        enabled: aff,
+        hint: aff ? undefined : `Need $${(stockCost - me.cash).toLocaleString()} more`,
+        data: { cost: stockCost, takenNumbers, spinMin, spinMax },
+      });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Build the chooseX descriptors for a player with a pending choice.
+ * Returns one descriptor per option; the action name is the same across
+ * all descriptors of a single pending type (chooseBranch / chooseCareer /
+ * chooseSalary / chooseHouse), discriminated by data fields.
+ */
+function buildPendingDescriptors(state, me) {
+  const out = [];
+  const options = me.pending.options || [];
+
+  if (me.pending.type === 'fork' || me.pending.type === 'retirement-fork') {
+    for (const nextId of options) {
+      const sq = state.config.boardById?.[nextId];
+      const label = sq?.label || nextId;
+      out.push({
+        action: 'chooseBranch',
+        label,
+        enabled: true,
+        data: { nextSquareId: nextId, squareLabel: label },
+      });
+    }
+    return out;
+  }
+
+  if (me.pending.type === 'career-draw') {
+    const byId = {};
+    for (const c of state.config.careers || []) byId[c.id] = c;
+    for (const cardId of options) {
+      const card = byId[cardId];
+      if (!card) continue;
+      out.push({
+        action: 'chooseCareer',
+        label: card.name,
+        enabled: true,
+        data: {
+          cardId,
+          cardName: card.name,
+          degreeRequired: !!card.degreeRequired,
+          paydayBonus: card.paydayBonus || 0,
+        },
+      });
+    }
+    return out;
+  }
+
+  if (me.pending.type === 'salary-draw') {
+    const byId = {};
+    for (const c of state.config.salaries || []) byId[c.id] = c;
+    for (const cardId of options) {
+      const card = byId[cardId];
+      if (!card) continue;
+      out.push({
+        action: 'chooseSalary',
+        label: `$${card.amount.toLocaleString()} salary`,
+        enabled: true,
+        data: { cardId, amount: card.amount, taxDue: card.taxDue },
+      });
+    }
+    return out;
+  }
+
+  if (me.pending.type === 'house-draw') {
+    const byId = {};
+    for (const h of state.config.houses || []) byId[h.id] = h;
+    for (const houseId of options) {
+      const house = byId[houseId];
+      if (!house) continue;
+      const aff = me.cash >= house.cost;
+      out.push({
+        action: 'chooseHouse',
+        label: house.name,
+        enabled: aff,
+        hint: aff ? undefined : `Need $${(house.cost - me.cash).toLocaleString()} more`,
+        data: { houseId, name: house.name, cost: house.cost, value: house.value },
+      });
+    }
+    return out;
+  }
+
+  // Unknown pending type — defensive empty list; the server is the source
+  // of truth for which pending kinds exist.
+  return out;
+}
+
 function getGameMetadata() {
   return {
     name: 'The Game of Life',
@@ -1551,6 +1743,7 @@ module.exports = {
   getCurrentPlayer,
   isTurnTimerBlocked,
   getValidActions,
+  getActionDescriptors,
   getGameMetadata,
   loadConfig,
   getConfigCopy,
