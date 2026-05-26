@@ -54,9 +54,9 @@
  *                                  out-of-band purchases (insurance/stock).
  *                                  Set on entry to spin/choose actions and
  *                                  cleared when the turn fully ends.
- *   pendingForkChoice:         string[] | null   square IDs to choose between
- *   pendingCareerDrawOptions:  string[] | null   career card IDs to choose between
- *   pendingSalaryDrawOptions:  string[] | null   salary card IDs to choose between
+ *   pending:                   { type, options } | null   discriminated union
+ *                                  type ∈ { 'fork', 'career-draw', 'salary-draw' }
+ *                                  options carries square IDs for forks, card IDs for draws
  *   spinAgain: boolean   true when a spin-again square just fired; cleared on next spin
  *   retired:   boolean   session 2b placeholder
  *   lifeTiles: any[]     session 2b placeholder
@@ -69,7 +69,7 @@ const {
   defaultGetStateForPlayer,
 } = require('../../src/game-logic-interface');
 
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -102,10 +102,10 @@ function event(type, data = {}) {
 }
 
 function hasPendingChoice(player) {
-  return (
-    !!(player.pendingForkChoice && player.pendingForkChoice.length > 0) ||
-    !!(player.pendingCareerDrawOptions && player.pendingCareerDrawOptions.length > 0) ||
-    !!(player.pendingSalaryDrawOptions && player.pendingSalaryDrawOptions.length > 0)
+  return !!(
+    player.pending &&
+    Array.isArray(player.pending.options) &&
+    player.pending.options.length > 0
   );
 }
 
@@ -117,7 +117,7 @@ function hasPendingChoice(player) {
 
 function applyCareerFork(state, playerIdx, square) {
   const player = state.players[playerIdx];
-  player.pendingForkChoice = square.next.slice();
+  player.pending = { type: 'fork', options: square.next.slice() };
   log(state, `${player.username} is at the start fork — choose Career or College`, 'fork');
   return [
     event('FORK_CHOICE_PENDING', {
@@ -586,7 +586,7 @@ function drawCareerCards(state, playerIdx, requireDegree) {
     n,
     (id) => careersById[id].degreeRequired === requireDegree,
   );
-  player.pendingCareerDrawOptions = ids;
+  player.pending = { type: 'career-draw', options: ids };
   log(state, `${player.username} drew ${ids.length} career option(s)`, 'card');
   return [
     event('CAREER_DRAW_OPTIONS', {
@@ -602,7 +602,7 @@ function drawSalaryCards(state, playerIdx) {
   for (const c of state.config.salaries) salariesById[c.id] = c;
   const n = state.config.settings.salaryOptionsCount;
   const ids = drawOptionsFromDeck(state.salaryDeck, state.salaryDiscard, n, () => true);
-  player.pendingSalaryDrawOptions = ids;
+  player.pending = { type: 'salary-draw', options: ids };
   log(state, `${player.username} drew ${ids.length} salary option(s)`, 'card');
   return [
     event('SALARY_DRAW_OPTIONS', {
@@ -721,10 +721,10 @@ function chooseBranch(state, userId, nextSquareId) {
   const playerIdx = state.turnState.currentPlayerIndex;
   const player = state.players[playerIdx];
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
-  if (!player.pendingForkChoice || player.pendingForkChoice.length === 0) {
+  if (!player.pending || player.pending.type !== 'fork') {
     return { state, events, error: 'No pending fork choice' };
   }
-  if (!player.pendingForkChoice.includes(nextSquareId)) {
+  if (!player.pending.options.includes(nextSquareId)) {
     return { state, events, error: `Invalid branch choice "${nextSquareId}"` };
   }
 
@@ -732,7 +732,7 @@ function chooseBranch(state, userId, nextSquareId) {
   const cur = state.players[playerIdx];
   cur.midTurn = true;
   const from = cur.position;
-  cur.pendingForkChoice = null;
+  cur.pending = null;
   cur.position = nextSquareId;
 
   // Record path on the start-fork choice so career-card filtering knows
@@ -762,10 +762,10 @@ function chooseCareer(state, userId, cardId) {
   const playerIdx = state.turnState.currentPlayerIndex;
   const player = state.players[playerIdx];
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
-  if (!player.pendingCareerDrawOptions || player.pendingCareerDrawOptions.length === 0) {
+  if (!player.pending || player.pending.type !== 'career-draw') {
     return { state, events, error: 'No pending career choice' };
   }
-  if (!player.pendingCareerDrawOptions.includes(cardId)) {
+  if (!player.pending.options.includes(cardId)) {
     return { state, events, error: `Invalid career choice "${cardId}"` };
   }
 
@@ -780,10 +780,10 @@ function chooseCareer(state, userId, cardId) {
   // Return unchosen options to the bottom of the deck — same as Monopoly's
   // card handling.  When the deck eventually empties, the discard pile is
   // reshuffled back in.
-  for (const otherId of cur.pendingCareerDrawOptions) {
+  for (const otherId of cur.pending.options) {
     if (otherId !== cardId) state.careerDeck.push(otherId);
   }
-  cur.pendingCareerDrawOptions = null;
+  cur.pending = null;
 
   log(state, `${cur.username} chose career: ${chosen.name}`, 'card');
   events.push(event('CAREER_CHOSEN', { username: cur.username, card: chosen }));
@@ -801,10 +801,10 @@ function chooseSalary(state, userId, cardId) {
   const playerIdx = state.turnState.currentPlayerIndex;
   const player = state.players[playerIdx];
   if (player.userId !== userId) return { state, events, error: 'Not your turn' };
-  if (!player.pendingSalaryDrawOptions || player.pendingSalaryDrawOptions.length === 0) {
+  if (!player.pending || player.pending.type !== 'salary-draw') {
     return { state, events, error: 'No pending salary choice' };
   }
-  if (!player.pendingSalaryDrawOptions.includes(cardId)) {
+  if (!player.pending.options.includes(cardId)) {
     return { state, events, error: `Invalid salary choice "${cardId}"` };
   }
 
@@ -816,10 +816,10 @@ function chooseSalary(state, userId, cardId) {
   const chosen = salariesById[cardId];
   cur.salary = chosen;
 
-  for (const otherId of cur.pendingSalaryDrawOptions) {
+  for (const otherId of cur.pending.options) {
     if (otherId !== cardId) state.salaryDeck.push(otherId);
   }
-  cur.pendingSalaryDrawOptions = null;
+  cur.pending = null;
 
   log(state, `${cur.username} chose salary: $${chosen.amount}`, 'card');
   events.push(event('SALARY_CHOSEN', { username: cur.username, card: chosen }));
@@ -955,9 +955,7 @@ function skipTurn(state, userId) {
   state = clone(state);
   const cur = state.players[playerIdx];
   // Defensively clear any pending state so the next player can act cleanly.
-  cur.pendingForkChoice = null;
-  cur.pendingCareerDrawOptions = null;
-  cur.pendingSalaryDrawOptions = null;
+  cur.pending = null;
   cur.spinAgain = false;
   log(state, `${cur.username}'s turn was skipped`, 'info');
   events.push(event('TURN_SKIPPED', { username: cur.username }));
@@ -997,9 +995,7 @@ function createInitialPlayer(user, existingPlayers = [], config = null) {
     midTurn: false,
     retired: false,
     lifeTiles: [],
-    pendingForkChoice: null,
-    pendingCareerDrawOptions: null,
-    pendingSalaryDrawOptions: null,
+    pending: null,
     spinAgain: false,
   };
 }
@@ -1028,9 +1024,7 @@ function initGame(gameId, name, playerList, config) {
     // Each player owes the server a Career-vs-College decision before
     // their first spin.  Setting it on all players up front means the
     // gating logic doesn't need a special "first turn" case.
-    pendingForkChoice: initialFork.slice(),
-    pendingCareerDrawOptions: null,
-    pendingSalaryDrawOptions: null,
+    pending: { type: 'fork', options: initialFork.slice() },
     spinAgain: false,
   }));
 
@@ -1096,13 +1090,9 @@ function getValidActions(state, userId) {
   if (!state || state.status !== 'playing') return [];
   const cur = state.players?.[state.turnState?.currentPlayerIndex];
   if (!cur || cur.userId !== userId) return [];
-  if (cur.pendingForkChoice && cur.pendingForkChoice.length > 0) return ['chooseBranch'];
-  if (cur.pendingCareerDrawOptions && cur.pendingCareerDrawOptions.length > 0) {
-    return ['chooseCareer'];
-  }
-  if (cur.pendingSalaryDrawOptions && cur.pendingSalaryDrawOptions.length > 0) {
-    return ['chooseSalary'];
-  }
+  if (cur.pending?.type === 'fork') return ['chooseBranch'];
+  if (cur.pending?.type === 'career-draw') return ['chooseCareer'];
+  if (cur.pending?.type === 'salary-draw') return ['chooseSalary'];
   const actions = ['spin'];
   // Out-of-band purchases are only valid at the start of a clean turn —
   // not during a spin-again chain (midTurn=true) and not during any
@@ -1155,6 +1145,28 @@ function migrate(state) {
         midTurn: p.midTurn === true,
       })),
       stateVersion: 2,
+    };
+  }
+  if (s.stateVersion < 3) {
+    // v2 → v3 (session 2b prelude): collapse the three pending-state fields
+    // (pendingForkChoice / pendingCareerDrawOptions / pendingSalaryDrawOptions)
+    // into a single discriminated union `pending = { type, options } | null`.
+    s = {
+      ...s,
+      players: s.players.map((p) => {
+        const { pendingForkChoice, pendingCareerDrawOptions, pendingSalaryDrawOptions, ...rest } =
+          p;
+        let pending = null;
+        if (Array.isArray(pendingForkChoice) && pendingForkChoice.length > 0) {
+          pending = { type: 'fork', options: pendingForkChoice };
+        } else if (Array.isArray(pendingCareerDrawOptions) && pendingCareerDrawOptions.length > 0) {
+          pending = { type: 'career-draw', options: pendingCareerDrawOptions };
+        } else if (Array.isArray(pendingSalaryDrawOptions) && pendingSalaryDrawOptions.length > 0) {
+          pending = { type: 'salary-draw', options: pendingSalaryDrawOptions };
+        }
+        return { ...rest, pending };
+      }),
+      stateVersion: 3,
     };
   }
   if (s.stateVersion !== STATE_VERSION) {

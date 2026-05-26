@@ -34,11 +34,11 @@ function completeFirstTurn(state, userId, branchId = 'sq-c01-career-pick') {
   if (r.error) throw new Error(`chooseBranch failed: ${r.error}`);
   state = r.state;
   const player = state.players.find((p) => p.userId === userId);
-  r = gl.applyAction(state, userId, 'chooseCareer', { cardId: player.pendingCareerDrawOptions[0] });
+  r = gl.applyAction(state, userId, 'chooseCareer', { cardId: player.pending.options[0] });
   if (r.error) throw new Error(`chooseCareer failed: ${r.error}`);
   state = r.state;
   const p2 = state.players.find((p) => p.userId === userId);
-  r = gl.applyAction(state, userId, 'chooseSalary', { cardId: p2.pendingSalaryDrawOptions[0] });
+  r = gl.applyAction(state, userId, 'chooseSalary', { cardId: p2.pending.options[0] });
   if (r.error) throw new Error(`chooseSalary failed: ${r.error}`);
   return r.state;
 }
@@ -135,7 +135,10 @@ describe('Life — initGame', () => {
   test('every player begins with the Career-vs-College fork pending', () => {
     const s = makeGame(2);
     for (const p of s.players) {
-      expect(p.pendingForkChoice).toEqual(['sq-c01-career-pick', 'sq-u01-college-loan']);
+      expect(p.pending).toEqual({
+        type: 'fork',
+        options: ['sq-c01-career-pick', 'sq-u01-college-loan'],
+      });
     }
   });
 
@@ -237,7 +240,7 @@ describe('Life — chooseBranch', () => {
     expect(r.error).toMatch(/Invalid branch/);
     // Original state unchanged
     expect(r.state.players[0].position).toBe('sq-000-start');
-    expect(r.state.players[0].pendingForkChoice).not.toBeNull();
+    expect(r.state.players[0].pending).not.toBeNull();
   });
 
   test('rejects chooseBranch when no fork is pending', () => {
@@ -277,7 +280,8 @@ describe('Life — career and salary draws', () => {
       nextSquareId: 'sq-c01-career-pick',
     });
     const careersById = Object.fromEntries(CFG.careers.map((c) => [c.id, c]));
-    for (const id of r.state.players[0].pendingCareerDrawOptions) {
+    expect(r.state.players[0].pending.type).toBe('career-draw');
+    for (const id of r.state.players[0].pending.options) {
       expect(careersById[id].degreeRequired).toBe(false);
     }
   });
@@ -293,7 +297,7 @@ describe('Life — career and salary draws', () => {
     // Make sure path is preserved, then spin 1 to land on sq-u09-career-pick.
     r = withSpin(1, () => gl.applyAction(s, 'u1', 'spin', {}));
     expect(r.error).toBeUndefined();
-    const opts = r.state.players[0].pendingCareerDrawOptions;
+    const opts = r.state.players[0].pending.options;
     expect(opts.length).toBeGreaterThan(0);
     const careersById = Object.fromEntries(CFG.careers.map((c) => [c.id, c]));
     for (const id of opts) expect(careersById[id].degreeRequired).toBe(true);
@@ -303,12 +307,12 @@ describe('Life — career and salary draws', () => {
     let s = makeGame();
     let r = gl.applyAction(s, 'u1', 'chooseBranch', { nextSquareId: 'sq-c01-career-pick' });
     s = r.state;
-    const choice = s.players[0].pendingCareerDrawOptions[1];
+    const choice = s.players[0].pending.options[1];
     r = gl.applyAction(s, 'u1', 'chooseCareer', { cardId: choice });
     expect(r.error).toBeUndefined();
     expect(r.state.players[0].career.id).toBe(choice);
-    expect(r.state.players[0].pendingCareerDrawOptions).toBeNull();
-    expect(r.state.players[0].pendingSalaryDrawOptions).not.toBeNull();
+    expect(r.state.players[0].pending).not.toBeNull();
+    expect(r.state.players[0].pending.type).toBe('salary-draw');
     expect(r.events.map((e) => e.type)).toEqual(
       expect.arrayContaining(['CAREER_CHOSEN', 'SALARY_DRAW_OPTIONS']),
     );
@@ -327,13 +331,13 @@ describe('Life — career and salary draws', () => {
       nextSquareId: 'sq-c01-career-pick',
     });
     r = gl.applyAction(r.state, 'u1', 'chooseCareer', {
-      cardId: r.state.players[0].pendingCareerDrawOptions[0],
+      cardId: r.state.players[0].pending.options[0],
     });
-    const salaryChoice = r.state.players[0].pendingSalaryDrawOptions[0];
+    const salaryChoice = r.state.players[0].pending.options[0];
     r = gl.applyAction(r.state, 'u1', 'chooseSalary', { cardId: salaryChoice });
     expect(r.error).toBeUndefined();
     expect(r.state.players[0].salary.id).toBe(salaryChoice);
-    expect(r.state.players[0].pendingSalaryDrawOptions).toBeNull();
+    expect(r.state.players[0].pending).toBeNull();
     expect(r.state.turnState.currentPlayerIndex).toBe(1);
   });
 
@@ -349,7 +353,7 @@ describe('Life — career and salary draws', () => {
     let r = gl.applyAction(makeGame(), 'u1', 'chooseBranch', {
       nextSquareId: 'sq-c01-career-pick',
     });
-    const offered = r.state.players[0].pendingCareerDrawOptions.slice();
+    const offered = r.state.players[0].pending.options.slice();
     r = gl.applyAction(r.state, 'u1', 'chooseCareer', { cardId: offered[0] });
     // The unchosen offered card should still be present in the careerDeck.
     expect(r.state.careerDeck).toContain(offered[1]);
@@ -639,7 +643,7 @@ describe('Life — skipTurn / turn advancement', () => {
     const s = makeGame(); // u1 has a fork pending
     const r = gl.applyAction(s, 'u1', 'skipTurn', {});
     expect(r.error).toBeUndefined();
-    expect(r.state.players[0].pendingForkChoice).toBeNull();
+    expect(r.state.players[0].pending).toBeNull();
     expect(r.state.turnState.currentPlayerIndex).toBe(1);
     expect(r.events.map((e) => e.type)).toContain('TURN_SKIPPED');
   });
@@ -1088,8 +1092,8 @@ describe('Life — cross-feature interactions (session 2a)', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('Life — migration (session 2a)', () => {
-  test('migrate(v1) upgrades the player record to v2 with safe defaults', () => {
+describe('Life — migration', () => {
+  test('migrate(v1) chains through all migrations to the current STATE_VERSION', () => {
     // Synthesize a v1 state — same shape session 1 produced.  We only need
     // the players[] for migrate to operate on; other top-level fields just
     // pass through.
@@ -1100,9 +1104,11 @@ describe('Life — migration (session 2a)', () => {
           userId: 'a',
           username: 'A',
           spouse: null,
-          // children was present in v1 (as a session-2 placeholder); keep it
           children: 0,
           cash: 100,
+          pendingForkChoice: ['sq-c01-career-pick', 'sq-u01-college-loan'],
+          pendingCareerDrawOptions: null,
+          pendingSalaryDrawOptions: null,
         },
         {
           userId: 'b',
@@ -1110,11 +1116,14 @@ describe('Life — migration (session 2a)', () => {
           spouse: null,
           children: 0,
           cash: 200,
+          pendingForkChoice: null,
+          pendingCareerDrawOptions: ['career-doctor', 'career-lawyer'],
+          pendingSalaryDrawOptions: null,
         },
       ],
     };
     const migrated = gl.migrate(v1);
-    expect(migrated.stateVersion).toBe(2);
+    expect(migrated.stateVersion).toBe(gl.STATE_VERSION);
     for (const p of migrated.players) {
       expect(p.spouse).toBe(false);
       expect(p.children).toBe(0);
@@ -1122,12 +1131,67 @@ describe('Life — migration (session 2a)', () => {
       expect(p.lifeInsurance).toBe(false);
       expect(p.stockNumber).toBeNull();
       expect(p.midTurn).toBe(false);
+      // v2 → v3: the three pending fields collapsed into one.
+      expect(p.pendingForkChoice).toBeUndefined();
+      expect(p.pendingCareerDrawOptions).toBeUndefined();
+      expect(p.pendingSalaryDrawOptions).toBeUndefined();
     }
+    // Player A had pendingForkChoice; should now be { type: 'fork', options }.
+    expect(migrated.players[0].pending).toEqual({
+      type: 'fork',
+      options: ['sq-c01-career-pick', 'sq-u01-college-loan'],
+    });
+    // Player B had pendingCareerDrawOptions.
+    expect(migrated.players[1].pending).toEqual({
+      type: 'career-draw',
+      options: ['career-doctor', 'career-lawyer'],
+    });
   });
 
-  test('migrate is idempotent — calling it on a v2 state returns the same shape', () => {
-    const s = makeGame(); // already v2
+  test('migrate is idempotent — calling it on a current-version state returns the same shape', () => {
+    const s = makeGame();
     const again = gl.migrate(s);
-    expect(again.stateVersion).toBe(2);
+    expect(again.stateVersion).toBe(gl.STATE_VERSION);
+  });
+
+  test('v2 → v3 collapses the three pending fields to player.pending', () => {
+    const v2 = {
+      stateVersion: 2,
+      players: [
+        {
+          userId: 'a',
+          username: 'A',
+          pendingForkChoice: null,
+          pendingCareerDrawOptions: null,
+          pendingSalaryDrawOptions: ['salary-50', 'salary-60'],
+          spouse: false,
+          children: 0,
+          autoInsurance: false,
+          lifeInsurance: false,
+          stockNumber: null,
+          midTurn: false,
+        },
+        {
+          userId: 'b',
+          username: 'B',
+          pendingForkChoice: null,
+          pendingCareerDrawOptions: null,
+          pendingSalaryDrawOptions: null,
+          spouse: false,
+          children: 0,
+          autoInsurance: false,
+          lifeInsurance: false,
+          stockNumber: null,
+          midTurn: false,
+        },
+      ],
+    };
+    const migrated = gl.migrate(v2);
+    expect(migrated.stateVersion).toBe(gl.STATE_VERSION);
+    expect(migrated.players[0].pending).toEqual({
+      type: 'salary-draw',
+      options: ['salary-50', 'salary-60'],
+    });
+    expect(migrated.players[1].pending).toBeNull();
   });
 });
