@@ -93,6 +93,11 @@ const BattleshipSetup = (() => {
     unplacedLabel.textContent = 'Unplaced ships';
     rightCol.appendChild(unplacedLabel);
 
+    const hint = document.createElement('p');
+    hint.className = 'bs-hint';
+    hint.textContent = '💡 Press R while dragging to rotate.';
+    rightCol.appendChild(hint);
+
     const unplacedPanel = document.createElement('div');
     unplacedPanel.id = 'bs-unplaced-panel';
     unplacedPanel.className = 'bs-unplaced-panel';

@@ -1341,6 +1341,13 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   margin-bottom: 16px;
 }
 
+.bs-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .bs-unplaced-row {
   display: flex;
   align-items: center;
