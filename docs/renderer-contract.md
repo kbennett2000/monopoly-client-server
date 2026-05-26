@@ -120,6 +120,72 @@ helpers should move into `client/js/games/monopoly/ui/` — is a separate
 refactor with a separate trigger (when a second game wants modals).
 Don't bundle that with the layout question.
 
+## Open question: action label contract
+
+Yahtzee surfaced the first real instance of a renderer needing
+human-readable labels for actions returned by `getValidActions`.
+
+**Current state:** actions are identifier strings — `'rollDice'`,
+`'scoreCategory'`, `'placeReinforcement'`. The renderer owns the
+translation to UI labels and decides which subset to surface as enabled
+buttons. Works fine for static labels.
+
+**The Yahtzee instance** that makes it interesting: a category button like
+"Score 18 in Three of a Kind" is *dynamic* — the number depends on the
+current dice. There's no static-string map from `'scoreCategory'` to a
+label; the label is a function of state. The renderer ends up calling
+back into Yahtzee's `scoreFor(category, dice, config)` to compute the
+preview number. That works, but it means the renderer is doing rule
+arithmetic — exactly the seam the renderer / game-logic split was meant
+to enforce.
+
+Two plausible future seams:
+
+- **`describeAction(state, action, userId) → string`** as an optional
+  interface method. Game-logic owns the label string; renderer just
+  displays it. Cleanest but introduces another method to the contract
+  and another thing every game has to opt into or skip.
+- **Richer `getValidActions` return** — `{ action, label, enabled }[]`
+  instead of `string[]`. Bundles "which actions" and "what they look
+  like" in one trip. Backwards-incompatible to current consumers; would
+  need a parallel migration path.
+
+**Explicit non-decision:** not solving this until Liar's Dice and Coup
+land. One game's worth of pressure isn't enough to pick a shape; both
+of those will have their own opinions about action labels (bids in
+Liar's Dice are inherently numeric and stateful; Coup's actions are
+named cards). Decide once we have three data points, not one.
+
+## Resolved: derived view fields stay client-side
+
+Came up in session 1 while building Yahtzee: the temptation to push
+`upperSubtotal`, `lowerTotal`, `grandTotal` onto the wire as a
+"convenience" so the renderer doesn't have to recompute them.
+
+**Decision: no.** Derived fields belong in the renderer, not the server.
+
+Reasoning:
+
+- The seam between game-logic and renderer is *rule logic* (which
+  lives server-side where it's testable) vs *display logic* (which
+  lives client-side). Upper-section subtotal is arithmetic over
+  `scoreSheet` values — pure presentation, no rule is being duplicated.
+- Adding derived fields to the wire format introduces a "derived field
+  decorator" interface extension that would feel general but wouldn't
+  pay rent. Every game would then have to declare what to derive, and
+  every renderer would still have to display it, and the framework
+  would acquire a third concept (state + decorators + UI) where two
+  cover the actual need.
+- The wire format stays minimal. Risk's continent bonuses (the
+  obvious comparable case) are already computed client-side from
+  `state.territories` and `state.config.board.continents` — same
+  pattern, already established.
+
+`finalizeGame` does compute totals server-side, but only because they're
+needed for winner determination and the `GAME_OVER` event payload — a
+genuine rule decision, not display sugar. Renderers asking for them
+mid-game compute their own.
+
 ## Do not refactor based on this note
 
 Pure capture. Nothing in this document is a green light to move code.
