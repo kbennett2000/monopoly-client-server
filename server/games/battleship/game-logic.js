@@ -724,8 +724,12 @@ function getStateForPlayer(state, userId) {
       // have a ships field (empty array) already; pre-initGame players might
       // not. Either way, destructuring `{ ships: _ships, ...rest }` produces
       // an object without a `ships` key.
-      const { ships: _ships, ...rest } = p;
-      return rest;
+      const { ships, ...rest } = p;
+      // Expose a count (not positions) of the opponent's placed ships so
+      // the renderer can show "N of 5 placed" during setup. The count
+      // reveals strictly less than PLAYER_READY (which implies 5/5); no
+      // security boundary moves.
+      return { ...rest, placementCount: ships?.length ?? 0 };
     }),
   };
 }

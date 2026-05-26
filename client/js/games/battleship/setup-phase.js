@@ -270,11 +270,6 @@ const BattleshipSetup = (() => {
 
     const placeholder = document.getElementById('bs-opp-placeholder');
     if (!placeholder) return;
-    // Note: opp.ships is removed by getStateForPlayer, so the spec's
-    // requested "N of 5" placement counter is not derivable from server
-    // state during setup — only opp.ready is exposed. We render two
-    // states ("placing…" / "ready ✓"), not a fine-grained count. See
-    // debrief note on the framework gap.
     placeholder.innerHTML = '';
     const oppGrid = document.createElement('div');
     oppGrid.className = 'bs-grid bs-grid-dimmed';
@@ -292,9 +287,14 @@ const BattleshipSetup = (() => {
     const overlay = document.createElement('div');
     overlay.className = 'bs-opp-overlay';
     const username = opp?.username || 'Opponent';
-    overlay.textContent = opp?.ready
-      ? `${username} is ready ✓`
-      : `${username} is placing their ships…`;
+    const total = _state.config.settings.ships.length;
+    const placed = opp?.placementCount ?? 0;
+    let text;
+    if (opp?.ready) text = `${username} is ready ✓`;
+    else if (placed === 0) text = `${username} is placing their ships…`;
+    else if (placed < total) text = `${username} is placing their ships… (${placed} of ${total})`;
+    else text = `${username} is reviewing their placement…`;
+    overlay.textContent = text;
     placeholder.appendChild(overlay);
   }
 

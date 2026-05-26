@@ -464,6 +464,19 @@ describe('Battleship — hidden information enforcement (security critical)', ()
     expect(bobView.shotsReceived).toEqual([]);
     expect(bobView.shotsFired).toEqual([]);
     expect(bobView.shipsSunk).toEqual([]);
+    // Derived count is exposed; positional fields are not.
+    expect(bobView.placementCount).toBe(5);
+  });
+
+  test('placementCount tracks placed ships during setup; positions stay hidden', () => {
+    // Partial-placement state: Alice has all 5, Bob has only 2.
+    let s = makeState();
+    s = placeAll(s, 'p1', aliceShipsPayload());
+    s = placeAll(s, 'p2', bobShipsPayload().slice(0, 2));
+    const view = gl.getStateForPlayer(s, 'p1');
+    const bobView = view.players.find((p) => p.userId === 'p2');
+    expect(bobView.placementCount).toBe(2);
+    expect('ships' in bobView).toBe(false);
   });
 
   test('getStateForPlayer is safe on waiting-room state (no ships field on either player)', () => {
@@ -485,6 +498,10 @@ describe('Battleship — hidden information enforcement (security critical)', ()
     const s = bothReadyState();
     const view = gl.getStateForPlayer(s, 'p1');
     const json = JSON.stringify(view);
+    // Contract: placementCount IS visible (it's a count, not positions).
+    const bobView = view.players.find((p) => p.userId === 'p2');
+    expect(typeof bobView.placementCount).toBe('number');
+    expect(bobView.placementCount).toBe(5);
     // Bob's exact (x,y) pairs are unique to Bob (chosen so Alice's ships
     // do not share any (x,y) pair). After both placements, Alice has fired
     // no shots, so the only place Bob's cells COULD appear is in his ships
