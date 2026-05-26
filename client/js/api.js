@@ -115,6 +115,10 @@ const API = (() => {
     return get('/api/games/config/default');
   }
 
+  async function getGameTypeHelp(gameType) {
+    return get(`/api/games/types/${encodeURIComponent(gameType)}/help`);
+  }
+
   // ── token helpers for use by socket-client ─────────────────────────────────
 
   return {
@@ -122,7 +126,7 @@ const API = (() => {
     register, login, logout, getMe,
     listGames, listSavedGames, listMyActiveGames, deleteGame,
     createGame, joinGame, getGame, startGame, saveGame,
-    getGameTypes, getGameTypeConfig, getDefaultConfig,
+    getGameTypes, getGameTypeConfig, getDefaultConfig, getGameTypeHelp,
   };
 
 })();

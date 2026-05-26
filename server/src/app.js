@@ -20,6 +20,7 @@ const { Server: SocketIO } = require('socket.io');
 
 const authRoutes = require('./routes/auth.routes');
 const gameRoutes = require('./routes/game.routes');
+const helpRoutes = require('./routes/help.routes');
 const socketHandler = require('./socket-handler');
 const gameRegistry = require('./game-registry');
 
@@ -36,6 +37,9 @@ function createServer() {
   app.use(cors({ origin: '*', credentials: true }));
 
   app.use('/api/auth', authRoutes);
+  // Help routes are mounted before gameRoutes so /types/:type/help matches
+  // before falling through to the broader /api/games router.
+  app.use('/api/games/types', helpRoutes);
   app.use('/api/games', gameRoutes);
 
   app.get('/api/config', (req, res) => {
