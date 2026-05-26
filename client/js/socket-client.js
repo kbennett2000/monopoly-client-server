@@ -135,9 +135,16 @@ const SocketClient = (() => {
 
     // ── chat ───────────────────────────────────────────────────────────────
 
-    socket.on('chat:message', ({ username, text }) => {
-      UIManager.appendChat(username, text);
+    socket.on('chat:message', ({ username, text, senderRole }) => {
+      UIManager.appendChat(username, text, senderRole);
     });
+
+    // spectator:joined is a dedicated socket event but the join is ALSO
+    // included in the game:update events array (handled in
+    // handleGameEvent below).  Log-once: the events-array path is the
+    // canonical handler; this listener stays as a hook for future
+    // non-log behavior (e.g. flashing the spectator-count chip).
+    socket.on('spectator:joined', () => {});
 
     socket.on('lobby:update', () => {
       if (_onLobbyUpdate) _onLobbyUpdate();
@@ -179,12 +186,18 @@ const SocketClient = (() => {
       if (!gameScreenActive) {
         UIManager.showScreen('game-screen');
         // Init the renderer for this game type (only once per game join).
+        // The 5th argument `options` carries flags that don't fit elsewhere;
+        // isSpectator tells the renderer to render read-only and skip
+        // any handler that would emit a game:action.
         const renderer = GameRendererRegistry.get(state.gameType);
         if (renderer) {
           GameRendererRegistry.setActive(renderer);
-          renderer.init(document.querySelector('.board-wrapper'), state, myUserId, action);
+          renderer.init(document.querySelector('.board-wrapper'), state, myUserId, action, {
+            isSpectator: GameState.isSpectator(),
+          });
         }
         UIManager.appendLogsFromState(state);
+        UIManager.applySpectatorChrome(GameState.isSpectator());
       }
     }
 
@@ -234,6 +247,9 @@ const SocketClient = (() => {
       case 'PLAYER_DISCONNECTED':
         UIManager.appendLog(`${ev.data.username} disconnected`, 'info');
         return;
+      case 'SPECTATOR_JOINED':
+        UIManager.appendLog(`👁 ${ev.data.username} joined as spectator`, 'info');
+        return;
     }
 
   }
@@ -276,6 +292,14 @@ const SocketClient = (() => {
   function saveGame()  { emit('game:save', undefined); }
   function leaveRoom() { emit('leave_game'); }
 
+  function spectate(gameId, callback) {
+    socket.emit('spectate', gameId, (res) => {
+      if (res?.error) callback?.(res.error);
+      else callback?.(null);
+    });
+  }
+  function unspectate() { emit('unspectate'); }
+
   function sendChat(text) { emit('chat:message', { text }); }
 
   function onLobbyUpdate(fn) { _onLobbyUpdate = fn; }
@@ -313,6 +337,8 @@ const SocketClient = (() => {
     sendChat,
     setHostId,
     getHostId,
+    spectate,
+    unspectate,
     emitAction: (name, payload = {}) => action(name, payload),
   };
 

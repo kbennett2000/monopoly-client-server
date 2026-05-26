@@ -13,10 +13,11 @@
 
 const GameState = (() => {
 
-  let _state   = null;   // Full GameState from the server
-  let _user    = null;   // { id, username } from the JWT
-  let _gameId  = null;   // ID of the game currently being played / watched
-  let _isHost  = false;  // True if this user created the current game
+  let _state       = null;   // Full GameState from the server
+  let _user        = null;   // { id, username } from the JWT
+  let _gameId      = null;   // ID of the game currently being played / watched
+  let _isHost      = false;  // True if this user created the current game
+  let _isSpectator = false;  // True if the user joined as a spectator (not a player)
 
   // Listeners registered by other modules
   const _listeners = [];
@@ -41,18 +42,24 @@ const GameState = (() => {
     _isHost = isHost;
   }
 
+  function setIsSpectator(isSpectator) {
+    _isSpectator = !!isSpectator;
+  }
+
   function clear() {
-    _state  = null;
-    _gameId = null;
-    _isHost = false;
+    _state       = null;
+    _gameId      = null;
+    _isHost      = false;
+    _isSpectator = false;
   }
 
   // ── read ───────────────────────────────────────────────────────────────────
 
-  function getState()  { return _state;  }
-  function getUser()   { return _user;   }
-  function getGameId() { return _gameId; }
-  function isHost()    { return _isHost; }
+  function getState()    { return _state;       }
+  function getUser()     { return _user;        }
+  function getGameId()   { return _gameId;      }
+  function isHost()      { return _isHost;      }
+  function isSpectator() { return _isSpectator; }
 
   /** Return the Player object for the currently logged-in user, or null. */
   function getMyPlayer() {
@@ -135,8 +142,8 @@ const GameState = (() => {
   // ── public API ─────────────────────────────────────────────────────────────
 
   return {
-    setState, setUser, setGameId, setIsHost, clear,
-    getState, getUser, getGameId, isHost,
+    setState, setUser, setGameId, setIsHost, setIsSpectator, clear,
+    getState, getUser, getGameId, isHost, isSpectator,
     getMyPlayer, getCurrentPlayer, isMyTurn,
     getSquare, getPropertyState, getPropertyOwner, getPropertiesOwnedBy,
     canDo,

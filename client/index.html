@@ -184,12 +184,20 @@
       <span id="game-turn-indicator" class="turn-indicator"></span>
     </div>
     <div class="game-header-right">
-      <button id="mute-btn"        class="btn btn-sm btn-outline" title="Toggle sound">🔊</button>
-      <button id="game-help-btn"  class="btn btn-sm btn-outline" title="How to play">? Help</button>
-      <button id="save-game-btn"  class="btn btn-sm btn-outline">💾 Save</button>
-      <button id="quit-game-btn"  class="btn btn-sm btn-outline">✕ Quit</button>
+      <button id="mute-btn"             class="btn btn-sm btn-outline" title="Toggle sound">🔊</button>
+      <button id="game-help-btn"       class="btn btn-sm btn-outline" title="How to play">? Help</button>
+      <button id="save-game-btn"       class="btn btn-sm btn-outline">💾 Save</button>
+      <button id="quit-game-btn"       class="btn btn-sm btn-outline">✕ Quit</button>
+      <!-- Shown instead of Save/Quit when spectating; toggled by UIManager.applySpectatorChrome. -->
+      <button id="leave-spectator-btn" class="btn btn-sm btn-outline" style="display:none">✕ Leave</button>
     </div>
   </header>
+
+  <!-- Spectator banner — hidden by default; UIManager.applySpectatorChrome
+       toggles display when the local viewer joined as a spectator. -->
+  <div id="spectator-banner" style="display:none">
+    <span class="spectator-banner-text">👁 You're spectating — chat enabled, no actions available.</span>
+  </div>
 
   <div class="game-layout">
 

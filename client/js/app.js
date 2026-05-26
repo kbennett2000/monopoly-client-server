@@ -149,9 +149,14 @@
 
   async function refreshGameList() {
     const myUserId = GameState.getUser()?.id;
-    const deleteOpts = {
+    const sharedOpts = {
       onDeleteClick: handleDeleteGame,
       currentUserId: myUserId,
+      // Spectate is offered on every in-progress game in the lists below.
+      // renderGameList suppresses the button on rows where allowRejoin is
+      // true (the user's own active games) so people can't accidentally
+      // try to spectate a game they're already playing.
+      onSpectateClick: handleSpectateGame,
     };
 
     // My in-progress games — show at the top with a Rejoin button
@@ -161,7 +166,7 @@
       if (mine && mine.length > 0) {
         if (section) section.style.display = 'block';
         UIManager.renderGameList(mine, 'my-games-list', handleRejoinGame, {
-          allowRejoin: true, ...deleteOpts,
+          allowRejoin: true, ...sharedOpts,
         });
       } else {
         if (section) section.style.display = 'none';
@@ -170,14 +175,28 @@
 
     try {
       const { games } = await API.listGames();
-      UIManager.renderGameList(games, 'games-list', handleJoinGame, deleteOpts);
+      UIManager.renderGameList(games, 'games-list', handleJoinGame, sharedOpts);
     } catch (err) {
       console.error('listGames error:', err);
     }
     try {
       const { games: saved } = await API.listSavedGames();
-      UIManager.renderGameList(saved, 'saved-games-list', handleRejoinGame, deleteOpts);
+      UIManager.renderGameList(saved, 'saved-games-list', handleRejoinGame, sharedOpts);
     } catch {}
+  }
+
+  // Start spectating a game in progress.  The server pushes game:state on
+  // success; socket-client.handleFullStateUpdate switches to the game
+  // screen and inits the renderer with isSpectator=true.
+  function handleSpectateGame(gameId) {
+    GameState.setGameId(gameId);
+    GameState.setIsSpectator(true);
+    SocketClient.spectate(gameId, (err) => {
+      if (err) {
+        GameState.setIsSpectator(false);
+        alert(err);
+      }
+    });
   }
 
   document.getElementById('refresh-games-btn').addEventListener('click', refreshGameList);
@@ -378,6 +397,14 @@
       GameState.clear();
       showLobby();
     }
+  });
+
+  // Spectator's "Leave" button — sends unspectate, returns to lobby.  No
+  // confirm() because there's nothing to lose; spectators have no progress.
+  document.getElementById('leave-spectator-btn').addEventListener('click', () => {
+    SocketClient.unspectate();
+    GameState.clear();
+    showLobby();
   });
 
   // Property modal, trade modals, and incoming trade buttons are wired by the

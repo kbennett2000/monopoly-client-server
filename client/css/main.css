@@ -2083,6 +2083,26 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+   SPECTATOR MODE
+── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── */
+
+/* Banner across the top of the game screen while spectating.  Toggled by
+   UIManager.applySpectatorChrome — default hidden, flipped to flex when
+   the local viewer joined via the spectate flow rather than as a player. */
+#spectator-banner {
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, var(--surface2), var(--surface));
+  border-bottom: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 13px;
+}
+.spectator-banner-text {
+  letter-spacing: 0.3px;
+}
+
+/* ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
    HELP OVERLAY  (used by help-system.js)
 ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── */
 

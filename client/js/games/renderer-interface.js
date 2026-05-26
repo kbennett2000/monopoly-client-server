@@ -192,6 +192,14 @@
  *                                   lifetime of this renderer instance.
  * @param {EmitAction}  emitAction - Fire-and-forget function to send an action to
  *                                   the server.  Store it and use it in listeners.
+ * @param {object}      [options]  - Optional flags that don't fit elsewhere.
+ *   @param {boolean} [options.isSpectator=false] - True when the local viewer
+ *     is spectating rather than playing. The renderer MUST honor this by
+ *     skipping click handlers that would emit a game:action, hiding any
+ *     "your turn" affordances, and rendering the board as read-only. The
+ *     server already rejects spectator-originated actions (see
+ *     socket-handler.js), but the client-side gate is a UX requirement —
+ *     a spectator's click shouldn't appear to do anything.
  * @returns {void}
  *
  * @example

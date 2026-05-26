@@ -45,6 +45,33 @@ const UIManager = (() => {
 
   // ── screen management ──────────────────────────────────────────────────────
 
+  /**
+   * Switch the game-screen chrome between player mode and spectator mode.
+   * Player mode: Save and Quit buttons visible, no banner, action panel
+   * visible (renderer fills it).  Spectator mode: Save and Quit hidden,
+   * Leave button visible, "You're spectating" banner shown, action panel
+   * hidden (renderer's getPlayerCardData / descriptors still flow but
+   * the panel itself is collapsed).
+   *
+   * Idempotent — safe to call repeatedly.
+   */
+  function applySpectatorChrome(isSpectator) {
+    const banner = document.getElementById('spectator-banner');
+    if (banner) banner.style.display = isSpectator ? 'flex' : 'none';
+
+    const saveBtn = document.getElementById('save-game-btn');
+    if (saveBtn) saveBtn.style.display = isSpectator ? 'none' : '';
+
+    const quitBtn = document.getElementById('quit-game-btn');
+    if (quitBtn) quitBtn.style.display = isSpectator ? 'none' : '';
+
+    const leaveBtn = document.getElementById('leave-spectator-btn');
+    if (leaveBtn) leaveBtn.style.display = isSpectator ? '' : 'none';
+
+    const actionSection = document.getElementById('action-section');
+    if (actionSection) actionSection.style.display = isSpectator ? 'none' : '';
+  }
+
   function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(screenId);
@@ -100,12 +127,16 @@ const UIManager = (() => {
 
   // ── chat ────────────────────────────────────────────────────────────────────
 
-  function appendChat(username, text) {
+  function appendChat(username, text, senderRole = 'player') {
     const chat = document.getElementById('chat-messages');
     if (!chat) return;
     const msg = document.createElement('div');
     msg.className = 'chat-msg';
-    msg.innerHTML = `<span class="chat-msg-name">${escHtml(username)}:</span> <span class="chat-msg-text">${escHtml(text)}</span>`;
+    // Spectator messages get a 👁 prefix so players see at a glance whose
+    // commentary is from the peanut gallery.  senderRole comes from the
+    // server (chat:message payload); a missing role falls back to 'player'.
+    const prefix = senderRole === 'spectator' ? '👁 ' : '';
+    msg.innerHTML = `<span class="chat-msg-name">${prefix}${escHtml(username)}:</span> <span class="chat-msg-text">${escHtml(text)}</span>`;
     chat.appendChild(msg);
     chat.scrollTop = chat.scrollHeight;
   }
@@ -352,9 +383,10 @@ const UIManager = (() => {
    * @param {Function} [opts.onDeleteClick]  — called with gameId; enables delete buttons
    * @param {string}   [opts.currentUserId]  — only show delete for games the user created
    * @param {boolean}  [opts.allowRejoin]    — show Rejoin button for 'playing' games
+   * @param {Function} [opts.onSpectateClick] — called with gameId when Spectate clicked
    */
   function renderGameList(games, containerId, onJoinClick, opts = {}) {
-    const { onDeleteClick, currentUserId, allowRejoin = false } = opts;
+    const { onDeleteClick, currentUserId, allowRejoin = false, onSpectateClick } = opts;
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -399,12 +431,27 @@ const UIManager = (() => {
 
       const canJoin   = g.status === 'waiting' || g.status === 'paused';
       const canRejoin = allowRejoin && g.status === 'playing';
+      // Spectate is offered for any in-progress game the user is NOT already
+      // a player in.  The is-already-a-player check is done server-side too,
+      // but suppressing the button client-side keeps the lobby uncluttered
+      // for the user's own active games.
+      const isMyOwnActive = allowRejoin && g.status === 'playing';
+      const canSpectate = onSpectateClick && g.status === 'playing' && !isMyOwnActive;
 
       if (canJoin || canRejoin) {
         const btn = document.createElement('button');
         btn.className   = 'btn btn-primary btn-sm';
         btn.textContent = canRejoin ? 'Rejoin' : (g.status === 'paused' ? 'Resume' : 'Join');
         btn.addEventListener('click', () => onJoinClick(g.id));
+        card.appendChild(btn);
+      }
+
+      if (canSpectate) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline btn-sm';
+        btn.textContent = '👁 Spectate';
+        btn.style.marginLeft = '6px';
+        btn.addEventListener('click', () => onSpectateClick(g.id));
         card.appendChild(btn);
       }
 
@@ -826,6 +873,7 @@ const UIManager = (() => {
 
   return {
     showScreen,
+    applySpectatorChrome,
     appendLog,
     appendLogsFromState,
     appendChat,
