@@ -2,8 +2,7 @@
 
 > A self-hosted multiplayer game platform for LAN parties. Eight classic games with real-time play, hidden information, and spectator support — all running on a server you control.
 
-<!-- HERO_IMAGE_PLACEHOLDER -->
-<!-- Session 2: replace with a screenshot of Battleship or Life mid-game -->
+![LAN Games — The Game of Life mid-game](docs/screenshots/hero.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -41,9 +40,9 @@ No database setup, no external services, no configuration files. Docker is also 
 
 | | | |
 |:---:|:---:|:---:|
-| **Monopoly** <br> 2–8 players · ~90 min <br> <!-- SCREENSHOT_PLACEHOLDER:monopoly --> *[screenshot]* | **Risk** <br> 2–6 players · ~120 min <br> <!-- SCREENSHOT_PLACEHOLDER:risk --> *[screenshot]* | **The Game of Life** <br> 2–6 players · ~45 min <br> <!-- SCREENSHOT_PLACEHOLDER:life --> *[screenshot]* |
-| **Battleship** <br> 2 players · ~15 min <br> <!-- SCREENSHOT_PLACEHOLDER:battleship --> *[screenshot]* | **Yahtzee** <br> 1–8 players · ~20 min <br> <!-- SCREENSHOT_PLACEHOLDER:yahtzee --> *[screenshot]* | **Checkers** <br> 2 players · ~15 min <br> <!-- SCREENSHOT_PLACEHOLDER:checkers --> *[screenshot]* |
-| **Connect Four** <br> 2 players · ~5 min <br> <!-- SCREENSHOT_PLACEHOLDER:connect-four --> *[screenshot]* | **Tic-Tac-Toe** <br> 2 players · ~2 min <br> <!-- SCREENSHOT_PLACEHOLDER:tic-tac-toe --> *[screenshot]* | |
+| **Monopoly** <br> 2–8 players · ~90 min <br> ![Monopoly](docs/screenshots/monopoly.png) | **Risk** <br> 2–6 players · ~120 min <br> ![Risk](docs/screenshots/risk.png) | **The Game of Life** <br> 2–6 players · ~45 min <br> ![Life](docs/screenshots/life.png) |
+| **Battleship** <br> 2 players · ~15 min <br> ![Battleship](docs/screenshots/battleship.png) | **Yahtzee** <br> 1–8 players · ~20 min <br> ![Yahtzee](docs/screenshots/yahtzee.png) | **Checkers** <br> 2 players · ~15 min <br> ![Checkers](docs/screenshots/checkers.png) |
+| **Connect Four** <br> 2 players · ~5 min <br> ![Connect Four](docs/screenshots/connect-four.png) | **Tic-Tac-Toe** <br> 2 players · ~2 min <br> ![Tic-Tac-Toe](docs/screenshots/tic-tac-toe.png) | |
 
 Every game supports save/resume, in-game chat, and spectator mode. Games with hidden information (Battleship, Risk, Life) enforce privacy server-side — each player sees only what they're allowed to.
 
@@ -1520,6 +1519,7 @@ npm run format:check   # Prettier (verify)
 npm run format:write   # Prettier (auto-fix)
 npm run reset-db       # drop all tables and recreate schema
 npm run reset-db:hard  # delete the .db file entirely and recreate it
+npm run screenshots    # regenerate README screenshots (requires Playwright)
 ```
 
 ### Tests
