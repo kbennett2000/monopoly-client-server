@@ -1,46 +1,70 @@
-# 🎲 LAN Games — Turn-Based Multiplayer Engine
+# LAN Games
 
-A **multi-game, browser-based multiplayer platform** for your local network.  
-Drop in any turn-based game by implementing a single interface; the framework handles lobbies, persistence, real-time sync, chat, and save/resume automatically.
+> A self-hosted multiplayer game platform for LAN parties. Eight classic games with real-time play, hidden information, and spectator support — all running on a server you control.
 
-Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/JavaScript** (client).
+<!-- HERO_IMAGE_PLACEHOLDER -->
+<!-- Session 2: replace with a screenshot of Battleship or Life mid-game -->
 
-**Bundled games:** Tic-Tac-Toe (2 players) · Connect Four (2 players) · Checkers (2 players) · Battleship (2 players) · Yahtzee (1–8 players) · The Game of Life (2–6 players) · Monopoly (2–8 players) · Risk (2–6 players)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+8 games · 660+ tests · single-server setup · Node.js 18+
+
+---
+
+## Why This Exists
+
+LAN parties want games everyone in the room can play together. Most multiplayer games today require internet, accounts, and matchmaking — LAN Games is the opposite. One Node.js server on your network hosts eight turn-based board games in the browser. No accounts beyond a username, no internet after install, no configuration required. The platform is game-agnostic: each game is a server module behind a [small interface](server/src/game-logic-interface.js), so adding a ninth game doesn't touch the framework. Hidden-information games like Battleship and Risk coexist with open-board games through a per-game state-filtering contract, and spectators can watch any game with full visibility.
+
+---
+
+## Quickstart
+
+1. **Clone and install:**
+   ```bash
+   git clone https://github.com/kbennett2000/lan-games.git
+   cd lan-games/server
+   npm install
+   ```
+
+2. **Start the server:**
+   ```bash
+   JWT_SECRET=change-me-to-something-secret npm start
+   ```
+
+3. **Play.** Open `http://localhost:3000` in your browser. Create a game, share the URL with friends on your network, and play.
+
+No database setup, no external services, no configuration files. Docker is also supported — see the detailed [Quick Start](#quick-start) in the reference docs below.
+
+---
+
+## The Games
+
+| | | |
+|:---:|:---:|:---:|
+| **Monopoly** <br> 2–8 players · ~90 min <br> <!-- SCREENSHOT_PLACEHOLDER:monopoly --> *[screenshot]* | **Risk** <br> 2–6 players · ~120 min <br> <!-- SCREENSHOT_PLACEHOLDER:risk --> *[screenshot]* | **The Game of Life** <br> 2–6 players · ~45 min <br> <!-- SCREENSHOT_PLACEHOLDER:life --> *[screenshot]* |
+| **Battleship** <br> 2 players · ~15 min <br> <!-- SCREENSHOT_PLACEHOLDER:battleship --> *[screenshot]* | **Yahtzee** <br> 1–8 players · ~20 min <br> <!-- SCREENSHOT_PLACEHOLDER:yahtzee --> *[screenshot]* | **Checkers** <br> 2 players · ~15 min <br> <!-- SCREENSHOT_PLACEHOLDER:checkers --> *[screenshot]* |
+| **Connect Four** <br> 2 players · ~5 min <br> <!-- SCREENSHOT_PLACEHOLDER:connect-four --> *[screenshot]* | **Tic-Tac-Toe** <br> 2 players · ~2 min <br> <!-- SCREENSHOT_PLACEHOLDER:tic-tac-toe --> *[screenshot]* | |
+
+Every game supports save/resume, in-game chat, and spectator mode. Games with hidden information (Battleship, Risk, Life) enforce privacy server-side — each player sees only what they're allowed to.
 
 ---
 
 ## Table of Contents
 
+[Why This Exists](#why-this-exists) · [Quickstart](#quickstart) · [The Games](#the-games)
+
+**Reference Documentation**
+
 1. [Features](#features)
 2. [Documentation](#documentation)
-3. [Quick Start](#quick-start)
+3. [Quick Start (detailed)](#quick-start)
 4. [Project Structure](#project-structure)
 5. [How to Play](#how-to-play)
-   - [Monopoly](#monopoly)
-   - [Connect Four](#connect-four)
-   - [Risk](#risk)
-   - [Tic-Tac-Toe](#tic-tac-toe)
-   - [Yahtzee](#yahtzee)
-   - [Battleship](#battleship)
-   - [Checkers](#checkers)
-   - [The Game of Life](#the-game-of-life)
+   — [Monopoly](#monopoly) · [Connect Four](#connect-four) · [Risk](#risk) · [Tic-Tac-Toe](#tic-tac-toe) · [Yahtzee](#yahtzee) · [Battleship](#battleship) · [Checkers](#checkers) · [The Game of Life](#the-game-of-life)
 6. [Adding a New Game](#adding-a-new-game)
 7. [Architecture](#architecture)
 8. [Configuration](#configuration)
-   - [Monopoly Settings](#monopoly-settings)
-   - [Monopoly Board](#monopoly-board--properties)
-   - [Monopoly Cards](#monopoly-cards)
-   - [Connect Four Settings](#connect-four-settings)
-   - [Risk Settings](#risk-settings)
-   - [Risk Board](#risk-board--territories)
-   - [Risk Cards](#risk-cards)
-   - [Tic-Tac-Toe Settings](#tic-tac-toe-settings)
-   - [Yahtzee Settings](#yahtzee-settings)
-   - [Battleship Settings](#battleship-settings)
-   - [Checkers Settings](#checkers-settings)
-   - [Life Settings](#life-settings)
-   - [Life Cards](#life-cards)
-   - [Life Board](#life-board)
+   — [Monopoly](#monopoly-settings) · [Connect Four](#connect-four-settings) · [Risk](#risk-settings) · [Tic-Tac-Toe](#tic-tac-toe-settings) · [Yahtzee](#yahtzee-settings) · [Battleship](#battleship-settings) · [Checkers](#checkers-settings) · [Life](#life-settings)
 9. [API Reference](#api-reference)
 10. [Socket.io Events](#socketio-events)
 11. [Security Notes](#security-notes)
@@ -48,6 +72,10 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 13. [Roadmap](#roadmap)
 
 ---
+
+## Reference Documentation
+
+*The sections below cover features, architecture, configuration, and API reference for development and customization.*
 
 ## Features
 
