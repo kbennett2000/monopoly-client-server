@@ -2242,6 +2242,179 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   .help-overlay-body { padding: 16px 18px; }
 }
 
+/* ── Checkers board ──────────────────────────────────────────────────────── */
+
+.checkers-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  gap: 8px;
+}
+
+.ck-capture-banner {
+  background: rgba(255, 167, 38, 0.15);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.ck-grid {
+  display: grid;
+  gap: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  width: fit-content;
+}
+
+.ck-cell {
+  width: 62px;
+  height: 62px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ck-light { background: #d4a76a; }
+.ck-dark  { background: #6b3a2a; }
+
+/* ── pieces ──────────────────────────────────────────────────────────────── */
+
+.ck-piece {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.ck-piece-red {
+  background: radial-gradient(circle at 35% 35%, #e74c3c, #962d22);
+  border: 2px solid #7a2018;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+}
+
+.ck-piece-black {
+  background: radial-gradient(circle at 35% 35%, #4a4a4a, #1a1a1a);
+  border: 2px solid #111;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.ck-crown {
+  font-size: 20px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+
+/* ── selection & eligibility highlights ──────────────────────────────────── */
+
+.ck-eligible {
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.ck-capture-eligible {
+  box-shadow: 0 0 0 3px rgba(255, 167, 38, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4);
+  animation: ck-pulse 1.2s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.ck-selected {
+  box-shadow: 0 0 0 4px var(--accent), 0 0 12px rgba(76, 175, 80, 0.6);
+  transform: scale(1.08);
+}
+
+@keyframes ck-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 167, 38, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4); }
+  50%      { box-shadow: 0 0 0 5px rgba(255, 167, 38, 0.9), 0 0 14px rgba(255, 167, 38, 0.4); }
+}
+
+/* ── destination markers ─────────────────────────────────────────────────── */
+
+.ck-dest::after,
+.ck-dest-capture::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ck-dest {
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.ck-dest::after {
+  background: rgba(76, 175, 80, 0.5);
+}
+
+.ck-dest-capture {
+  background: rgba(255, 167, 38, 0.15);
+}
+
+.ck-dest-capture::after {
+  background: rgba(255, 167, 38, 0.6);
+}
+
+/* ── move animation ──────────────────────────────────────────────────────── */
+
+.ck-anim-moving {
+  transition: transform 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 10;
+}
+
+/* ── capture fade ────────────────────────────────────────────────────────── */
+
+.ck-anim-fading {
+  animation: ck-fade-out 400ms ease-out forwards;
+}
+
+@keyframes ck-fade-out {
+  0%   { transform: scale(1); opacity: 1; }
+  30%  { transform: scale(1.15); opacity: 1; border-color: var(--danger); box-shadow: 0 0 12px var(--danger); }
+  100% { transform: scale(0.5); opacity: 0; }
+}
+
+/* ── coronation animation ────────────────────────────────────────────────── */
+
+.ck-anim-crowning {
+  animation: ck-crown-pop 600ms ease-out;
+}
+
+.ck-crown-anim {
+  animation: ck-crown-fade-in 300ms ease-out;
+}
+
+@keyframes ck-crown-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ck-crown-fade-in {
+  0%   { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 /* ── responsive: narrow viewports ────────────────────────────────────────── */
 
 @media (max-width: 900px) {
