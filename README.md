@@ -1486,6 +1486,10 @@ No code changes, no rebuild.
 npm start              # run the server
 npm run dev            # run with nodemon (auto-restart on file changes)
 npm test               # run Jest test suite (server/test/)
+npm run test:integration  # integration tests (Express + Socket.io round-trips)
+npm run lint           # ESLint
+npm run format:check   # Prettier (verify)
+npm run format:write   # Prettier (auto-fix)
 npm run reset-db       # drop all tables and recreate schema
 npm run reset-db:hard  # delete the .db file entirely and recreate it
 ```
@@ -1494,11 +1498,14 @@ npm run reset-db:hard  # delete the .db file entirely and recreate it
 
 ```bash
 cd server
+npm install                 # required — devDependencies (jest, supertest, etc.) must be present
 npm test                    # unit tests for every bundled game's game-logic
 npm run test:integration    # socket + persistence round-trip tests
 ```
 
-Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **593 unit tests across the eight bundled games** plus the framework interface, and **40 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, spectator mode, and game-lifecycle round-trips.
+Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **625 unit tests across the eight bundled games** plus the framework interface, and **40 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, spectator mode, and game-lifecycle round-trips.
+
+> **Note:** `node_modules/` is gitignored. If you skip `npm install`, the unit suite still partially runs (tests that only use relative imports), but suites requiring `supertest`, `uuid`, or `jest-environment-jsdom` will fail to load silently. Always install dependencies before running tests.
 
 The unit suite imports game-logic modules directly and never touches the network, database, or socket layer — making it fast and reliable. The integration suite spins up a real server, a real SQLite database, and real socket clients to verify full round-trips end-to-end.
 
