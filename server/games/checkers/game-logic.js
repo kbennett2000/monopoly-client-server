@@ -30,7 +30,8 @@ function getConfigCopy() {
 function getGameMetadata() {
   return {
     name: 'Checkers',
-    description: 'Classic American Checkers — capture all opponent pieces or block them completely.',
+    description:
+      'Classic American Checkers — capture all opponent pieces or block them completely.',
     minPlayers: 2,
     maxPlayers: 2,
     icon: '🔴',
@@ -74,7 +75,7 @@ function isValidPosition(row, col, size) {
   return row >= 0 && row < size && col >= 0 && col < size;
 }
 
-function createStartingBoard(size, players) {
+function createStartingBoard(size) {
   const board = Array.from({ length: size }, () => Array(size).fill(null));
   const rowsPerSide = (size - 2) / 2; // 3 rows each for 8×8
 
@@ -142,7 +143,12 @@ function getMovesForPiece(board, row, col) {
       if (!isValidPosition(toRow, toCol, size)) continue;
 
       if (board[toRow][toCol] === null) {
-        steps.push({ from: { row, col }, to: { row: toRow, col: toCol }, isCapture: false, captures: [] });
+        steps.push({
+          from: { row, col },
+          to: { row: toRow, col: toCol },
+          isCapture: false,
+          captures: [],
+        });
       } else if (board[toRow][toCol].color !== piece.color) {
         const jumpRow = toRow + dr;
         const jumpCol = toCol + dc;
@@ -202,10 +208,6 @@ function playerColor(state, userId) {
   return p ? p.color : null;
 }
 
-function playerIndex(state, userId) {
-  return state.players.findIndex((p) => p.userId === userId);
-}
-
 function coronationRow(color) {
   // Red moves toward row 0; black moves toward row 7.
   return color === 'red' ? 0 : 7;
@@ -236,7 +238,7 @@ function checkGameOver(state) {
 function initGame(gameId, name, players, config) {
   const cfg = config || getConfigCopy();
   const size = cfg.settings.boardSize;
-  const board = createStartingBoard(size, players);
+  const board = createStartingBoard(size);
 
   const captureRequired = getAvailableCaptures(board, 'red').length > 0;
 
@@ -285,15 +287,11 @@ function getValidActions(state, userId) {
       state.pendingChainPiece.row,
       state.pendingChainPiece.col,
     );
-    return captures.map(
-      (m) => `move:${m.from.row},${m.from.col},${m.to.row},${m.to.col}`,
-    );
+    return captures.map((m) => `move:${m.from.row},${m.from.col},${m.to.row},${m.to.col}`);
   }
 
   const moves = getAllValidMoves(state.board, color);
-  return moves.map(
-    (m) => `move:${m.from.row},${m.from.col},${m.to.row},${m.to.col}`,
-  );
+  return moves.map((m) => `move:${m.from.row},${m.from.col},${m.to.row},${m.to.col}`);
 }
 
 // ── action descriptors ────────────────────────────────────────────────────────
@@ -367,7 +365,11 @@ function move(state, userId, payload) {
   // If a chain is pending, must move the chain piece.
   if (state.pendingChainPiece) {
     if (from.row !== state.pendingChainPiece.row || from.col !== state.pendingChainPiece.col) {
-      return { state, events: [], error: 'You must continue the capture chain with the same piece' };
+      return {
+        state,
+        events: [],
+        error: 'You must continue the capture chain with the same piece',
+      };
     }
   }
 
@@ -553,7 +555,10 @@ function move(state, userId, payload) {
     captureRequired,
     pendingChainPiece,
     lastMove,
-    log: [...(state.log || []), { message: logMsg, type: newStatus === 'finished' ? 'game' : 'move', timestamp: Date.now() }],
+    log: [
+      ...(state.log || []),
+      { message: logMsg, type: newStatus === 'finished' ? 'game' : 'move', timestamp: Date.now() },
+    ],
   };
 
   return { state: newState, events };

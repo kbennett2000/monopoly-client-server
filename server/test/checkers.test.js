@@ -278,7 +278,11 @@ describe('Checkers — captures', () => {
     const state = makeState();
     place(state.board, 5, 0, 'red');
     place(state.board, 4, 1, 'black');
-    const { state: s, error, events } = gl.applyAction(state, 'p1', 'move', {
+    const {
+      state: s,
+      error,
+      events,
+    } = gl.applyAction(state, 'p1', 'move', {
       from: { row: 5, col: 0 },
       to: { row: 3, col: 2 },
     });
