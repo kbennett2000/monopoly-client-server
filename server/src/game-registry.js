@@ -18,6 +18,7 @@ const registry = {
   yahtzee: require('../games/yahtzee/game-logic'),
   battleship: require('../games/battleship/game-logic'),
   life: require('../games/life/game-logic'),
+  checkers: require('../games/checkers/game-logic'),
 };
 
 /**

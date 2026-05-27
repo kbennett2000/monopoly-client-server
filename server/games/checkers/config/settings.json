@@ -1,0 +1,9 @@
+{
+  "boardSize": 8,
+  "piecesPerPlayer": 12,
+  "playerColors": [
+    { "id": "red",   "hex": "#e74c3c" },
+    { "id": "black", "hex": "#2c3e50" }
+  ],
+  "playerTokens": ["🔴", "⚫"]
+}
