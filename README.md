@@ -5,7 +5,7 @@ Drop in any turn-based game by implementing a single interface; the framework ha
 
 Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/JavaScript** (client).
 
-**Bundled games:** Tic-Tac-Toe (2 players) · Connect Four (2 players) · Battleship (2 players) · Yahtzee (1–8 players) · The Game of Life (2–6 players) · Monopoly (2–8 players) · Risk (2–6 players)
+**Bundled games:** Tic-Tac-Toe (2 players) · Connect Four (2 players) · Checkers (2 players) · Battleship (2 players) · Yahtzee (1–8 players) · The Game of Life (2–6 players) · Monopoly (2–8 players) · Risk (2–6 players)
 
 ---
 
@@ -22,6 +22,7 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Tic-Tac-Toe](#tic-tac-toe)
    - [Yahtzee](#yahtzee)
    - [Battleship](#battleship)
+   - [Checkers](#checkers)
    - [The Game of Life](#the-game-of-life)
 6. [Adding a New Game](#adding-a-new-game)
 7. [Architecture](#architecture)
@@ -36,6 +37,7 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
    - [Tic-Tac-Toe Settings](#tic-tac-toe-settings)
    - [Yahtzee Settings](#yahtzee-settings)
    - [Battleship Settings](#battleship-settings)
+   - [Checkers Settings](#checkers-settings)
    - [Life Settings](#life-settings)
    - [Life Cards](#life-cards)
    - [Life Board](#life-board)
@@ -100,6 +102,14 @@ Built with **Node.js · Express · Socket.io** (server) and **vanilla HTML/CSS/J
 - **First game with a simultaneous private setup phase** — both players place ships in parallel; the phase transitions to firing on a barrier (both Ready) rather than via a turn. Modelled as `status='playing'` + `turnState.phase='setup'` with `currentPlayerIndex=null`
 - **First game with fully hidden state per player** — opponents' ship positions are stripped by `getStateForPlayer` on every emit, not masked
 
+### Checkers
+- Classic American Checkers on an 8×8 board; 12 pieces per side, 2 players
+- Diagonal movement with mandatory captures and multi-jump chain captures
+- King coronation on reaching the back row (kings move forward and backward, one square at a time — not "flying" kings)
+- Stalemate-as-loss: player with no legal move loses
+- Click-driven move selection consuming server-supplied action descriptors — the renderer highlights only legal pieces and destinations
+- Animated piece movement, capture fading, chain-capture sequencing, and king coronation visual
+
 ### The Game of Life
 - 64-square branching board with a start fork (Career vs College), main track, and two-path retirement choice (Countryside Acres vs Millionaire Estates)
 - 1–10 spinner (no dice) — CSS-animated wheel that decelerates and settles on the result
@@ -124,9 +134,9 @@ In addition to this README, the project keeps three design docs under `docs/`:
 - **[Action descriptors](docs/action-descriptors.md)** — optional interface
   for game-logic to supply dynamic action labels, enabled-state, and per-action
   data to renderers without forcing each renderer to mirror server-side rule
-  logic. Implemented across four of the seven games (Battleship, Risk, Yahtzee,
-  and The Game of Life). Connect Four and Tic-Tac-Toe deliberately don't —
-  their action surfaces are trivial enough that `getValidActions` covers them.
+  logic. Implemented across five of the eight games (Battleship, Checkers, Risk,
+  Yahtzee, and The Game of Life). Connect Four and Tic-Tac-Toe deliberately
+  don't — their action surfaces are trivial enough that `getValidActions` covers them.
 - **[Renderer contract notes](docs/renderer-contract.md)** — running design memo
   tracking open and resolved questions about the client-side renderer interface
   as it has evolved across game implementations.
@@ -220,7 +230,7 @@ A user who is already a player in a game cannot also spectate it — the Spectat
 lan-games/
 ├── README.md
 ├── docs/                         ← design notes & active proposals
-│   ├── action-descriptors.md     ← optional rich-action interface (4 of 7 games adopted)
+│   ├── action-descriptors.md     ← optional rich-action interface (5 of 8 games adopted)
 │   ├── renderer-contract.md      ← renderer / framework DOM contract; open questions
 │   └── state-emission-audit.md   ← security audit of every state-bearing emit path
 │
@@ -260,6 +270,10 @@ lan-games/
 │   │   │   ├── game-logic.js     ← Battleship rules + hidden-info filter (pure functions)
 │   │   │   └── config/
 │   │   │       └── settings.json ← grid size, ship list, first-player selection
+│   │   ├── checkers/
+│   │   │   ├── game-logic.js     ← Checkers rules (pure functions)
+│   │   │   └── config/
+│   │   │       └── settings.json ← board size, pieces per player, colours
 │   │   └── life/
 │   │       ├── game-logic.js     ← Life rules + scoring + hidden-info filter
 │   │       ├── config-loader.js  ← loads & validates the six Life config files
@@ -312,6 +326,7 @@ lan-games/
             │   ├── setup-phase.js     ← drag-and-drop ship placement
             │   ├── firing-phase.js    ← two-grid shooting + sunk-ship cache
             │   └── renderer.js        ← lifecycle + phase routing
+            ├── checkers/renderer.js
             └── life/
                 ├── renderer.js        ← lifecycle + phase routing + sidebar title
                 ├── board-view.js      ← 64-square board + player cars + movement queue
@@ -437,6 +452,18 @@ Your fleet is on the left, the opponent's waters are on the right. On your turn,
 
 Sink all five of the opponent's ships to win. At game over both fleets are revealed.
 
+---
+
+### Checkers
+
+Two players — Red and Black — on an 8×8 board with 12 pieces each. Red moves first. Pieces occupy only the dark squares and move diagonally forward, one square at a time.
+
+Click an eligible piece (highlighted with a glow) to select it. Valid destinations appear as markers on the board. Click a destination to move. If your piece lands adjacent to an opponent's piece with an empty square beyond, it captures by jumping over — and if another jump is available from the new position, you must keep jumping (chain capture). Captures are mandatory: if any capture exists, you must take one.
+
+When a regular piece reaches the opponent's back row, it is crowned a king (👑). Kings can move and capture diagonally in all four directions, but still one square at a time — this is American Checkers, not International Draughts. Coronation ends a chain capture even if more jumps would be available as a king.
+
+**Win** by capturing all of your opponent's pieces, or by leaving them with no legal moves. Stalemate is a loss for the player who cannot move, not a draw.
+
 ### The Game of Life
 
 Life plays in three phases: a start choice, the main track, and retirement. The board is a directed graph of 64 squares with branches and merges — your pawn (a small car with pegs for spouse and children) traverses it from the start square to one of two retirement terminals.
@@ -549,7 +576,7 @@ validateImplementation(module.exports);
 
 | Game type | What to do |
 |-----------|-----------|
-| **Perfect information** (Monopoly, Connect Four, Tic-Tac-Toe, Yahtzee) — every player sees the whole board | Use `defaultGetStateForPlayer` exported by the interface module |
+| **Perfect information** (Monopoly, Connect Four, Tic-Tac-Toe, Checkers, Yahtzee) — every player sees the whole board | Use `defaultGetStateForPlayer` exported by the interface module |
 | **Hidden information** (Battleship, Risk) — players have private board state or private cards | Write a real filter that masks other players' private fields |
 
 ```js
@@ -659,7 +686,7 @@ Add one `<script>` tag to `client/index.html`. No `app.js` or `socket-client.js`
 
 ### 5. (Recommended) Implement `getActionDescriptors`
 
-If your game has dynamic action labels, score previews, or enabled-state logic that depends on game rules (the renderer would otherwise have to mirror server-side rule logic), implement the `getActionDescriptors(state, userId)` method. Four of the seven bundled games (Battleship, Risk, Yahtzee, Life) adopt it; only the two trivially-small action surfaces (Connect Four, Tic-Tac-Toe) skip it. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract. The framework attaches the descriptor list to `state.actionDescriptors` on every socket emit when the method is present. Games that don't implement it stay on the simpler `getValidActions` contract.
+If your game has dynamic action labels, score previews, or enabled-state logic that depends on game rules (the renderer would otherwise have to mirror server-side rule logic), implement the `getActionDescriptors(state, userId)` method. Five of the eight bundled games (Battleship, Checkers, Risk, Yahtzee, Life) adopt it; only the two trivially-small action surfaces (Connect Four, Tic-Tac-Toe) skip it. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract. The framework attaches the descriptor list to `state.actionDescriptors` on every socket emit when the method is present. Games that don't implement it stay on the simpler `getValidActions` contract.
 
 ---
 
@@ -1036,6 +1063,21 @@ Trading a card whose `territoryId` you currently own grants +2 extra armies on t
 
 ---
 
+### Checkers Settings
+
+`server/games/checkers/config/settings.json`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `boardSize` | 8 | Square board edge length (standard checkers is always 8) |
+| `piecesPerPlayer` | 12 | Starting pieces per side |
+| `playerColors` | red, black | Array of `{ id, hex }` colour objects |
+| `playerTokens` | 🔴, ⚫ | Emoji tokens shown in the player panel |
+
+Checkers is strictly 2-player; there is no `minPlayers`/`maxPlayers` in the config — the game metadata hardcodes both to 2.
+
+---
+
 ### Life Settings
 
 `server/games/life/config/settings.json`
@@ -1248,6 +1290,13 @@ Authorization: Bearer <jwt-token>
 | `endTurn` | — | fortify | End turn and draw a card if you conquered at least one territory |
 | `declareBankruptcy` | — | any | Eliminate yourself; all your territories become neutral and your cards are discarded |
 
+**Checkers**
+
+| `action` | Extra payload | Effect |
+|----------|--------------|--------|
+| `move` | `{ from: { row, col }, to: { row, col } }` | Move a piece; may capture, chain, or crown |
+| `skipTurn` | — | Framework disconnect timer (not player-initiated) |
+
 **The Game of Life**
 
 The active action depends on the player's `pending` field — a discriminated union of pending choices. When `pending` is `null` and it's your turn, you can `spin` plus any of the out-of-band purchase actions.
@@ -1324,6 +1373,11 @@ Each event has `{ type, data, timestamp }`. Clients use these for sounds, animat
 | `SETUP_COMPLETE` *(Battleship)* | `firstPlayer` — the username who fires first after both players Ready |
 | `SHOT_FIRED` *(Battleship)* | `shooter`, `target`, `cell: {x,y}`, `result: 'hit'|'miss'|'sunk'` |
 | `SHIP_SUNK` *(Battleship)* | `owner`, `shipId`, `shipName`, `length`, `cells[]` *(cell footprint revealed on sink — by rule, sunk ships are no longer hidden)* |
+| `PIECE_MOVED` *(Checkers)* | `username`, `from: {row, col}`, `to: {row, col}` |
+| `PIECE_CAPTURED` *(Checkers)* | `username`, `capturedAt: {row, col}`, `by: {row, col}` |
+| `PIECE_CROWNED` *(Checkers)* | `username`, `position: {row, col}` |
+| `CHAIN_CONTINUE` *(Checkers)* | `piece: {row, col}` *(the piece must continue capturing)* |
+| `CHAIN_ABANDONED` *(Checkers)* | `username`, `piece: {row, col}` *(chain ended by disconnect skip)* |
 | `SPINNER_RESULT` *(Life)* | `username`, `value` (1–10) |
 | `PLAYER_MOVED` *(Life variant)* | `username`, `from`, `to`, `reason?` (`'branch'` or `'post-marriage'` / `'post-baby'` / etc. for stub-bumps) |
 | `FORK_CHOICE_PENDING` *(Life)* | `username`, `squareId`, `kind?` (`'retirement-fork'` when applicable), `options[]: { id, label }` |
@@ -1444,7 +1498,7 @@ npm test                    # unit tests for every bundled game's game-logic
 npm run test:integration    # socket + persistence round-trip tests
 ```
 
-Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **565 unit tests across the seven bundled games** plus the framework interface, and **40 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, spectator mode, and game-lifecycle round-trips.
+Tests live in `server/test/` (unit) and `server/test/integration/` (integration). At the time of this README pass: **593 unit tests across the eight bundled games** plus the framework interface, and **40 integration tests** covering socket emission, REST state filtering, action-descriptor wiring, spectator mode, and game-lifecycle round-trips.
 
 The unit suite imports game-logic modules directly and never touches the network, database, or socket layer — making it fast and reliable. The integration suite spins up a real server, a real SQLite database, and real socket clients to verify full round-trips end-to-end.
 
@@ -1472,10 +1526,10 @@ Only games created *after* the reload will use the new config. In-progress games
 
 ## Roadmap
 
-- **More games** — Chess, Checkers, Scrabble, Catan, Coup, Liar's Dice, …
-- **Action descriptor contract** — implemented across four of the seven games (Battleship, Risk, Yahtzee, and The Game of Life); the renderer-side rule mirrors are gone in all four. Connect Four and Tic-Tac-Toe deliberately skip the contract — their action surfaces (`dropPiece`, `markCell`) are trivial enough that `getValidActions` covers them. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract and the patterns the four migrations established.
+- **More games** — Chess, Scrabble, Catan, Coup, Liar's Dice, …
+- **Action descriptor contract** — implemented across five of the eight games (Battleship, Checkers, Risk, Yahtzee, and The Game of Life); the renderer-side rule mirrors are gone in all five. Connect Four and Tic-Tac-Toe deliberately skip the contract — their action surfaces (`dropPiece`, `markCell`) are trivial enough that `getValidActions` covers them. See [`docs/action-descriptors.md`](docs/action-descriptors.md) for the contract and the patterns the five migrations established.
 - **Turn timer UI** — server emits absolute-deadline warnings via `game:turn_warning`; the client-side countdown bar is implemented in [`client/js/turn-warning.js`](client/js/turn-warning.js).
-- **Spectator mode** — join a game room as a read-only observer
+- ~~**Spectator mode**~~ — shipped; see the Spectator mode section above
 - **AI players** — pluggable bot interface implementing the same `applyAction` contract
 - **Custom board themes** — CSS variable overrides per game type
 - **Mobile optimisation** — touch-friendly controls for handheld players
