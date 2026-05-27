@@ -2,6 +2,19 @@
   "name": "lan-games-server",
   "version": "1.0.0",
   "description": "LAN Games — turn-based multiplayer game engine — Express + Socket.io + SQLite",
+  "author": "Kris Bennett",
+  "license": "MIT",
+  "keywords": [
+    "lan",
+    "games",
+    "multiplayer",
+    "self-hosted",
+    "websocket",
+    "board-games",
+    "turn-based",
+    "socket.io",
+    "express"
+  ],
   "main": "src/index.js",
   "repository": {
     "type": "git",

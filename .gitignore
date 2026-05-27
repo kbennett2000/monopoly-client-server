@@ -26,6 +26,12 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*.bak
+*.orig
+
+# Test coverage
+coverage/
+.nyc_output/
 
 # Build artifacts
 dist/

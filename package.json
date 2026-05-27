@@ -2,7 +2,18 @@
   "name": "lan-games",
   "version": "1.0.0",
   "private": true,
-  "description": "Root proxy — all real package config lives in server/package.json. Scripts here just cd into server/ so you can run from the repo root.",
+  "description": "Self-hosted multiplayer game platform for LAN parties — eight turn-based board games in the browser",
+  "author": "Kris Bennett",
+  "license": "MIT",
+  "keywords": [
+    "lan",
+    "games",
+    "multiplayer",
+    "self-hosted",
+    "websocket",
+    "board-games",
+    "turn-based"
+  ],
   "scripts": {
     "start":             "set -a && . ./.env && set +a && npm --prefix server start",
     "dev":               "set -a && . ./.env && set +a && npm --prefix server run dev",
