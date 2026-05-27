@@ -186,7 +186,7 @@ function loadConfig(force = false) {
 }
 
 function getConfigCopy() {
-  return JSON.parse(JSON.stringify(loadConfig()));
+  return structuredClone(loadConfig());
 }
 
 function reloadConfig() {

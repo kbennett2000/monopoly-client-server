@@ -154,7 +154,7 @@ function loadConfig(force = false) {
  * affecting the cached master config.
  */
 function getConfigCopy() {
-  return JSON.parse(JSON.stringify(loadConfig()));
+  return structuredClone(loadConfig());
 }
 
 /**

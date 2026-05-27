@@ -12,9 +12,25 @@ const API = (() => {
 
   // ── token storage ──────────────────────────────────────────────────────────
 
-  function getToken()       { return localStorage.getItem('monopoly_token'); }
-  function setToken(token)  { localStorage.setItem('monopoly_token', token); }
-  function clearToken()     { localStorage.removeItem('monopoly_token'); }
+  const TOKEN_KEY     = 'lan_games_token';
+  const OLD_TOKEN_KEY = 'monopoly_token';
+
+  function getToken() {
+    let token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      token = localStorage.getItem(OLD_TOKEN_KEY);
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+        localStorage.removeItem(OLD_TOKEN_KEY);
+      }
+    }
+    return token;
+  }
+  function setToken(token)  { localStorage.setItem(TOKEN_KEY, token); }
+  function clearToken() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(OLD_TOKEN_KEY);
+  }
 
   // ── base fetch helper ──────────────────────────────────────────────────────
 

@@ -59,13 +59,11 @@ const P2 = { id: 'plyr-002', username: 'Bob' };
 
 /**
  * Create a game, add two players, start it, and return the gameId.
- * All calls here are synchronous (createGame / addPlayerToLobby / startGame
- * do not go through the lock).
  */
-function createAndStartGame() {
+async function createAndStartGame() {
   const { gameId } = gameManager.createGame('Test Game', HOST.id, 'monopoly');
-  gameManager.addPlayerToLobby(gameId, HOST);
-  gameManager.addPlayerToLobby(gameId, P2);
+  await gameManager.addPlayerToLobby(gameId, HOST);
+  await gameManager.addPlayerToLobby(gameId, P2);
   const result = gameManager.startGame(gameId, HOST.id);
   if (result.error) throw new Error(`startGame failed: ${result.error}`);
   return gameId;
@@ -88,7 +86,7 @@ describe('per-game action queue', () => {
   // ── basic liveness ──────────────────────────────────────────────────────────
 
   test('N concurrent applyAction calls all resolve (no deadlock)', async () => {
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
     const N = 10;
     const results = await Promise.all(
       Array.from({ length: N }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
@@ -100,7 +98,7 @@ describe('per-game action queue', () => {
   // ── state consistency ───────────────────────────────────────────────────────
 
   test('exactly one rollDice succeeds when N calls fire concurrently', async () => {
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
     const N = 10;
 
     // Force non-doubles dice for the only roll that should succeed.  Doubles
@@ -131,7 +129,7 @@ describe('per-game action queue', () => {
   });
 
   test('final state reflects exactly one roll after N concurrent calls', async () => {
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
     await Promise.all(
       Array.from({ length: 10 }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
     );
@@ -146,7 +144,7 @@ describe('per-game action queue', () => {
   // ── high-concurrency stress ─────────────────────────────────────────────────
 
   test('no deadlock under high concurrency (50 calls)', async () => {
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
     const results = await Promise.allSettled(
       Array.from({ length: 50 }, () => gameManager.applyAction(gameId, HOST.id, 'rollDice', {})),
     );
@@ -157,8 +155,8 @@ describe('per-game action queue', () => {
   // ── game isolation ──────────────────────────────────────────────────────────
 
   test('queues for different games are independent', async () => {
-    const g1 = createAndStartGame();
-    const g2 = createAndStartGame();
+    const g1 = await createAndStartGame();
+    const g2 = await createAndStartGame();
 
     const [r1, r2] = await Promise.all([
       gameManager.applyAction(g1, HOST.id, 'rollDice', {}),
@@ -181,7 +179,7 @@ describe('per-game action queue', () => {
   // ── saveGame shares the same queue ─────────────────────────────────────────
 
   test('concurrent applyAction and saveGame both resolve without throwing', async () => {
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
 
     // Fire both at the same instant — order of execution is determined by the
     // queue.  Either the roll succeeds then the game is saved, or the save
@@ -201,7 +199,7 @@ describe('per-game action queue', () => {
   });
 
   test('saveGame followed by applyAction correctly rejects the action', async () => {
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
 
     // Save first (sequential, not concurrent) so the game is definitively paused
     await gameManager.saveGame(gameId, HOST.id);
@@ -217,7 +215,7 @@ describe('per-game action queue', () => {
   // ── setPlayerConnected shares the same queue ────────────────────────────────
 
   test('setPlayerConnected and applyAction on the same game both resolve', async () => {
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
 
     const [, actionResult] = await Promise.all([
       gameManager.setPlayerConnected(gameId, HOST.id, false),
@@ -235,7 +233,7 @@ describe('per-game action queue', () => {
   test('subsequent calls resolve normally after queue has fully drained', async () => {
     // Verify that the lock entry is cleaned up correctly after a batch completes.
     // A stale, unreleased lock would cause any subsequent call to hang forever.
-    const gameId = createAndStartGame();
+    const gameId = await createAndStartGame();
 
     // Drain the queue with a batch of calls
     await Promise.allSettled(

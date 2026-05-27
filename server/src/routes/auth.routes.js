@@ -20,7 +20,7 @@ const router = express.Router();
 // ── POST /api/auth/register ──────────────────────────────────────────────────
 
 router.post('/register', async (req, res) => {
-  const { username, password } = req.body;
+  let { username, password } = req.body;
 
   if (!username || typeof username !== 'string') {
     return res.status(400).json({ error: 'username is required' });
@@ -28,6 +28,9 @@ router.post('/register', async (req, res) => {
   if (!password || typeof password !== 'string') {
     return res.status(400).json({ error: 'password is required' });
   }
+
+  username = username.trim();
+
   if (username.length < 2 || username.length > 24) {
     return res.status(400).json({ error: 'username must be 2–24 characters' });
   }
@@ -36,8 +39,8 @@ router.post('/register', async (req, res) => {
       error: 'username may only contain letters, numbers, spaces, hyphens, and underscores',
     });
   }
-  if (password.length < 4) {
-    return res.status(400).json({ error: 'password must be at least 4 characters' });
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'password must be at least 8 characters' });
   }
 
   if (database.getUserByUsername(username)) {
@@ -47,7 +50,14 @@ router.post('/register', async (req, res) => {
   try {
     const id = uuidv4();
     const passwordHash = await auth.hashPassword(password);
-    database.createUser(id, username, passwordHash);
+    try {
+      database.createUser(id, username, passwordHash);
+    } catch (dbErr) {
+      if (dbErr.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+      throw dbErr;
+    }
 
     const token = auth.generateToken({ id, username });
     res.status(201).json({ token, user: { id, username } });

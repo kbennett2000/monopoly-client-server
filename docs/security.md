@@ -27,7 +27,9 @@
   NODE_ENV=development npm start
   ```
 
-- **Passwords** — hashed with bcrypt at 12 salt rounds; plaintext is never stored or logged.
+- **Passwords** — hashed with bcrypt at 12 salt rounds; plaintext is never stored or logged. Minimum length is 8 characters.
+
+- **Randomness** — dice rolls, shuffles, and spinners use `Math.random()`, which is not cryptographically secure. This is fine for casual LAN play; competitive or high-stakes contexts would need `crypto.randomInt()`.
 
 - **Server-side validation** — every action is validated on the server before being applied. Clients cannot manipulate state directly or forge another player's moves.
 

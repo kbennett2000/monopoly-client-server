@@ -41,7 +41,7 @@ function loadConfig() {
 
 function getConfigCopy() {
   if (!_config) loadConfig();
-  return JSON.parse(JSON.stringify(_config));
+  return structuredClone(_config);
 }
 
 // ── metadata ──────────────────────────────────────────────────────────────────

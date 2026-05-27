@@ -27,12 +27,16 @@ LAN parties want games everyone in the room can play together. Most multiplayer 
 
 2. **Start the server:**
    ```bash
-   JWT_SECRET=change-me-to-something-secret npm start
+   # Generate a random secret (once) and start:
+   export JWT_SECRET=$(node -e "process.stdout.write(require('crypto').randomBytes(48).toString('hex'))")
+   npm start
    ```
 
 3. **Play.** Open `http://localhost:3000` in your browser. Create a game, share the URL with friends on your network, and play.
 
 No database setup, no external services, no configuration files. Docker is also supported — see the detailed [Quick Start](#quick-start) below.
+
+> **Windows note:** The root `package.json` scripts use bash syntax (`. ./.env`). Run from Git Bash, WSL, or use the `cd server && npm start` path directly with `JWT_SECRET` set as an environment variable. A `.env.example` is included for reference.
 
 ---
 
@@ -141,6 +145,11 @@ Every game supports save/resume, in-game chat, and spectator mode. Games with hi
 ### Prerequisites
 
 - **Node.js 18+** (LTS recommended) — *or* **Docker** (see below)
+- **C++ build toolchain** — `better-sqlite3` and `bcrypt` are native modules compiled during `npm install`. If the build fails, install the toolchain for your OS:
+  - **Windows:** `npm install -g windows-build-tools` *or* install the "Desktop development with C++" workload from [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+  - **macOS:** `xcode-select --install`
+  - **Linux (Debian/Ubuntu):** `sudo apt install build-essential python3`
+  - **Docker sidesteps this entirely** — the `node:20` (Debian) build stage ships the toolchain
 - No external database — SQLite is embedded via `better-sqlite3`
 
 ### Install & run

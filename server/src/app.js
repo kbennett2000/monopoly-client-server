@@ -16,6 +16,8 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { Server: SocketIO } = require('socket.io');
 
 const authRoutes = require('./routes/auth.routes');
@@ -31,10 +33,24 @@ const gameRegistry = require('./game-registry');
 function createServer() {
   const app = express();
 
+  app.use(helmet({ contentSecurityPolicy: false }));
+
   // No endpoint legitimately receives more than a few kilobytes; cap the parse
   // budget to reject oversized bodies before they hit a route.
   app.use(express.json({ limit: '100kb' }));
   app.use(cors({ origin: '*', credentials: true }));
+
+  if (process.env.NODE_ENV !== 'test') {
+    const authLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: 'Too many attempts, please try again later' },
+    });
+    app.use('/api/auth/login', authLimiter);
+    app.use('/api/auth/register', authLimiter);
+  }
 
   app.use('/api/auth', authRoutes);
   // Help routes are mounted before gameRoutes so /types/:type/help matches

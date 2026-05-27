@@ -232,7 +232,8 @@ let _io = null;
  * screen refreshes its game list automatically.
  */
 function broadcastLobbyUpdate() {
-  if (_io) _io.emit('lobby:update');
+  if (!_io) throw new Error('broadcastLobbyUpdate called before registerHandlers');
+  _io.emit('lobby:update');
 }
 
 /**
@@ -284,7 +285,7 @@ function registerHandlers(io) {
       // joining via REST + socket (the normal flow) always results in a
       // consistent player list broadcast to everyone already in the room.
       if (state.status === 'waiting') {
-        gameManager.addPlayerToLobby(gameId, {
+        await gameManager.addPlayerToLobby(gameId, {
           id: currentUser.sub,
           username: currentUser.username,
         });
@@ -503,8 +504,8 @@ function registerHandlers(io) {
 
     // ── join lobby ───────────────────────────────────────────────────────────
 
-    socket.on('lobby:join', (gameId, ack) => {
-      const result = gameManager.addPlayerToLobby(gameId, {
+    socket.on('lobby:join', async (gameId, ack) => {
+      const result = await gameManager.addPlayerToLobby(gameId, {
         id: currentUser.sub,
         username: currentUser.username,
       });

@@ -142,19 +142,6 @@ router.post('/types/:type/config/reload', (req, res) => {
   }
 });
 
-// ── GET /api/games/config/default ────────────────────────────────────────────
-// Backwards-compatible alias → monopoly default config.
-
-router.get('/config/default', (req, res) => {
-  try {
-    const logic = gameRegistry.getGameLogic('monopoly');
-    res.json({ config: logic.getConfigCopy() });
-  } catch (err) {
-    console.error('[config] read error:', err);
-    res.status(500).json({ error: 'Could not load config' });
-  }
-});
-
 // ── POST /api/games ──────────────────────────────────────────────────────────
 
 router.post('/', (req, res) => {
@@ -206,7 +193,8 @@ router.get('/:id/spectators', (req, res) => {
 // NOTE: all static routes above must be defined before this pattern.
 
 router.get('/:id', (req, res) => {
-  // Snapshot — returned over the wire; the client may mutate it freely.
+  // Open to any authenticated user — acts as read-only spectating.
+  // Hidden info is stripped by filterStateForUser.
   const state = gameManager.getGameSnapshot(req.params.id);
   if (!state) return res.status(404).json({ error: 'Game not found' });
   res.json({ state: filterStateForUser(state, req.user.sub, gameRegistry) });
@@ -214,8 +202,8 @@ router.get('/:id', (req, res) => {
 
 // ── POST /api/games/:id/join ─────────────────────────────────────────────────
 
-router.post('/:id/join', (req, res) => {
-  const result = gameManager.addPlayerToLobby(req.params.id, {
+router.post('/:id/join', async (req, res) => {
+  const result = await gameManager.addPlayerToLobby(req.params.id, {
     id: req.user.sub,
     username: req.user.username,
   });
@@ -241,8 +229,8 @@ router.post('/:id/save', async (req, res) => {
 
 // ── DELETE /api/games/:id ────────────────────────────────────────────────────
 
-router.delete('/:id', (req, res) => {
-  const result = gameManager.deleteGame(req.params.id, req.user.sub);
+router.delete('/:id', async (req, res) => {
+  const result = await gameManager.deleteGame(req.params.id, req.user.sub);
   if (result.error) return res.status(400).json({ error: result.error });
   socketHandler.broadcastLobbyUpdate();
   res.json({ success: true });

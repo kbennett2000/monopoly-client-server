@@ -205,38 +205,42 @@ function listOpenGames() {
  * @param {string} gameId
  * @param {Object} user   - { id, username } from the auth system
  */
-function addPlayerToLobby(gameId, user) {
-  const state = peekGame(gameId);
-  if (!state) return { error: 'Game not found' };
-  if (state.status !== 'waiting') return { error: 'Game already in progress' };
+async function addPlayerToLobby(gameId, user) {
+  return withGameLock(gameId, () => {
+    const state = peekGame(gameId);
+    if (!state) return { error: 'Game not found' };
+    if (state.status !== 'waiting') return { error: 'Game already in progress' };
 
-  const logic = getLogic(state);
-  const { maxPlayers } = logic.getGameMetadata();
-  if (state.players.length >= maxPlayers) return { error: 'Game is full' };
+    const logic = getLogic(state);
+    const { maxPlayers } = logic.getGameMetadata();
+    if (state.players.length >= maxPlayers) return { error: 'Game is full' };
 
-  if (state.players.find((p) => p.userId === user.id)) {
-    return { state }; // idempotent
-  }
+    if (state.players.find((p) => p.userId === user.id)) {
+      return { state }; // idempotent
+    }
 
-  const player = logic.createInitialPlayer(user, state.players, state.config);
-  state.players.push(player);
+    const player = logic.createInitialPlayer(user, state.players, state.config);
+    state.players.push(player);
 
-  database.addPlayerToGame(gameId, user.id);
-  persist(state);
+    database.addPlayerToGame(gameId, user.id);
+    persist(state);
 
-  return { state };
+    return { state };
+  });
 }
 
 /**
  * Remove a player from a waiting-room lobby.
  */
-function removePlayerFromLobby(gameId, userId) {
-  const state = peekGame(gameId);
-  if (!state || state.status !== 'waiting') return;
+async function removePlayerFromLobby(gameId, userId) {
+  return withGameLock(gameId, () => {
+    const state = peekGame(gameId);
+    if (!state || state.status !== 'waiting') return;
 
-  state.players = state.players.filter((p) => p.userId !== userId);
-  database.removePlayerFromGame(gameId, userId);
-  persist(state);
+    state.players = state.players.filter((p) => p.userId !== userId);
+    database.removePlayerFromGame(gameId, userId);
+    persist(state);
+  });
 }
 
 /**
@@ -314,14 +318,16 @@ async function applyAction(gameId, userId, action, payload = {}) {
  * with "Game not found"; the lobby will refresh and the game will disappear
  * from their list.
  */
-function deleteGame(gameId, userId) {
-  const dbGame = database.getGameById(gameId);
-  if (!dbGame) return { error: 'Game not found' };
-  if (dbGame.created_by !== userId) return { error: 'Only the host can delete a game' };
+async function deleteGame(gameId, userId) {
+  return withGameLock(gameId, () => {
+    const dbGame = database.getGameById(gameId);
+    if (!dbGame) return { error: 'Game not found' };
+    if (dbGame.created_by !== userId) return { error: 'Only the host can delete a game' };
 
-  activeGames.delete(gameId);
-  database.deleteGame(gameId);
-  return { success: true };
+    activeGames.delete(gameId);
+    database.deleteGame(gameId);
+    return { success: true };
+  });
 }
 
 /**

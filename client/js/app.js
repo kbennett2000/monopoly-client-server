@@ -4,11 +4,7 @@
  * Application entry point.  Wires together all the modules and DOM event
  * listeners.  Runs after the page loads.
  *
- * Module load order (see index.html):
- *   renderer-interface.js → renderer-registry.js →
- *   api.js → game-state.js → board-renderer.js → ui-manager.js →
- *   games/connect-four/renderer.js → games/monopoly/renderer.js →
- *   socket-client.js → app.js
+ * Load order: see the script tags in index.html (this file must be last).
  */
 
 (async function init() {
