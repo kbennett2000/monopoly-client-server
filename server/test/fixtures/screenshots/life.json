@@ -1,0 +1,1827 @@
+{
+  "id": "screenshot-life",
+  "name": "The Game of Life",
+  "gameType": "life",
+  "stateVersion": 5,
+  "status": "playing",
+  "config": {
+    "board": [
+      {
+        "id": "sq-000-start",
+        "type": "career-fork",
+        "label": "Start: Career or College?",
+        "next": [
+          "sq-c01-career-pick",
+          "sq-u01-college-loan"
+        ],
+        "data": {
+          "branches": [
+            {
+              "id": "sq-c01-career-pick",
+              "label": "Career Path",
+              "path": "career"
+            },
+            {
+              "id": "sq-u01-college-loan",
+              "label": "College Path",
+              "path": "college"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sq-c01-career-pick",
+        "type": "draw-career-no-degree",
+        "label": "Pick a career (no degree)",
+        "next": [
+          "sq-c02-pay-furniture"
+        ]
+      },
+      {
+        "id": "sq-c02-pay-furniture",
+        "type": "pay-bank",
+        "label": "Buy furniture",
+        "next": [
+          "sq-c03-first-paycheck"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      {
+        "id": "sq-c03-first-paycheck",
+        "type": "collect-bank",
+        "label": "First paycheck!",
+        "next": [
+          "sq-c04-buy-car"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      {
+        "id": "sq-c04-buy-car",
+        "type": "pay-bank",
+        "label": "Buy a car",
+        "next": [
+          "sq-c05-payday"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      {
+        "id": "sq-c05-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-c06-win-contest"
+        ]
+      },
+      {
+        "id": "sq-c06-win-contest",
+        "type": "collect-bank",
+        "label": "Win a contest",
+        "next": [
+          "sq-c07-traffic-ticket"
+        ],
+        "data": {
+          "amount": 3000
+        }
+      },
+      {
+        "id": "sq-c07-traffic-ticket",
+        "type": "pay-bank",
+        "label": "Traffic ticket",
+        "next": [
+          "sq-c08-spin-again"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      {
+        "id": "sq-c08-spin-again",
+        "type": "spin-again",
+        "label": "Lucky day — spin again",
+        "next": [
+          "sq-c09-payday"
+        ]
+      },
+      {
+        "id": "sq-c09-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-c10-junction"
+        ]
+      },
+      {
+        "id": "sq-c10-junction",
+        "type": "collect-bank",
+        "label": "Settle in",
+        "next": [
+          "sq-m01-marry"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      {
+        "id": "sq-u01-college-loan",
+        "type": "pay-loans",
+        "label": "Pay $40,000 in college loans",
+        "next": [
+          "sq-u02-study-hard"
+        ]
+      },
+      {
+        "id": "sq-u02-study-hard",
+        "type": "pay-bank",
+        "label": "Buy textbooks",
+        "next": [
+          "sq-u03-spring-break"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      {
+        "id": "sq-u03-spring-break",
+        "type": "pay-bank",
+        "label": "Spring break trip",
+        "next": [
+          "sq-u04-cram"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      {
+        "id": "sq-u04-cram",
+        "type": "pay-bank",
+        "label": "All-night cramming (energy drinks)",
+        "next": [
+          "sq-u05-tutor-job"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      {
+        "id": "sq-u05-tutor-job",
+        "type": "collect-bank",
+        "label": "Tutor job",
+        "next": [
+          "sq-u06-grad-school"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      {
+        "id": "sq-u06-grad-school",
+        "type": "pay-bank",
+        "label": "Grad school application fees",
+        "next": [
+          "sq-u07-internship"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      {
+        "id": "sq-u07-internship",
+        "type": "collect-bank",
+        "label": "Summer internship",
+        "next": [
+          "sq-u08-graduate"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      {
+        "id": "sq-u08-graduate",
+        "type": "collect-bank",
+        "label": "Graduation gift",
+        "next": [
+          "sq-u09-career-pick"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      {
+        "id": "sq-u09-career-pick",
+        "type": "draw-career-degree",
+        "label": "Pick a career (degree required)",
+        "next": [
+          "sq-u10-payday"
+        ]
+      },
+      {
+        "id": "sq-u10-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-u11-honeymoon-fund"
+        ]
+      },
+      {
+        "id": "sq-u11-honeymoon-fund",
+        "type": "collect-bank",
+        "label": "Honeymoon fund kickoff",
+        "next": [
+          "sq-u12-junction"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      {
+        "id": "sq-u12-junction",
+        "type": "collect-bank",
+        "label": "Move into apartment",
+        "next": [
+          "sq-m01-marry"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      {
+        "id": "sq-m01-marry",
+        "type": "marry",
+        "label": "Get Married",
+        "next": [
+          "sq-m02-wedding-gifts"
+        ]
+      },
+      {
+        "id": "sq-m02-wedding-gifts",
+        "type": "collect-bank",
+        "label": "Wedding gifts",
+        "next": [
+          "sq-m03-buy-home"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      {
+        "id": "sq-m03-buy-home",
+        "type": "buy-house",
+        "label": "Buy a home",
+        "next": [
+          "sq-m04-payday"
+        ]
+      },
+      {
+        "id": "sq-m04-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m05-vacation"
+        ]
+      },
+      {
+        "id": "sq-m05-vacation",
+        "type": "pay-bank",
+        "label": "Family vacation",
+        "next": [
+          "sq-m06-night-class"
+        ],
+        "data": {
+          "amount": 3000
+        }
+      },
+      {
+        "id": "sq-m06-night-class",
+        "type": "pay-bank",
+        "label": "Night classes",
+        "next": [
+          "sq-m07-promotion"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      {
+        "id": "sq-m07-promotion",
+        "type": "collect-bank",
+        "label": "Promotion!",
+        "next": [
+          "sq-m08-have-baby"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      {
+        "id": "sq-m08-have-baby",
+        "type": "have-baby",
+        "label": "Have a Baby",
+        "next": [
+          "sq-m09-baby-gifts"
+        ]
+      },
+      {
+        "id": "sq-m09-baby-gifts",
+        "type": "collect-bank",
+        "label": "Baby shower gifts",
+        "next": [
+          "sq-m10-pay-tax"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      {
+        "id": "sq-m10-pay-tax",
+        "type": "pay-tax-by-salary",
+        "label": "Pay income tax",
+        "next": [
+          "sq-m11-payday"
+        ]
+      },
+      {
+        "id": "sq-m11-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m12-spin-again"
+        ]
+      },
+      {
+        "id": "sq-m12-spin-again",
+        "type": "spin-again",
+        "label": "Found loose change — spin again",
+        "next": [
+          "sq-m13-have-twins"
+        ]
+      },
+      {
+        "id": "sq-m13-have-twins",
+        "type": "have-twins",
+        "label": "Have Twins!",
+        "next": [
+          "sq-m14-twin-daycare"
+        ]
+      },
+      {
+        "id": "sq-m14-twin-daycare",
+        "type": "pay-bank",
+        "label": "Twin daycare",
+        "next": [
+          "sq-m15-stock-bonus"
+        ],
+        "data": {
+          "amount": 4000
+        }
+      },
+      {
+        "id": "sq-m15-stock-bonus",
+        "type": "collect-bank",
+        "label": "Stock dividend",
+        "next": [
+          "sq-m16-payday"
+        ],
+        "data": {
+          "amount": 4000
+        }
+      },
+      {
+        "id": "sq-m16-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m17-auto-accident"
+        ]
+      },
+      {
+        "id": "sq-m17-auto-accident",
+        "type": "auto-accident",
+        "label": "Auto accident — auto insurance covers it",
+        "next": [
+          "sq-m18-collect-each"
+        ]
+      },
+      {
+        "id": "sq-m18-collect-each",
+        "type": "collect-each-player",
+        "label": "Block party — collect $1,000 from each player",
+        "next": [
+          "sq-m19-payday"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      {
+        "id": "sq-m19-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m20-pay-each"
+        ]
+      },
+      {
+        "id": "sq-m20-pay-each",
+        "type": "pay-each-player",
+        "label": "Garage sale loss — pay $1,000 to each player",
+        "next": [
+          "sq-m21-illness"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      {
+        "id": "sq-m21-illness",
+        "type": "life-accident",
+        "label": "Hospitalized — life insurance covers it",
+        "next": [
+          "sq-m22-home-improvement"
+        ]
+      },
+      {
+        "id": "sq-m22-home-improvement",
+        "type": "pay-bank",
+        "label": "Home renovation",
+        "next": [
+          "sq-m23-payday"
+        ],
+        "data": {
+          "amount": 8000
+        }
+      },
+      {
+        "id": "sq-m23-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m24-have-baby"
+        ]
+      },
+      {
+        "id": "sq-m24-have-baby",
+        "type": "have-baby",
+        "label": "Have a Baby",
+        "next": [
+          "sq-m25-baby-gifts"
+        ]
+      },
+      {
+        "id": "sq-m25-baby-gifts",
+        "type": "collect-bank",
+        "label": "Baby gifts",
+        "next": [
+          "sq-m26-win-lottery"
+        ],
+        "data": {
+          "amount": 1500
+        }
+      },
+      {
+        "id": "sq-m26-win-lottery",
+        "type": "collect-bank",
+        "label": "Win the lottery!",
+        "next": [
+          "sq-m27-payday"
+        ],
+        "data": {
+          "amount": 25000
+        }
+      },
+      {
+        "id": "sq-m27-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m28-car-trouble"
+        ]
+      },
+      {
+        "id": "sq-m28-car-trouble",
+        "type": "pay-bank",
+        "label": "Car trouble",
+        "next": [
+          "sq-m29-spin-again"
+        ],
+        "data": {
+          "amount": 1500
+        }
+      },
+      {
+        "id": "sq-m29-spin-again",
+        "type": "spin-again",
+        "label": "Caught a break — spin again",
+        "next": [
+          "sq-m30-business-trip"
+        ]
+      },
+      {
+        "id": "sq-m30-business-trip",
+        "type": "collect-bank",
+        "label": "Business-trip reimbursement",
+        "next": [
+          "sq-m31-payday"
+        ],
+        "data": {
+          "amount": 3000
+        }
+      },
+      {
+        "id": "sq-m31-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m32-jury-duty"
+        ]
+      },
+      {
+        "id": "sq-m32-jury-duty",
+        "type": "collect-bank",
+        "label": "Jury duty stipend",
+        "next": [
+          "sq-m33-vacation"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      {
+        "id": "sq-m33-vacation",
+        "type": "pay-bank",
+        "label": "Second honeymoon",
+        "next": [
+          "sq-m34-payday"
+        ],
+        "data": {
+          "amount": 4000
+        }
+      },
+      {
+        "id": "sq-m34-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m35-retirement-fork"
+        ]
+      },
+      {
+        "id": "sq-m35-retirement-fork",
+        "type": "retirement-fork",
+        "label": "Choose your retirement",
+        "next": [
+          "sq-r-countryside-01",
+          "sq-r-millionaire-01"
+        ],
+        "data": {
+          "branches": [
+            {
+              "id": "sq-r-countryside-01",
+              "label": "Countryside Acres"
+            },
+            {
+              "id": "sq-r-millionaire-01",
+              "label": "Millionaire Estates"
+            }
+          ]
+        }
+      },
+      {
+        "id": "sq-r-countryside-01",
+        "type": "collect-bank",
+        "label": "Countryside Acres — peaceful days",
+        "next": [
+          "sq-r-countryside-02"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      {
+        "id": "sq-r-countryside-02",
+        "type": "collect-bank",
+        "label": "Countryside Acres — settled in",
+        "next": [
+          "sq-r-countryside-end"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      {
+        "id": "sq-r-countryside-end",
+        "type": "countryside-retirement",
+        "label": "Countryside Acres",
+        "next": []
+      },
+      {
+        "id": "sq-r-millionaire-01",
+        "type": "collect-bank",
+        "label": "Millionaire Estates — high life",
+        "next": [
+          "sq-r-millionaire-02"
+        ],
+        "data": {
+          "amount": 10000
+        }
+      },
+      {
+        "id": "sq-r-millionaire-02",
+        "type": "collect-bank",
+        "label": "Millionaire Estates — yacht parties",
+        "next": [
+          "sq-r-millionaire-end"
+        ],
+        "data": {
+          "amount": 10000
+        }
+      },
+      {
+        "id": "sq-r-millionaire-end",
+        "type": "millionaire-retirement",
+        "label": "Millionaire Estates",
+        "next": []
+      }
+    ],
+    "careers": [
+      {
+        "id": "career-doctor",
+        "name": "Doctor",
+        "degreeRequired": true,
+        "paydayBonus": 10000
+      },
+      {
+        "id": "career-lawyer",
+        "name": "Lawyer",
+        "degreeRequired": true,
+        "paydayBonus": 8000
+      },
+      {
+        "id": "career-accountant",
+        "name": "Accountant",
+        "degreeRequired": true,
+        "paydayBonus": 6000
+      },
+      {
+        "id": "career-computer-consultant",
+        "name": "Computer Consultant",
+        "degreeRequired": true,
+        "paydayBonus": 7000
+      },
+      {
+        "id": "career-engineer",
+        "name": "Engineer",
+        "degreeRequired": true,
+        "paydayBonus": 6000
+      },
+      {
+        "id": "career-teacher",
+        "name": "Teacher",
+        "degreeRequired": true,
+        "paydayBonus": 4000
+      },
+      {
+        "id": "career-salesperson",
+        "name": "Salesperson",
+        "degreeRequired": false,
+        "paydayBonus": 4000
+      },
+      {
+        "id": "career-police-officer",
+        "name": "Police Officer",
+        "degreeRequired": false,
+        "paydayBonus": 3000
+      },
+      {
+        "id": "career-mechanic",
+        "name": "Mechanic",
+        "degreeRequired": false,
+        "paydayBonus": 3000
+      },
+      {
+        "id": "career-athlete",
+        "name": "Athlete",
+        "degreeRequired": false,
+        "paydayBonus": 5000
+      },
+      {
+        "id": "career-artist",
+        "name": "Artist",
+        "degreeRequired": false,
+        "paydayBonus": 3000
+      },
+      {
+        "id": "career-chef",
+        "name": "Chef",
+        "degreeRequired": false,
+        "paydayBonus": 4000
+      }
+    ],
+    "salaries": [
+      {
+        "id": "salary-30",
+        "amount": 30000,
+        "taxDue": 3000
+      },
+      {
+        "id": "salary-40",
+        "amount": 40000,
+        "taxDue": 4000
+      },
+      {
+        "id": "salary-50",
+        "amount": 50000,
+        "taxDue": 5000
+      },
+      {
+        "id": "salary-60",
+        "amount": 60000,
+        "taxDue": 6000
+      },
+      {
+        "id": "salary-70",
+        "amount": 70000,
+        "taxDue": 7000
+      },
+      {
+        "id": "salary-80",
+        "amount": 80000,
+        "taxDue": 8000
+      }
+    ],
+    "lifeTiles": [
+      {
+        "id": "tile-001",
+        "name": "Win Nobel Prize",
+        "value": 300000
+      },
+      {
+        "id": "tile-002",
+        "name": "Solution for World Hunger",
+        "value": 250000
+      },
+      {
+        "id": "tile-003",
+        "name": "Cure for the Common Cold",
+        "value": 250000
+      },
+      {
+        "id": "tile-004",
+        "name": "Run for President",
+        "value": 200000
+      },
+      {
+        "id": "tile-005",
+        "name": "Pulitzer Prize",
+        "value": 200000
+      },
+      {
+        "id": "tile-006",
+        "name": "Olympic Gold Medal",
+        "value": 200000
+      },
+      {
+        "id": "tile-007",
+        "name": "Discover a New Species",
+        "value": 180000
+      },
+      {
+        "id": "tile-008",
+        "name": "Climb Mt. Everest",
+        "value": 150000
+      },
+      {
+        "id": "tile-009",
+        "name": "Write a Bestseller",
+        "value": 150000
+      },
+      {
+        "id": "tile-010",
+        "name": "Become a Movie Star",
+        "value": 150000
+      },
+      {
+        "id": "tile-011",
+        "name": "Save an Endangered Species",
+        "value": 150000
+      },
+      {
+        "id": "tile-012",
+        "name": "Start a Charity",
+        "value": 150000
+      },
+      {
+        "id": "tile-013",
+        "name": "Build the Tallest Building",
+        "value": 120000
+      },
+      {
+        "id": "tile-014",
+        "name": "Sail Around the World",
+        "value": 120000
+      },
+      {
+        "id": "tile-015",
+        "name": "Invent a New Game",
+        "value": 120000
+      },
+      {
+        "id": "tile-016",
+        "name": "Open a Restaurant",
+        "value": 100000
+      },
+      {
+        "id": "tile-017",
+        "name": "Lead a Symphony",
+        "value": 100000
+      },
+      {
+        "id": "tile-018",
+        "name": "Master a Foreign Language",
+        "value": 100000
+      },
+      {
+        "id": "tile-019",
+        "name": "Tour with a Rock Band",
+        "value": 100000
+      },
+      {
+        "id": "tile-020",
+        "name": "Visit Every Continent",
+        "value": 100000
+      }
+    ],
+    "houses": [
+      {
+        "id": "house-starter",
+        "name": "Starter Home",
+        "cost": 80000,
+        "value": 100000
+      },
+      {
+        "id": "house-cottage",
+        "name": "Country Cottage",
+        "cost": 100000,
+        "value": 130000
+      },
+      {
+        "id": "house-victorian",
+        "name": "Victorian House",
+        "cost": 120000,
+        "value": 180000
+      },
+      {
+        "id": "house-modern",
+        "name": "Modern Home",
+        "cost": 150000,
+        "value": 220000
+      },
+      {
+        "id": "house-mansion",
+        "name": "Mansion",
+        "cost": 220000,
+        "value": 300000
+      }
+    ],
+    "settings": {
+      "_comment": "The Game of Life — session 2a settings. Edit these values to tune cash flow. All amounts are in Life dollars.",
+      "startingCash": 10000,
+      "collegeLoanAmount": 40000,
+      "spinMin": 1,
+      "spinMax": 10,
+      "startSquareId": "sq-000-start",
+      "mainTrackEntrySquareId": "sq-m01-marry",
+      "careerOptionsCount": 2,
+      "salaryOptionsCount": 2,
+      "houseOptionsCount": 3,
+      "weddingGiftPerPlayer": 5000,
+      "babyGiftPerPlayer": 5000,
+      "twinsGiftPerPlayer": 10000,
+      "autoInsuranceCost": 10000,
+      "autoAccidentCost": 10000,
+      "lifeInsuranceCost": 20000,
+      "lifeAccidentCost": 20000,
+      "stockCost": 50000,
+      "stockPayoutAmount": 10000,
+      "caTilesPerRetiree": 4,
+      "childScoreBonus": 50000,
+      "minPlayers": 2,
+      "maxPlayers": 6,
+      "playerColors": [
+        {
+          "id": "red",
+          "hex": "#e63946",
+          "label": "Red"
+        },
+        {
+          "id": "blue",
+          "hex": "#3a86ff",
+          "label": "Blue"
+        },
+        {
+          "id": "green",
+          "hex": "#2a9d8f",
+          "label": "Green"
+        },
+        {
+          "id": "yellow",
+          "hex": "#e8c428",
+          "label": "Yellow"
+        },
+        {
+          "id": "purple",
+          "hex": "#9d4edd",
+          "label": "Purple"
+        },
+        {
+          "id": "orange",
+          "hex": "#f4845f",
+          "label": "Orange"
+        }
+      ],
+      "playerTokens": [
+        "🚗",
+        "🚙",
+        "🏎️",
+        "🚕",
+        "🚐",
+        "🛻"
+      ]
+    },
+    "boardById": {
+      "sq-000-start": {
+        "id": "sq-000-start",
+        "type": "career-fork",
+        "label": "Start: Career or College?",
+        "next": [
+          "sq-c01-career-pick",
+          "sq-u01-college-loan"
+        ],
+        "data": {
+          "branches": [
+            {
+              "id": "sq-c01-career-pick",
+              "label": "Career Path",
+              "path": "career"
+            },
+            {
+              "id": "sq-u01-college-loan",
+              "label": "College Path",
+              "path": "college"
+            }
+          ]
+        }
+      },
+      "sq-c01-career-pick": {
+        "id": "sq-c01-career-pick",
+        "type": "draw-career-no-degree",
+        "label": "Pick a career (no degree)",
+        "next": [
+          "sq-c02-pay-furniture"
+        ]
+      },
+      "sq-c02-pay-furniture": {
+        "id": "sq-c02-pay-furniture",
+        "type": "pay-bank",
+        "label": "Buy furniture",
+        "next": [
+          "sq-c03-first-paycheck"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      "sq-c03-first-paycheck": {
+        "id": "sq-c03-first-paycheck",
+        "type": "collect-bank",
+        "label": "First paycheck!",
+        "next": [
+          "sq-c04-buy-car"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      "sq-c04-buy-car": {
+        "id": "sq-c04-buy-car",
+        "type": "pay-bank",
+        "label": "Buy a car",
+        "next": [
+          "sq-c05-payday"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      "sq-c05-payday": {
+        "id": "sq-c05-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-c06-win-contest"
+        ]
+      },
+      "sq-c06-win-contest": {
+        "id": "sq-c06-win-contest",
+        "type": "collect-bank",
+        "label": "Win a contest",
+        "next": [
+          "sq-c07-traffic-ticket"
+        ],
+        "data": {
+          "amount": 3000
+        }
+      },
+      "sq-c07-traffic-ticket": {
+        "id": "sq-c07-traffic-ticket",
+        "type": "pay-bank",
+        "label": "Traffic ticket",
+        "next": [
+          "sq-c08-spin-again"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      "sq-c08-spin-again": {
+        "id": "sq-c08-spin-again",
+        "type": "spin-again",
+        "label": "Lucky day — spin again",
+        "next": [
+          "sq-c09-payday"
+        ]
+      },
+      "sq-c09-payday": {
+        "id": "sq-c09-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-c10-junction"
+        ]
+      },
+      "sq-c10-junction": {
+        "id": "sq-c10-junction",
+        "type": "collect-bank",
+        "label": "Settle in",
+        "next": [
+          "sq-m01-marry"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      "sq-u01-college-loan": {
+        "id": "sq-u01-college-loan",
+        "type": "pay-loans",
+        "label": "Pay $40,000 in college loans",
+        "next": [
+          "sq-u02-study-hard"
+        ]
+      },
+      "sq-u02-study-hard": {
+        "id": "sq-u02-study-hard",
+        "type": "pay-bank",
+        "label": "Buy textbooks",
+        "next": [
+          "sq-u03-spring-break"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      "sq-u03-spring-break": {
+        "id": "sq-u03-spring-break",
+        "type": "pay-bank",
+        "label": "Spring break trip",
+        "next": [
+          "sq-u04-cram"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      "sq-u04-cram": {
+        "id": "sq-u04-cram",
+        "type": "pay-bank",
+        "label": "All-night cramming (energy drinks)",
+        "next": [
+          "sq-u05-tutor-job"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      "sq-u05-tutor-job": {
+        "id": "sq-u05-tutor-job",
+        "type": "collect-bank",
+        "label": "Tutor job",
+        "next": [
+          "sq-u06-grad-school"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      "sq-u06-grad-school": {
+        "id": "sq-u06-grad-school",
+        "type": "pay-bank",
+        "label": "Grad school application fees",
+        "next": [
+          "sq-u07-internship"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      "sq-u07-internship": {
+        "id": "sq-u07-internship",
+        "type": "collect-bank",
+        "label": "Summer internship",
+        "next": [
+          "sq-u08-graduate"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      "sq-u08-graduate": {
+        "id": "sq-u08-graduate",
+        "type": "collect-bank",
+        "label": "Graduation gift",
+        "next": [
+          "sq-u09-career-pick"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      "sq-u09-career-pick": {
+        "id": "sq-u09-career-pick",
+        "type": "draw-career-degree",
+        "label": "Pick a career (degree required)",
+        "next": [
+          "sq-u10-payday"
+        ]
+      },
+      "sq-u10-payday": {
+        "id": "sq-u10-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-u11-honeymoon-fund"
+        ]
+      },
+      "sq-u11-honeymoon-fund": {
+        "id": "sq-u11-honeymoon-fund",
+        "type": "collect-bank",
+        "label": "Honeymoon fund kickoff",
+        "next": [
+          "sq-u12-junction"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      "sq-u12-junction": {
+        "id": "sq-u12-junction",
+        "type": "collect-bank",
+        "label": "Move into apartment",
+        "next": [
+          "sq-m01-marry"
+        ],
+        "data": {
+          "amount": 500
+        }
+      },
+      "sq-m01-marry": {
+        "id": "sq-m01-marry",
+        "type": "marry",
+        "label": "Get Married",
+        "next": [
+          "sq-m02-wedding-gifts"
+        ]
+      },
+      "sq-m02-wedding-gifts": {
+        "id": "sq-m02-wedding-gifts",
+        "type": "collect-bank",
+        "label": "Wedding gifts",
+        "next": [
+          "sq-m03-buy-home"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      "sq-m03-buy-home": {
+        "id": "sq-m03-buy-home",
+        "type": "buy-house",
+        "label": "Buy a home",
+        "next": [
+          "sq-m04-payday"
+        ]
+      },
+      "sq-m04-payday": {
+        "id": "sq-m04-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m05-vacation"
+        ]
+      },
+      "sq-m05-vacation": {
+        "id": "sq-m05-vacation",
+        "type": "pay-bank",
+        "label": "Family vacation",
+        "next": [
+          "sq-m06-night-class"
+        ],
+        "data": {
+          "amount": 3000
+        }
+      },
+      "sq-m06-night-class": {
+        "id": "sq-m06-night-class",
+        "type": "pay-bank",
+        "label": "Night classes",
+        "next": [
+          "sq-m07-promotion"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      "sq-m07-promotion": {
+        "id": "sq-m07-promotion",
+        "type": "collect-bank",
+        "label": "Promotion!",
+        "next": [
+          "sq-m08-have-baby"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      "sq-m08-have-baby": {
+        "id": "sq-m08-have-baby",
+        "type": "have-baby",
+        "label": "Have a Baby",
+        "next": [
+          "sq-m09-baby-gifts"
+        ]
+      },
+      "sq-m09-baby-gifts": {
+        "id": "sq-m09-baby-gifts",
+        "type": "collect-bank",
+        "label": "Baby shower gifts",
+        "next": [
+          "sq-m10-pay-tax"
+        ],
+        "data": {
+          "amount": 2000
+        }
+      },
+      "sq-m10-pay-tax": {
+        "id": "sq-m10-pay-tax",
+        "type": "pay-tax-by-salary",
+        "label": "Pay income tax",
+        "next": [
+          "sq-m11-payday"
+        ]
+      },
+      "sq-m11-payday": {
+        "id": "sq-m11-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m12-spin-again"
+        ]
+      },
+      "sq-m12-spin-again": {
+        "id": "sq-m12-spin-again",
+        "type": "spin-again",
+        "label": "Found loose change — spin again",
+        "next": [
+          "sq-m13-have-twins"
+        ]
+      },
+      "sq-m13-have-twins": {
+        "id": "sq-m13-have-twins",
+        "type": "have-twins",
+        "label": "Have Twins!",
+        "next": [
+          "sq-m14-twin-daycare"
+        ]
+      },
+      "sq-m14-twin-daycare": {
+        "id": "sq-m14-twin-daycare",
+        "type": "pay-bank",
+        "label": "Twin daycare",
+        "next": [
+          "sq-m15-stock-bonus"
+        ],
+        "data": {
+          "amount": 4000
+        }
+      },
+      "sq-m15-stock-bonus": {
+        "id": "sq-m15-stock-bonus",
+        "type": "collect-bank",
+        "label": "Stock dividend",
+        "next": [
+          "sq-m16-payday"
+        ],
+        "data": {
+          "amount": 4000
+        }
+      },
+      "sq-m16-payday": {
+        "id": "sq-m16-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m17-auto-accident"
+        ]
+      },
+      "sq-m17-auto-accident": {
+        "id": "sq-m17-auto-accident",
+        "type": "auto-accident",
+        "label": "Auto accident — auto insurance covers it",
+        "next": [
+          "sq-m18-collect-each"
+        ]
+      },
+      "sq-m18-collect-each": {
+        "id": "sq-m18-collect-each",
+        "type": "collect-each-player",
+        "label": "Block party — collect $1,000 from each player",
+        "next": [
+          "sq-m19-payday"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      "sq-m19-payday": {
+        "id": "sq-m19-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m20-pay-each"
+        ]
+      },
+      "sq-m20-pay-each": {
+        "id": "sq-m20-pay-each",
+        "type": "pay-each-player",
+        "label": "Garage sale loss — pay $1,000 to each player",
+        "next": [
+          "sq-m21-illness"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      "sq-m21-illness": {
+        "id": "sq-m21-illness",
+        "type": "life-accident",
+        "label": "Hospitalized — life insurance covers it",
+        "next": [
+          "sq-m22-home-improvement"
+        ]
+      },
+      "sq-m22-home-improvement": {
+        "id": "sq-m22-home-improvement",
+        "type": "pay-bank",
+        "label": "Home renovation",
+        "next": [
+          "sq-m23-payday"
+        ],
+        "data": {
+          "amount": 8000
+        }
+      },
+      "sq-m23-payday": {
+        "id": "sq-m23-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m24-have-baby"
+        ]
+      },
+      "sq-m24-have-baby": {
+        "id": "sq-m24-have-baby",
+        "type": "have-baby",
+        "label": "Have a Baby",
+        "next": [
+          "sq-m25-baby-gifts"
+        ]
+      },
+      "sq-m25-baby-gifts": {
+        "id": "sq-m25-baby-gifts",
+        "type": "collect-bank",
+        "label": "Baby gifts",
+        "next": [
+          "sq-m26-win-lottery"
+        ],
+        "data": {
+          "amount": 1500
+        }
+      },
+      "sq-m26-win-lottery": {
+        "id": "sq-m26-win-lottery",
+        "type": "collect-bank",
+        "label": "Win the lottery!",
+        "next": [
+          "sq-m27-payday"
+        ],
+        "data": {
+          "amount": 25000
+        }
+      },
+      "sq-m27-payday": {
+        "id": "sq-m27-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m28-car-trouble"
+        ]
+      },
+      "sq-m28-car-trouble": {
+        "id": "sq-m28-car-trouble",
+        "type": "pay-bank",
+        "label": "Car trouble",
+        "next": [
+          "sq-m29-spin-again"
+        ],
+        "data": {
+          "amount": 1500
+        }
+      },
+      "sq-m29-spin-again": {
+        "id": "sq-m29-spin-again",
+        "type": "spin-again",
+        "label": "Caught a break — spin again",
+        "next": [
+          "sq-m30-business-trip"
+        ]
+      },
+      "sq-m30-business-trip": {
+        "id": "sq-m30-business-trip",
+        "type": "collect-bank",
+        "label": "Business-trip reimbursement",
+        "next": [
+          "sq-m31-payday"
+        ],
+        "data": {
+          "amount": 3000
+        }
+      },
+      "sq-m31-payday": {
+        "id": "sq-m31-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m32-jury-duty"
+        ]
+      },
+      "sq-m32-jury-duty": {
+        "id": "sq-m32-jury-duty",
+        "type": "collect-bank",
+        "label": "Jury duty stipend",
+        "next": [
+          "sq-m33-vacation"
+        ],
+        "data": {
+          "amount": 1000
+        }
+      },
+      "sq-m33-vacation": {
+        "id": "sq-m33-vacation",
+        "type": "pay-bank",
+        "label": "Second honeymoon",
+        "next": [
+          "sq-m34-payday"
+        ],
+        "data": {
+          "amount": 4000
+        }
+      },
+      "sq-m34-payday": {
+        "id": "sq-m34-payday",
+        "type": "payday",
+        "label": "PAY DAY",
+        "next": [
+          "sq-m35-retirement-fork"
+        ]
+      },
+      "sq-m35-retirement-fork": {
+        "id": "sq-m35-retirement-fork",
+        "type": "retirement-fork",
+        "label": "Choose your retirement",
+        "next": [
+          "sq-r-countryside-01",
+          "sq-r-millionaire-01"
+        ],
+        "data": {
+          "branches": [
+            {
+              "id": "sq-r-countryside-01",
+              "label": "Countryside Acres"
+            },
+            {
+              "id": "sq-r-millionaire-01",
+              "label": "Millionaire Estates"
+            }
+          ]
+        }
+      },
+      "sq-r-countryside-01": {
+        "id": "sq-r-countryside-01",
+        "type": "collect-bank",
+        "label": "Countryside Acres — peaceful days",
+        "next": [
+          "sq-r-countryside-02"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      "sq-r-countryside-02": {
+        "id": "sq-r-countryside-02",
+        "type": "collect-bank",
+        "label": "Countryside Acres — settled in",
+        "next": [
+          "sq-r-countryside-end"
+        ],
+        "data": {
+          "amount": 5000
+        }
+      },
+      "sq-r-countryside-end": {
+        "id": "sq-r-countryside-end",
+        "type": "countryside-retirement",
+        "label": "Countryside Acres",
+        "next": []
+      },
+      "sq-r-millionaire-01": {
+        "id": "sq-r-millionaire-01",
+        "type": "collect-bank",
+        "label": "Millionaire Estates — high life",
+        "next": [
+          "sq-r-millionaire-02"
+        ],
+        "data": {
+          "amount": 10000
+        }
+      },
+      "sq-r-millionaire-02": {
+        "id": "sq-r-millionaire-02",
+        "type": "collect-bank",
+        "label": "Millionaire Estates — yacht parties",
+        "next": [
+          "sq-r-millionaire-end"
+        ],
+        "data": {
+          "amount": 10000
+        }
+      },
+      "sq-r-millionaire-end": {
+        "id": "sq-r-millionaire-end",
+        "type": "millionaire-retirement",
+        "label": "Millionaire Estates",
+        "next": []
+      }
+    }
+  },
+  "players": [
+    {
+      "userId": "player-1",
+      "username": "Alice",
+      "color": "red",
+      "colorHex": "#e63946",
+      "token": "🚗",
+      "active": true,
+      "connected": true,
+      "cash": 85000,
+      "position": "sq-m16-payday",
+      "path": "career",
+      "career": {
+        "id": "career-salesperson",
+        "name": "Salesperson",
+        "degreeRequired": false,
+        "paydayBonus": 4000
+      },
+      "salary": {
+        "id": "salary-50",
+        "amount": 50000,
+        "taxDue": 5000
+      },
+      "spouse": true,
+      "children": 1,
+      "autoInsurance": true,
+      "lifeInsurance": false,
+      "stockNumber": 7,
+      "midTurn": false,
+      "retired": false,
+      "retiredTo": null,
+      "lifeTiles": [],
+      "house": {
+        "id": "house-cottage",
+        "name": "Country Cottage",
+        "cost": 100000,
+        "value": 130000
+      },
+      "pending": null,
+      "spinAgain": false
+    },
+    {
+      "userId": "player-2",
+      "username": "Bob",
+      "color": "blue",
+      "colorHex": "#3a86ff",
+      "token": "🚙",
+      "active": true,
+      "connected": true,
+      "cash": 120000,
+      "position": "sq-m09-baby-gifts",
+      "path": "college",
+      "career": {
+        "id": "career-doctor",
+        "name": "Doctor",
+        "degreeRequired": true,
+        "paydayBonus": 10000
+      },
+      "salary": {
+        "id": "salary-70",
+        "amount": 70000,
+        "taxDue": 7000
+      },
+      "spouse": true,
+      "children": 2,
+      "autoInsurance": false,
+      "lifeInsurance": true,
+      "stockNumber": null,
+      "midTurn": false,
+      "retired": false,
+      "retiredTo": null,
+      "lifeTiles": [],
+      "house": {
+        "id": "house-victorian",
+        "name": "Victorian House",
+        "cost": 120000,
+        "value": 180000
+      },
+      "pending": null,
+      "spinAgain": false
+    },
+    {
+      "userId": "player-3",
+      "username": "Charlie",
+      "color": "green",
+      "colorHex": "#2a9d8f",
+      "token": "🏎️",
+      "active": true,
+      "connected": true,
+      "cash": -20000,
+      "position": "sq-u06-grad-school",
+      "path": "college",
+      "career": {
+        "id": "career-lawyer",
+        "name": "Lawyer",
+        "degreeRequired": true,
+        "paydayBonus": 8000
+      },
+      "salary": {
+        "id": "salary-80",
+        "amount": 80000,
+        "taxDue": 8000
+      },
+      "spouse": false,
+      "children": 0,
+      "autoInsurance": false,
+      "lifeInsurance": false,
+      "stockNumber": null,
+      "midTurn": false,
+      "retired": false,
+      "retiredTo": null,
+      "lifeTiles": [],
+      "house": null,
+      "pending": null,
+      "spinAgain": false
+    },
+    {
+      "userId": "player-4",
+      "username": "Diana",
+      "color": "yellow",
+      "colorHex": "#e8c428",
+      "token": "🚕",
+      "active": true,
+      "connected": true,
+      "cash": 45000,
+      "position": "sq-c05-payday",
+      "path": "career",
+      "career": {
+        "id": "career-police-officer",
+        "name": "Police Officer",
+        "degreeRequired": false,
+        "paydayBonus": 3000
+      },
+      "salary": {
+        "id": "salary-40",
+        "amount": 40000,
+        "taxDue": 4000
+      },
+      "spouse": false,
+      "children": 0,
+      "autoInsurance": false,
+      "lifeInsurance": false,
+      "stockNumber": 3,
+      "midTurn": false,
+      "retired": false,
+      "retiredTo": null,
+      "lifeTiles": [],
+      "house": null,
+      "pending": null,
+      "spinAgain": false
+    }
+  ],
+  "turnState": {
+    "currentPlayerIndex": 0
+  },
+  "careerDeck": [
+    "career-artist",
+    "career-doctor",
+    "career-police-officer",
+    "career-lawyer",
+    "career-chef",
+    "career-athlete",
+    "career-accountant",
+    "career-computer-consultant",
+    "career-engineer",
+    "career-teacher",
+    "career-mechanic",
+    "career-salesperson"
+  ],
+  "careerDiscard": [],
+  "salaryDeck": [
+    "salary-30",
+    "salary-50",
+    "salary-60",
+    "salary-80",
+    "salary-40",
+    "salary-70"
+  ],
+  "salaryDiscard": [],
+  "lifeTileDeck": [
+    "tile-006",
+    "tile-011",
+    "tile-012",
+    "tile-014",
+    "tile-015",
+    "tile-005",
+    "tile-020",
+    "tile-008",
+    "tile-010",
+    "tile-017",
+    "tile-004",
+    "tile-007",
+    "tile-016",
+    "tile-003",
+    "tile-002",
+    "tile-001",
+    "tile-019",
+    "tile-018",
+    "tile-013",
+    "tile-009"
+  ],
+  "houseDeck": [
+    "house-mansion",
+    "house-victorian",
+    "house-starter",
+    "house-modern",
+    "house-cottage"
+  ],
+  "houseDiscard": [],
+  "winner": null,
+  "log": [
+    {
+      "timestamp": 1779907995381,
+      "message": "Bob collected payday: $80,000",
+      "type": "action"
+    },
+    {
+      "timestamp": 1779908000381,
+      "message": "Charlie paid $40,000 in college loans",
+      "type": "action"
+    },
+    {
+      "timestamp": 1779908005381,
+      "message": "Alice's stock #7 paid out $10,000!",
+      "type": "action"
+    }
+  ]
+}

@@ -1,0 +1,1810 @@
+{
+  "id": "screenshot-risk",
+  "name": "Risk",
+  "gameType": "risk",
+  "stateVersion": 1,
+  "status": "playing",
+  "config": {
+    "board": {
+      "continents": {
+        "north-america": {
+          "name": "North America",
+          "bonus": 5,
+          "territories": [
+            "alaska",
+            "northwest-territory",
+            "greenland",
+            "alberta",
+            "ontario",
+            "quebec",
+            "western-united-states",
+            "eastern-united-states",
+            "central-america"
+          ]
+        },
+        "south-america": {
+          "name": "South America",
+          "bonus": 2,
+          "territories": [
+            "venezuela",
+            "brazil",
+            "peru",
+            "argentina"
+          ]
+        },
+        "europe": {
+          "name": "Europe",
+          "bonus": 5,
+          "territories": [
+            "iceland",
+            "scandinavia",
+            "ukraine",
+            "great-britain",
+            "northern-europe",
+            "western-europe",
+            "southern-europe"
+          ]
+        },
+        "africa": {
+          "name": "Africa",
+          "bonus": 3,
+          "territories": [
+            "north-africa",
+            "egypt",
+            "east-africa",
+            "congo",
+            "south-africa",
+            "madagascar"
+          ]
+        },
+        "asia": {
+          "name": "Asia",
+          "bonus": 7,
+          "territories": [
+            "ural",
+            "siberia",
+            "yakutsk",
+            "kamchatka",
+            "irkutsk",
+            "mongolia",
+            "japan",
+            "afghanistan",
+            "china",
+            "middle-east",
+            "india",
+            "siam"
+          ]
+        },
+        "australia": {
+          "name": "Australia",
+          "bonus": 2,
+          "territories": [
+            "indonesia",
+            "new-guinea",
+            "western-australia",
+            "eastern-australia"
+          ]
+        }
+      },
+      "territories": [
+        {
+          "id": "alaska",
+          "name": "Alaska",
+          "continent": "north-america",
+          "adjacent": [
+            "northwest-territory",
+            "alberta",
+            "kamchatka"
+          ]
+        },
+        {
+          "id": "northwest-territory",
+          "name": "Northwest Territory",
+          "continent": "north-america",
+          "adjacent": [
+            "alaska",
+            "alberta",
+            "ontario",
+            "greenland"
+          ]
+        },
+        {
+          "id": "greenland",
+          "name": "Greenland",
+          "continent": "north-america",
+          "adjacent": [
+            "northwest-territory",
+            "ontario",
+            "quebec",
+            "iceland"
+          ]
+        },
+        {
+          "id": "alberta",
+          "name": "Alberta",
+          "continent": "north-america",
+          "adjacent": [
+            "alaska",
+            "northwest-territory",
+            "ontario",
+            "western-united-states"
+          ]
+        },
+        {
+          "id": "ontario",
+          "name": "Ontario",
+          "continent": "north-america",
+          "adjacent": [
+            "northwest-territory",
+            "alberta",
+            "greenland",
+            "quebec",
+            "western-united-states",
+            "eastern-united-states"
+          ]
+        },
+        {
+          "id": "quebec",
+          "name": "Quebec",
+          "continent": "north-america",
+          "adjacent": [
+            "ontario",
+            "greenland",
+            "eastern-united-states"
+          ]
+        },
+        {
+          "id": "western-united-states",
+          "name": "Western United States",
+          "continent": "north-america",
+          "adjacent": [
+            "alberta",
+            "ontario",
+            "eastern-united-states",
+            "central-america"
+          ]
+        },
+        {
+          "id": "eastern-united-states",
+          "name": "Eastern United States",
+          "continent": "north-america",
+          "adjacent": [
+            "ontario",
+            "quebec",
+            "western-united-states",
+            "central-america"
+          ]
+        },
+        {
+          "id": "central-america",
+          "name": "Central America",
+          "continent": "north-america",
+          "adjacent": [
+            "western-united-states",
+            "eastern-united-states",
+            "venezuela"
+          ]
+        },
+        {
+          "id": "venezuela",
+          "name": "Venezuela",
+          "continent": "south-america",
+          "adjacent": [
+            "central-america",
+            "brazil",
+            "peru"
+          ]
+        },
+        {
+          "id": "brazil",
+          "name": "Brazil",
+          "continent": "south-america",
+          "adjacent": [
+            "venezuela",
+            "peru",
+            "argentina",
+            "north-africa"
+          ]
+        },
+        {
+          "id": "peru",
+          "name": "Peru",
+          "continent": "south-america",
+          "adjacent": [
+            "venezuela",
+            "brazil",
+            "argentina"
+          ]
+        },
+        {
+          "id": "argentina",
+          "name": "Argentina",
+          "continent": "south-america",
+          "adjacent": [
+            "brazil",
+            "peru"
+          ]
+        },
+        {
+          "id": "iceland",
+          "name": "Iceland",
+          "continent": "europe",
+          "adjacent": [
+            "greenland",
+            "great-britain",
+            "scandinavia"
+          ]
+        },
+        {
+          "id": "scandinavia",
+          "name": "Scandinavia",
+          "continent": "europe",
+          "adjacent": [
+            "iceland",
+            "great-britain",
+            "northern-europe",
+            "ukraine"
+          ]
+        },
+        {
+          "id": "ukraine",
+          "name": "Ukraine",
+          "continent": "europe",
+          "adjacent": [
+            "scandinavia",
+            "northern-europe",
+            "southern-europe",
+            "ural",
+            "afghanistan",
+            "middle-east"
+          ]
+        },
+        {
+          "id": "great-britain",
+          "name": "Great Britain",
+          "continent": "europe",
+          "adjacent": [
+            "iceland",
+            "scandinavia",
+            "northern-europe",
+            "western-europe"
+          ]
+        },
+        {
+          "id": "northern-europe",
+          "name": "Northern Europe",
+          "continent": "europe",
+          "adjacent": [
+            "great-britain",
+            "scandinavia",
+            "ukraine",
+            "western-europe",
+            "southern-europe"
+          ]
+        },
+        {
+          "id": "western-europe",
+          "name": "Western Europe",
+          "continent": "europe",
+          "adjacent": [
+            "great-britain",
+            "northern-europe",
+            "southern-europe",
+            "north-africa"
+          ]
+        },
+        {
+          "id": "southern-europe",
+          "name": "Southern Europe",
+          "continent": "europe",
+          "adjacent": [
+            "western-europe",
+            "northern-europe",
+            "ukraine",
+            "middle-east",
+            "egypt",
+            "north-africa"
+          ]
+        },
+        {
+          "id": "north-africa",
+          "name": "North Africa",
+          "continent": "africa",
+          "adjacent": [
+            "brazil",
+            "western-europe",
+            "southern-europe",
+            "egypt",
+            "east-africa",
+            "congo"
+          ]
+        },
+        {
+          "id": "egypt",
+          "name": "Egypt",
+          "continent": "africa",
+          "adjacent": [
+            "southern-europe",
+            "middle-east",
+            "north-africa",
+            "east-africa"
+          ]
+        },
+        {
+          "id": "east-africa",
+          "name": "East Africa",
+          "continent": "africa",
+          "adjacent": [
+            "egypt",
+            "middle-east",
+            "north-africa",
+            "congo",
+            "south-africa",
+            "madagascar"
+          ]
+        },
+        {
+          "id": "congo",
+          "name": "Congo",
+          "continent": "africa",
+          "adjacent": [
+            "north-africa",
+            "east-africa",
+            "south-africa"
+          ]
+        },
+        {
+          "id": "south-africa",
+          "name": "South Africa",
+          "continent": "africa",
+          "adjacent": [
+            "congo",
+            "east-africa",
+            "madagascar"
+          ]
+        },
+        {
+          "id": "madagascar",
+          "name": "Madagascar",
+          "continent": "africa",
+          "adjacent": [
+            "east-africa",
+            "south-africa"
+          ]
+        },
+        {
+          "id": "ural",
+          "name": "Ural",
+          "continent": "asia",
+          "adjacent": [
+            "ukraine",
+            "siberia",
+            "afghanistan",
+            "china"
+          ]
+        },
+        {
+          "id": "siberia",
+          "name": "Siberia",
+          "continent": "asia",
+          "adjacent": [
+            "ural",
+            "yakutsk",
+            "irkutsk",
+            "mongolia",
+            "china"
+          ]
+        },
+        {
+          "id": "yakutsk",
+          "name": "Yakutsk",
+          "continent": "asia",
+          "adjacent": [
+            "siberia",
+            "kamchatka",
+            "irkutsk"
+          ]
+        },
+        {
+          "id": "kamchatka",
+          "name": "Kamchatka",
+          "continent": "asia",
+          "adjacent": [
+            "yakutsk",
+            "irkutsk",
+            "mongolia",
+            "japan",
+            "alaska"
+          ]
+        },
+        {
+          "id": "irkutsk",
+          "name": "Irkutsk",
+          "continent": "asia",
+          "adjacent": [
+            "siberia",
+            "yakutsk",
+            "kamchatka",
+            "mongolia"
+          ]
+        },
+        {
+          "id": "mongolia",
+          "name": "Mongolia",
+          "continent": "asia",
+          "adjacent": [
+            "siberia",
+            "kamchatka",
+            "irkutsk",
+            "japan",
+            "china"
+          ]
+        },
+        {
+          "id": "japan",
+          "name": "Japan",
+          "continent": "asia",
+          "adjacent": [
+            "kamchatka",
+            "mongolia"
+          ]
+        },
+        {
+          "id": "afghanistan",
+          "name": "Afghanistan",
+          "continent": "asia",
+          "adjacent": [
+            "ukraine",
+            "ural",
+            "china",
+            "india",
+            "middle-east"
+          ]
+        },
+        {
+          "id": "china",
+          "name": "China",
+          "continent": "asia",
+          "adjacent": [
+            "ural",
+            "siberia",
+            "mongolia",
+            "afghanistan",
+            "india",
+            "siam"
+          ]
+        },
+        {
+          "id": "middle-east",
+          "name": "Middle East",
+          "continent": "asia",
+          "adjacent": [
+            "ukraine",
+            "southern-europe",
+            "egypt",
+            "east-africa",
+            "afghanistan",
+            "india"
+          ]
+        },
+        {
+          "id": "india",
+          "name": "India",
+          "continent": "asia",
+          "adjacent": [
+            "middle-east",
+            "afghanistan",
+            "china",
+            "siam"
+          ]
+        },
+        {
+          "id": "siam",
+          "name": "Siam",
+          "continent": "asia",
+          "adjacent": [
+            "india",
+            "china",
+            "indonesia"
+          ]
+        },
+        {
+          "id": "indonesia",
+          "name": "Indonesia",
+          "continent": "australia",
+          "adjacent": [
+            "siam",
+            "new-guinea",
+            "western-australia"
+          ]
+        },
+        {
+          "id": "new-guinea",
+          "name": "New Guinea",
+          "continent": "australia",
+          "adjacent": [
+            "indonesia",
+            "western-australia",
+            "eastern-australia"
+          ]
+        },
+        {
+          "id": "western-australia",
+          "name": "Western Australia",
+          "continent": "australia",
+          "adjacent": [
+            "indonesia",
+            "new-guinea",
+            "eastern-australia"
+          ]
+        },
+        {
+          "id": "eastern-australia",
+          "name": "Eastern Australia",
+          "continent": "australia",
+          "adjacent": [
+            "new-guinea",
+            "western-australia"
+          ]
+        }
+      ]
+    },
+    "cards": [
+      {
+        "id": "card-alaska",
+        "territoryId": "alaska",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-northwest-territory",
+        "territoryId": "northwest-territory",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-greenland",
+        "territoryId": "greenland",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-alberta",
+        "territoryId": "alberta",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-ontario",
+        "territoryId": "ontario",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-quebec",
+        "territoryId": "quebec",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-western-united-states",
+        "territoryId": "western-united-states",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-eastern-united-states",
+        "territoryId": "eastern-united-states",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-central-america",
+        "territoryId": "central-america",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-venezuela",
+        "territoryId": "venezuela",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-brazil",
+        "territoryId": "brazil",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-peru",
+        "territoryId": "peru",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-argentina",
+        "territoryId": "argentina",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-iceland",
+        "territoryId": "iceland",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-scandinavia",
+        "territoryId": "scandinavia",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-ukraine",
+        "territoryId": "ukraine",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-great-britain",
+        "territoryId": "great-britain",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-northern-europe",
+        "territoryId": "northern-europe",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-western-europe",
+        "territoryId": "western-europe",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-southern-europe",
+        "territoryId": "southern-europe",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-north-africa",
+        "territoryId": "north-africa",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-egypt",
+        "territoryId": "egypt",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-east-africa",
+        "territoryId": "east-africa",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-congo",
+        "territoryId": "congo",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-south-africa",
+        "territoryId": "south-africa",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-madagascar",
+        "territoryId": "madagascar",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-ural",
+        "territoryId": "ural",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-siberia",
+        "territoryId": "siberia",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-yakutsk",
+        "territoryId": "yakutsk",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-kamchatka",
+        "territoryId": "kamchatka",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-irkutsk",
+        "territoryId": "irkutsk",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-mongolia",
+        "territoryId": "mongolia",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-japan",
+        "territoryId": "japan",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-afghanistan",
+        "territoryId": "afghanistan",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-china",
+        "territoryId": "china",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-middle-east",
+        "territoryId": "middle-east",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-india",
+        "territoryId": "india",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-siam",
+        "territoryId": "siam",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-indonesia",
+        "territoryId": "indonesia",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-new-guinea",
+        "territoryId": "new-guinea",
+        "troopType": "infantry"
+      },
+      {
+        "id": "card-western-australia",
+        "territoryId": "western-australia",
+        "troopType": "cavalry"
+      },
+      {
+        "id": "card-eastern-australia",
+        "territoryId": "eastern-australia",
+        "troopType": "artillery"
+      },
+      {
+        "id": "card-wild-1",
+        "territoryId": null,
+        "troopType": "wild"
+      },
+      {
+        "id": "card-wild-2",
+        "territoryId": null,
+        "troopType": "wild"
+      }
+    ],
+    "settings": {
+      "initialArmiesByPlayerCount": {
+        "2": 40,
+        "3": 35,
+        "4": 30,
+        "5": 25,
+        "6": 20
+      },
+      "reinforcementMinimum": 3,
+      "reinforcementDivisor": 3,
+      "cardTradeBonuses": [
+        4,
+        6,
+        8,
+        10,
+        12,
+        15
+      ],
+      "cardTradeIncrement": 5,
+      "attackerMaxDice": 3,
+      "defenderMaxDice": 2,
+      "defenderDicePolicy": "auto-max",
+      "minArmiesToAttack": 2,
+      "maxAttacksPerTurn": null,
+      "fortifyOncePerTurn": true,
+      "winCondition": "world-domination",
+      "minPlayers": 2,
+      "maxPlayers": 6,
+      "playerColors": [
+        {
+          "id": "red",
+          "hex": "#c8312c"
+        },
+        {
+          "id": "blue",
+          "hex": "#2c5fc8"
+        },
+        {
+          "id": "green",
+          "hex": "#2c9c3c"
+        },
+        {
+          "id": "yellow",
+          "hex": "#e8c428"
+        },
+        {
+          "id": "purple",
+          "hex": "#7c2cc8"
+        },
+        {
+          "id": "black",
+          "hex": "#2c2c2c"
+        }
+      ],
+      "playerTokens": [
+        "🔴",
+        "🔵",
+        "🟢",
+        "🟡",
+        "🟣",
+        "⚫"
+      ]
+    },
+    "territoryById": {
+      "alaska": {
+        "id": "alaska",
+        "name": "Alaska",
+        "continent": "north-america",
+        "adjacent": [
+          "northwest-territory",
+          "alberta",
+          "kamchatka"
+        ]
+      },
+      "northwest-territory": {
+        "id": "northwest-territory",
+        "name": "Northwest Territory",
+        "continent": "north-america",
+        "adjacent": [
+          "alaska",
+          "alberta",
+          "ontario",
+          "greenland"
+        ]
+      },
+      "greenland": {
+        "id": "greenland",
+        "name": "Greenland",
+        "continent": "north-america",
+        "adjacent": [
+          "northwest-territory",
+          "ontario",
+          "quebec",
+          "iceland"
+        ]
+      },
+      "alberta": {
+        "id": "alberta",
+        "name": "Alberta",
+        "continent": "north-america",
+        "adjacent": [
+          "alaska",
+          "northwest-territory",
+          "ontario",
+          "western-united-states"
+        ]
+      },
+      "ontario": {
+        "id": "ontario",
+        "name": "Ontario",
+        "continent": "north-america",
+        "adjacent": [
+          "northwest-territory",
+          "alberta",
+          "greenland",
+          "quebec",
+          "western-united-states",
+          "eastern-united-states"
+        ]
+      },
+      "quebec": {
+        "id": "quebec",
+        "name": "Quebec",
+        "continent": "north-america",
+        "adjacent": [
+          "ontario",
+          "greenland",
+          "eastern-united-states"
+        ]
+      },
+      "western-united-states": {
+        "id": "western-united-states",
+        "name": "Western United States",
+        "continent": "north-america",
+        "adjacent": [
+          "alberta",
+          "ontario",
+          "eastern-united-states",
+          "central-america"
+        ]
+      },
+      "eastern-united-states": {
+        "id": "eastern-united-states",
+        "name": "Eastern United States",
+        "continent": "north-america",
+        "adjacent": [
+          "ontario",
+          "quebec",
+          "western-united-states",
+          "central-america"
+        ]
+      },
+      "central-america": {
+        "id": "central-america",
+        "name": "Central America",
+        "continent": "north-america",
+        "adjacent": [
+          "western-united-states",
+          "eastern-united-states",
+          "venezuela"
+        ]
+      },
+      "venezuela": {
+        "id": "venezuela",
+        "name": "Venezuela",
+        "continent": "south-america",
+        "adjacent": [
+          "central-america",
+          "brazil",
+          "peru"
+        ]
+      },
+      "brazil": {
+        "id": "brazil",
+        "name": "Brazil",
+        "continent": "south-america",
+        "adjacent": [
+          "venezuela",
+          "peru",
+          "argentina",
+          "north-africa"
+        ]
+      },
+      "peru": {
+        "id": "peru",
+        "name": "Peru",
+        "continent": "south-america",
+        "adjacent": [
+          "venezuela",
+          "brazil",
+          "argentina"
+        ]
+      },
+      "argentina": {
+        "id": "argentina",
+        "name": "Argentina",
+        "continent": "south-america",
+        "adjacent": [
+          "brazil",
+          "peru"
+        ]
+      },
+      "iceland": {
+        "id": "iceland",
+        "name": "Iceland",
+        "continent": "europe",
+        "adjacent": [
+          "greenland",
+          "great-britain",
+          "scandinavia"
+        ]
+      },
+      "scandinavia": {
+        "id": "scandinavia",
+        "name": "Scandinavia",
+        "continent": "europe",
+        "adjacent": [
+          "iceland",
+          "great-britain",
+          "northern-europe",
+          "ukraine"
+        ]
+      },
+      "ukraine": {
+        "id": "ukraine",
+        "name": "Ukraine",
+        "continent": "europe",
+        "adjacent": [
+          "scandinavia",
+          "northern-europe",
+          "southern-europe",
+          "ural",
+          "afghanistan",
+          "middle-east"
+        ]
+      },
+      "great-britain": {
+        "id": "great-britain",
+        "name": "Great Britain",
+        "continent": "europe",
+        "adjacent": [
+          "iceland",
+          "scandinavia",
+          "northern-europe",
+          "western-europe"
+        ]
+      },
+      "northern-europe": {
+        "id": "northern-europe",
+        "name": "Northern Europe",
+        "continent": "europe",
+        "adjacent": [
+          "great-britain",
+          "scandinavia",
+          "ukraine",
+          "western-europe",
+          "southern-europe"
+        ]
+      },
+      "western-europe": {
+        "id": "western-europe",
+        "name": "Western Europe",
+        "continent": "europe",
+        "adjacent": [
+          "great-britain",
+          "northern-europe",
+          "southern-europe",
+          "north-africa"
+        ]
+      },
+      "southern-europe": {
+        "id": "southern-europe",
+        "name": "Southern Europe",
+        "continent": "europe",
+        "adjacent": [
+          "western-europe",
+          "northern-europe",
+          "ukraine",
+          "middle-east",
+          "egypt",
+          "north-africa"
+        ]
+      },
+      "north-africa": {
+        "id": "north-africa",
+        "name": "North Africa",
+        "continent": "africa",
+        "adjacent": [
+          "brazil",
+          "western-europe",
+          "southern-europe",
+          "egypt",
+          "east-africa",
+          "congo"
+        ]
+      },
+      "egypt": {
+        "id": "egypt",
+        "name": "Egypt",
+        "continent": "africa",
+        "adjacent": [
+          "southern-europe",
+          "middle-east",
+          "north-africa",
+          "east-africa"
+        ]
+      },
+      "east-africa": {
+        "id": "east-africa",
+        "name": "East Africa",
+        "continent": "africa",
+        "adjacent": [
+          "egypt",
+          "middle-east",
+          "north-africa",
+          "congo",
+          "south-africa",
+          "madagascar"
+        ]
+      },
+      "congo": {
+        "id": "congo",
+        "name": "Congo",
+        "continent": "africa",
+        "adjacent": [
+          "north-africa",
+          "east-africa",
+          "south-africa"
+        ]
+      },
+      "south-africa": {
+        "id": "south-africa",
+        "name": "South Africa",
+        "continent": "africa",
+        "adjacent": [
+          "congo",
+          "east-africa",
+          "madagascar"
+        ]
+      },
+      "madagascar": {
+        "id": "madagascar",
+        "name": "Madagascar",
+        "continent": "africa",
+        "adjacent": [
+          "east-africa",
+          "south-africa"
+        ]
+      },
+      "ural": {
+        "id": "ural",
+        "name": "Ural",
+        "continent": "asia",
+        "adjacent": [
+          "ukraine",
+          "siberia",
+          "afghanistan",
+          "china"
+        ]
+      },
+      "siberia": {
+        "id": "siberia",
+        "name": "Siberia",
+        "continent": "asia",
+        "adjacent": [
+          "ural",
+          "yakutsk",
+          "irkutsk",
+          "mongolia",
+          "china"
+        ]
+      },
+      "yakutsk": {
+        "id": "yakutsk",
+        "name": "Yakutsk",
+        "continent": "asia",
+        "adjacent": [
+          "siberia",
+          "kamchatka",
+          "irkutsk"
+        ]
+      },
+      "kamchatka": {
+        "id": "kamchatka",
+        "name": "Kamchatka",
+        "continent": "asia",
+        "adjacent": [
+          "yakutsk",
+          "irkutsk",
+          "mongolia",
+          "japan",
+          "alaska"
+        ]
+      },
+      "irkutsk": {
+        "id": "irkutsk",
+        "name": "Irkutsk",
+        "continent": "asia",
+        "adjacent": [
+          "siberia",
+          "yakutsk",
+          "kamchatka",
+          "mongolia"
+        ]
+      },
+      "mongolia": {
+        "id": "mongolia",
+        "name": "Mongolia",
+        "continent": "asia",
+        "adjacent": [
+          "siberia",
+          "kamchatka",
+          "irkutsk",
+          "japan",
+          "china"
+        ]
+      },
+      "japan": {
+        "id": "japan",
+        "name": "Japan",
+        "continent": "asia",
+        "adjacent": [
+          "kamchatka",
+          "mongolia"
+        ]
+      },
+      "afghanistan": {
+        "id": "afghanistan",
+        "name": "Afghanistan",
+        "continent": "asia",
+        "adjacent": [
+          "ukraine",
+          "ural",
+          "china",
+          "india",
+          "middle-east"
+        ]
+      },
+      "china": {
+        "id": "china",
+        "name": "China",
+        "continent": "asia",
+        "adjacent": [
+          "ural",
+          "siberia",
+          "mongolia",
+          "afghanistan",
+          "india",
+          "siam"
+        ]
+      },
+      "middle-east": {
+        "id": "middle-east",
+        "name": "Middle East",
+        "continent": "asia",
+        "adjacent": [
+          "ukraine",
+          "southern-europe",
+          "egypt",
+          "east-africa",
+          "afghanistan",
+          "india"
+        ]
+      },
+      "india": {
+        "id": "india",
+        "name": "India",
+        "continent": "asia",
+        "adjacent": [
+          "middle-east",
+          "afghanistan",
+          "china",
+          "siam"
+        ]
+      },
+      "siam": {
+        "id": "siam",
+        "name": "Siam",
+        "continent": "asia",
+        "adjacent": [
+          "india",
+          "china",
+          "indonesia"
+        ]
+      },
+      "indonesia": {
+        "id": "indonesia",
+        "name": "Indonesia",
+        "continent": "australia",
+        "adjacent": [
+          "siam",
+          "new-guinea",
+          "western-australia"
+        ]
+      },
+      "new-guinea": {
+        "id": "new-guinea",
+        "name": "New Guinea",
+        "continent": "australia",
+        "adjacent": [
+          "indonesia",
+          "western-australia",
+          "eastern-australia"
+        ]
+      },
+      "western-australia": {
+        "id": "western-australia",
+        "name": "Western Australia",
+        "continent": "australia",
+        "adjacent": [
+          "indonesia",
+          "new-guinea",
+          "eastern-australia"
+        ]
+      },
+      "eastern-australia": {
+        "id": "eastern-australia",
+        "name": "Eastern Australia",
+        "continent": "australia",
+        "adjacent": [
+          "new-guinea",
+          "western-australia"
+        ]
+      }
+    },
+    "continentByTerritory": {
+      "alaska": "north-america",
+      "northwest-territory": "north-america",
+      "greenland": "north-america",
+      "alberta": "north-america",
+      "ontario": "north-america",
+      "quebec": "north-america",
+      "western-united-states": "north-america",
+      "eastern-united-states": "north-america",
+      "central-america": "north-america",
+      "venezuela": "south-america",
+      "brazil": "south-america",
+      "peru": "south-america",
+      "argentina": "south-america",
+      "iceland": "europe",
+      "scandinavia": "europe",
+      "ukraine": "europe",
+      "great-britain": "europe",
+      "northern-europe": "europe",
+      "western-europe": "europe",
+      "southern-europe": "europe",
+      "north-africa": "africa",
+      "egypt": "africa",
+      "east-africa": "africa",
+      "congo": "africa",
+      "south-africa": "africa",
+      "madagascar": "africa",
+      "ural": "asia",
+      "siberia": "asia",
+      "yakutsk": "asia",
+      "kamchatka": "asia",
+      "irkutsk": "asia",
+      "mongolia": "asia",
+      "japan": "asia",
+      "afghanistan": "asia",
+      "china": "asia",
+      "middle-east": "asia",
+      "india": "asia",
+      "siam": "asia",
+      "indonesia": "australia",
+      "new-guinea": "australia",
+      "western-australia": "australia",
+      "eastern-australia": "australia"
+    }
+  },
+  "players": [
+    {
+      "userId": "player-1",
+      "username": "Alice",
+      "color": "red",
+      "colorHex": "#c8312c",
+      "token": "🔴",
+      "hand": [
+        {
+          "id": "card-ural",
+          "territoryId": "ural",
+          "troopType": "artillery"
+        },
+        {
+          "id": "card-alberta",
+          "territoryId": "alberta",
+          "troopType": "infantry"
+        },
+        {
+          "id": "card-northwest-territory",
+          "territoryId": "northwest-territory",
+          "troopType": "cavalry"
+        }
+      ],
+      "eliminated": false,
+      "active": true,
+      "connected": true,
+      "conqueredThisTurn": false
+    },
+    {
+      "userId": "player-2",
+      "username": "Bob",
+      "color": "blue",
+      "colorHex": "#2c5fc8",
+      "token": "🔵",
+      "hand": [],
+      "eliminated": false,
+      "active": true,
+      "connected": true,
+      "conqueredThisTurn": false
+    },
+    {
+      "userId": "player-3",
+      "username": "Charlie",
+      "color": "green",
+      "colorHex": "#2c9c3c",
+      "token": "🟢",
+      "hand": [],
+      "eliminated": false,
+      "active": true,
+      "connected": true,
+      "conqueredThisTurn": false
+    },
+    {
+      "userId": "player-4",
+      "username": "Diana",
+      "color": "yellow",
+      "colorHex": "#e8c428",
+      "token": "🟡",
+      "hand": [],
+      "eliminated": false,
+      "active": true,
+      "connected": true,
+      "conqueredThisTurn": false
+    }
+  ],
+  "territories": {
+    "alaska": {
+      "ownerId": "player-1",
+      "armies": 5
+    },
+    "northwest-territory": {
+      "ownerId": "player-1",
+      "armies": 8
+    },
+    "greenland": {
+      "ownerId": "player-1",
+      "armies": 5
+    },
+    "alberta": {
+      "ownerId": "player-1",
+      "armies": 2
+    },
+    "ontario": {
+      "ownerId": "player-1",
+      "armies": 5
+    },
+    "quebec": {
+      "ownerId": "player-1",
+      "armies": 2
+    },
+    "western-united-states": {
+      "ownerId": "player-1",
+      "armies": 9
+    },
+    "eastern-united-states": {
+      "ownerId": "player-1",
+      "armies": 2
+    },
+    "central-america": {
+      "ownerId": "player-1",
+      "armies": 3
+    },
+    "venezuela": {
+      "ownerId": "player-1",
+      "armies": 8
+    },
+    "brazil": {
+      "ownerId": "player-1",
+      "armies": 3
+    },
+    "peru": {
+      "ownerId": "player-1",
+      "armies": 2
+    },
+    "argentina": {
+      "ownerId": "player-1",
+      "armies": 3
+    },
+    "iceland": {
+      "ownerId": "player-2",
+      "armies": 4
+    },
+    "scandinavia": {
+      "ownerId": "player-2",
+      "armies": 9
+    },
+    "ukraine": {
+      "ownerId": "player-2",
+      "armies": 4
+    },
+    "great-britain": {
+      "ownerId": "player-2",
+      "armies": 3
+    },
+    "northern-europe": {
+      "ownerId": "player-2",
+      "armies": 8
+    },
+    "western-europe": {
+      "ownerId": "player-2",
+      "armies": 5
+    },
+    "southern-europe": {
+      "ownerId": "player-2",
+      "armies": 2
+    },
+    "north-africa": {
+      "ownerId": "player-2",
+      "armies": 5
+    },
+    "egypt": {
+      "ownerId": "player-2",
+      "armies": 4
+    },
+    "east-africa": {
+      "ownerId": "player-2",
+      "armies": 9
+    },
+    "congo": {
+      "ownerId": "player-4",
+      "armies": 8
+    },
+    "south-africa": {
+      "ownerId": "player-4",
+      "armies": 3
+    },
+    "madagascar": {
+      "ownerId": "player-4",
+      "armies": 2
+    },
+    "ural": {
+      "ownerId": "player-3",
+      "armies": 9
+    },
+    "siberia": {
+      "ownerId": "player-3",
+      "armies": 4
+    },
+    "yakutsk": {
+      "ownerId": "player-3",
+      "armies": 9
+    },
+    "kamchatka": {
+      "ownerId": "player-3",
+      "armies": 8
+    },
+    "irkutsk": {
+      "ownerId": "player-3",
+      "armies": 9
+    },
+    "mongolia": {
+      "ownerId": "player-3",
+      "armies": 2
+    },
+    "japan": {
+      "ownerId": "player-4",
+      "armies": 5
+    },
+    "afghanistan": {
+      "ownerId": "player-4",
+      "armies": 8
+    },
+    "china": {
+      "ownerId": "player-4",
+      "armies": 9
+    },
+    "middle-east": {
+      "ownerId": "player-4",
+      "armies": 8
+    },
+    "india": {
+      "ownerId": "player-4",
+      "armies": 3
+    },
+    "siam": {
+      "ownerId": "player-4",
+      "armies": 2
+    },
+    "indonesia": {
+      "ownerId": "player-3",
+      "armies": 3
+    },
+    "new-guinea": {
+      "ownerId": "player-3",
+      "armies": 4
+    },
+    "western-australia": {
+      "ownerId": "player-3",
+      "armies": 9
+    },
+    "eastern-australia": {
+      "ownerId": "player-3",
+      "armies": 4
+    }
+  },
+  "turnState": {
+    "currentPlayerIndex": 0,
+    "phase": "attack",
+    "armiesToPlace": 0,
+    "fortifyUsed": false,
+    "attackedThisTurn": true,
+    "lastDiceRoll": null
+  },
+  "deck": [
+    {
+      "id": "card-afghanistan",
+      "territoryId": "afghanistan",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-wild-1",
+      "territoryId": null,
+      "troopType": "wild"
+    },
+    {
+      "id": "card-greenland",
+      "territoryId": "greenland",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-china",
+      "territoryId": "china",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-kamchatka",
+      "territoryId": "kamchatka",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-southern-europe",
+      "territoryId": "southern-europe",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-yakutsk",
+      "territoryId": "yakutsk",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-scandinavia",
+      "territoryId": "scandinavia",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-brazil",
+      "territoryId": "brazil",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-madagascar",
+      "territoryId": "madagascar",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-siberia",
+      "territoryId": "siberia",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-eastern-australia",
+      "territoryId": "eastern-australia",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-western-united-states",
+      "territoryId": "western-united-states",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-ukraine",
+      "territoryId": "ukraine",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-north-africa",
+      "territoryId": "north-africa",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-indonesia",
+      "territoryId": "indonesia",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-siam",
+      "territoryId": "siam",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-india",
+      "territoryId": "india",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-east-africa",
+      "territoryId": "east-africa",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-middle-east",
+      "territoryId": "middle-east",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-wild-2",
+      "territoryId": null,
+      "troopType": "wild"
+    },
+    {
+      "id": "card-new-guinea",
+      "territoryId": "new-guinea",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-japan",
+      "territoryId": "japan",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-central-america",
+      "territoryId": "central-america",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-western-europe",
+      "territoryId": "western-europe",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-irkutsk",
+      "territoryId": "irkutsk",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-iceland",
+      "territoryId": "iceland",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-eastern-united-states",
+      "territoryId": "eastern-united-states",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-argentina",
+      "territoryId": "argentina",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-venezuela",
+      "territoryId": "venezuela",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-congo",
+      "territoryId": "congo",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-egypt",
+      "territoryId": "egypt",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-quebec",
+      "territoryId": "quebec",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-great-britain",
+      "territoryId": "great-britain",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-south-africa",
+      "territoryId": "south-africa",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-alaska",
+      "territoryId": "alaska",
+      "troopType": "infantry"
+    },
+    {
+      "id": "card-western-australia",
+      "territoryId": "western-australia",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-ontario",
+      "territoryId": "ontario",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-peru",
+      "territoryId": "peru",
+      "troopType": "artillery"
+    },
+    {
+      "id": "card-mongolia",
+      "territoryId": "mongolia",
+      "troopType": "cavalry"
+    },
+    {
+      "id": "card-northern-europe",
+      "territoryId": "northern-europe",
+      "troopType": "artillery"
+    }
+  ],
+  "discardPile": [],
+  "cardSetsTraded": 0,
+  "winner": null,
+  "log": [
+    {
+      "timestamp": 1779908000376,
+      "message": "Alice placed 5 armies on Alaska",
+      "type": "action"
+    },
+    {
+      "timestamp": 1779908005376,
+      "message": "Alice attacked Kamchatka from Alaska",
+      "type": "action"
+    }
+  ]
+}

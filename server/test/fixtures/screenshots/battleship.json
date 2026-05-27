@@ -1,0 +1,906 @@
+{
+  "id": "screenshot-battleship",
+  "name": "Battleship",
+  "gameType": "battleship",
+  "stateVersion": 1,
+  "status": "playing",
+  "config": {
+    "settings": {
+      "gridWidth": 10,
+      "gridHeight": 10,
+      "ships": [
+        {
+          "id": "carrier",
+          "name": "Carrier",
+          "length": 5
+        },
+        {
+          "id": "battleship",
+          "name": "Battleship",
+          "length": 4
+        },
+        {
+          "id": "cruiser",
+          "name": "Cruiser",
+          "length": 3
+        },
+        {
+          "id": "submarine",
+          "name": "Submarine",
+          "length": 3
+        },
+        {
+          "id": "destroyer",
+          "name": "Destroyer",
+          "length": 2
+        }
+      ],
+      "firstPlayerSelection": "random",
+      "minPlayers": 2,
+      "maxPlayers": 2,
+      "playerColors": [
+        {
+          "id": "blue",
+          "hex": "#3b82f6"
+        },
+        {
+          "id": "red",
+          "hex": "#ef4444"
+        }
+      ],
+      "playerTokens": [
+        "⚓",
+        "🚢"
+      ]
+    }
+  },
+  "players": [
+    {
+      "userId": "player-1",
+      "username": "Alice",
+      "color": "blue",
+      "colorHex": "#3b82f6",
+      "token": "⚓",
+      "active": true,
+      "connected": true,
+      "ships": [
+        {
+          "id": "carrier",
+          "length": 5,
+          "orientation": "horizontal",
+          "origin": {
+            "x": 0,
+            "y": 0
+          },
+          "cells": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 1,
+              "y": 0
+            },
+            {
+              "x": 2,
+              "y": 0
+            },
+            {
+              "x": 3,
+              "y": 0
+            },
+            {
+              "x": 4,
+              "y": 0
+            }
+          ],
+          "hits": [
+            {
+              "x": 0,
+              "y": 0
+            }
+          ]
+        },
+        {
+          "id": "battleship",
+          "length": 4,
+          "orientation": "horizontal",
+          "origin": {
+            "x": 0,
+            "y": 2
+          },
+          "cells": [
+            {
+              "x": 0,
+              "y": 2
+            },
+            {
+              "x": 1,
+              "y": 2
+            },
+            {
+              "x": 2,
+              "y": 2
+            },
+            {
+              "x": 3,
+              "y": 2
+            }
+          ],
+          "hits": [
+            {
+              "x": 0,
+              "y": 2
+            },
+            {
+              "x": 2,
+              "y": 2
+            }
+          ]
+        },
+        {
+          "id": "cruiser",
+          "length": 3,
+          "orientation": "horizontal",
+          "origin": {
+            "x": 0,
+            "y": 4
+          },
+          "cells": [
+            {
+              "x": 0,
+              "y": 4
+            },
+            {
+              "x": 1,
+              "y": 4
+            },
+            {
+              "x": 2,
+              "y": 4
+            }
+          ],
+          "hits": []
+        },
+        {
+          "id": "submarine",
+          "length": 3,
+          "orientation": "vertical",
+          "origin": {
+            "x": 4,
+            "y": 4
+          },
+          "cells": [
+            {
+              "x": 4,
+              "y": 4
+            },
+            {
+              "x": 4,
+              "y": 5
+            },
+            {
+              "x": 4,
+              "y": 6
+            }
+          ],
+          "hits": [
+            {
+              "x": 4,
+              "y": 4
+            }
+          ]
+        },
+        {
+          "id": "destroyer",
+          "length": 2,
+          "orientation": "vertical",
+          "origin": {
+            "x": 7,
+            "y": 8
+          },
+          "cells": [
+            {
+              "x": 7,
+              "y": 8
+            },
+            {
+              "x": 7,
+              "y": 9
+            }
+          ],
+          "hits": []
+        }
+      ],
+      "ready": true,
+      "shotsReceived": [
+        {
+          "cell": {
+            "x": 5,
+            "y": 5
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 0
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 1
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 3,
+            "y": 3
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 2
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 7,
+            "y": 7
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 3
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 9,
+            "y": 9
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 2,
+            "y": 2
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 4,
+            "y": 4
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        }
+      ],
+      "shotsFired": [
+        {
+          "cell": {
+            "x": 7,
+            "y": 7
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 3
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 1,
+            "y": 3
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 2,
+            "y": 3
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 3,
+            "y": 3
+          },
+          "result": "sunk",
+          "sunkShipId": "battleship",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 5,
+            "y": 0
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 5,
+            "y": 1
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 6,
+            "y": 6
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 8,
+            "y": 8
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 9
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        }
+      ],
+      "shipsSunk": []
+    },
+    {
+      "userId": "player-2",
+      "username": "Bob",
+      "color": "red",
+      "colorHex": "#ef4444",
+      "token": "🚢",
+      "active": true,
+      "connected": true,
+      "ships": [
+        {
+          "id": "carrier",
+          "length": 5,
+          "orientation": "vertical",
+          "origin": {
+            "x": 5,
+            "y": 0
+          },
+          "cells": [
+            {
+              "x": 5,
+              "y": 0
+            },
+            {
+              "x": 5,
+              "y": 1
+            },
+            {
+              "x": 5,
+              "y": 2
+            },
+            {
+              "x": 5,
+              "y": 3
+            },
+            {
+              "x": 5,
+              "y": 4
+            }
+          ],
+          "hits": [
+            {
+              "x": 5,
+              "y": 0
+            },
+            {
+              "x": 5,
+              "y": 1
+            }
+          ]
+        },
+        {
+          "id": "battleship",
+          "length": 4,
+          "orientation": "horizontal",
+          "origin": {
+            "x": 0,
+            "y": 3
+          },
+          "cells": [
+            {
+              "x": 0,
+              "y": 3
+            },
+            {
+              "x": 1,
+              "y": 3
+            },
+            {
+              "x": 2,
+              "y": 3
+            },
+            {
+              "x": 3,
+              "y": 3
+            }
+          ],
+          "hits": [
+            {
+              "x": 0,
+              "y": 3
+            },
+            {
+              "x": 1,
+              "y": 3
+            },
+            {
+              "x": 2,
+              "y": 3
+            },
+            {
+              "x": 3,
+              "y": 3
+            }
+          ]
+        },
+        {
+          "id": "cruiser",
+          "length": 3,
+          "orientation": "vertical",
+          "origin": {
+            "x": 6,
+            "y": 6
+          },
+          "cells": [
+            {
+              "x": 6,
+              "y": 6
+            },
+            {
+              "x": 6,
+              "y": 7
+            },
+            {
+              "x": 6,
+              "y": 8
+            }
+          ],
+          "hits": [
+            {
+              "x": 6,
+              "y": 6
+            }
+          ]
+        },
+        {
+          "id": "submarine",
+          "length": 3,
+          "orientation": "horizontal",
+          "origin": {
+            "x": 0,
+            "y": 9
+          },
+          "cells": [
+            {
+              "x": 0,
+              "y": 9
+            },
+            {
+              "x": 1,
+              "y": 9
+            },
+            {
+              "x": 2,
+              "y": 9
+            }
+          ],
+          "hits": [
+            {
+              "x": 0,
+              "y": 9
+            }
+          ]
+        },
+        {
+          "id": "destroyer",
+          "length": 2,
+          "orientation": "horizontal",
+          "origin": {
+            "x": 8,
+            "y": 4
+          },
+          "cells": [
+            {
+              "x": 8,
+              "y": 4
+            },
+            {
+              "x": 9,
+              "y": 4
+            }
+          ],
+          "hits": []
+        }
+      ],
+      "ready": true,
+      "shotsReceived": [
+        {
+          "cell": {
+            "x": 7,
+            "y": 7
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 3
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 1,
+            "y": 3
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 2,
+            "y": 3
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 3,
+            "y": 3
+          },
+          "result": "sunk",
+          "sunkShipId": "battleship",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 5,
+            "y": 0
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 5,
+            "y": 1
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 6,
+            "y": 6
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 8,
+            "y": 8
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 9
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        }
+      ],
+      "shotsFired": [
+        {
+          "cell": {
+            "x": 5,
+            "y": 5
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 0
+          },
+          "result": "hit",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 1
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 3,
+            "y": 3
+          },
+          "result": "miss",
+          "timestamp": 1779908010368
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 2
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 7,
+            "y": 7
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 0,
+            "y": 3
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 9,
+            "y": 9
+          },
+          "result": "miss",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 2,
+            "y": 2
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        },
+        {
+          "cell": {
+            "x": 4,
+            "y": 4
+          },
+          "result": "hit",
+          "timestamp": 1779908010369
+        }
+      ],
+      "shipsSunk": [
+        "battleship"
+      ]
+    }
+  ],
+  "turnState": {
+    "phase": "firing",
+    "currentPlayerIndex": 0,
+    "setupCompleteAt": 1779908010368
+  },
+  "winner": null,
+  "log": [
+    {
+      "message": "Alice placed Carrier",
+      "type": "setup",
+      "timestamp": 1779908010367
+    },
+    {
+      "message": "Alice placed Battleship",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice placed Cruiser",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice placed Submarine",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice placed Destroyer",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob placed Carrier",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob placed Battleship",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob placed Cruiser",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob placed Submarine",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob placed Destroyer",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice is ready",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob is ready",
+      "type": "setup",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Both players ready — Alice fires first",
+      "type": "game",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice fires at (8,8): miss",
+      "type": "info",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob fires at (6,6): miss",
+      "type": "info",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice fires at (1,4): hit",
+      "type": "hit",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob fires at (1,1): hit",
+      "type": "hit",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice fires at (2,4): hit",
+      "type": "hit",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob fires at (1,2): miss",
+      "type": "info",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice fires at (3,4): hit",
+      "type": "hit",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Bob fires at (4,4): miss",
+      "type": "info",
+      "timestamp": 1779908010368
+    },
+    {
+      "message": "Alice fires at (4,4): sunk",
+      "type": "hit",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Alice sunk Bob's Battleship!",
+      "type": "game",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Bob fires at (1,3): hit",
+      "type": "hit",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Alice fires at (6,1): hit",
+      "type": "hit",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Bob fires at (8,8): miss",
+      "type": "info",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Alice fires at (6,2): hit",
+      "type": "hit",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Bob fires at (1,4): miss",
+      "type": "info",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Alice fires at (7,7): hit",
+      "type": "hit",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Bob fires at (10,10): miss",
+      "type": "info",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Alice fires at (9,9): miss",
+      "type": "info",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Bob fires at (3,3): hit",
+      "type": "hit",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Alice fires at (1,10): hit",
+      "type": "hit",
+      "timestamp": 1779908010369
+    },
+    {
+      "message": "Bob fires at (5,5): hit",
+      "type": "hit",
+      "timestamp": 1779908010369
+    }
+  ]
+}

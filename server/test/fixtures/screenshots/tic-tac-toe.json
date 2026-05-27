@@ -1,0 +1,101 @@
+{
+  "id": "screenshot-tic-tac-toe",
+  "name": "Tic-Tac-Toe",
+  "gameType": "tic-tac-toe",
+  "stateVersion": 1,
+  "status": "playing",
+  "config": {
+    "settings": {
+      "boardSize": 3,
+      "winLength": 3,
+      "playerColors": [
+        {
+          "id": "x",
+          "hex": "#3a86ff"
+        },
+        {
+          "id": "o",
+          "hex": "#e63946"
+        }
+      ],
+      "playerTokens": [
+        "✕",
+        "◯"
+      ]
+    }
+  },
+  "players": [
+    {
+      "userId": "player-1",
+      "username": "Alice",
+      "color": "x",
+      "colorHex": "#3a86ff",
+      "token": "✕",
+      "active": true,
+      "connected": true
+    },
+    {
+      "userId": "player-2",
+      "username": "Bob",
+      "color": "o",
+      "colorHex": "#e63946",
+      "token": "◯",
+      "active": true,
+      "connected": true
+    }
+  ],
+  "board": [
+    [
+      "player-1",
+      "player-2",
+      "player-1"
+    ],
+    [
+      "player-2",
+      "player-1",
+      null
+    ],
+    [
+      "player-2",
+      null,
+      null
+    ]
+  ],
+  "turnState": {
+    "currentPlayerIndex": 0,
+    "phase": "mark"
+  },
+  "winner": null,
+  "log": [
+    {
+      "message": "Alice marked (1,1)",
+      "type": "move",
+      "timestamp": 1779908010355
+    },
+    {
+      "message": "Bob marked (1,2)",
+      "type": "move",
+      "timestamp": 1779908010355
+    },
+    {
+      "message": "Alice marked (1,3)",
+      "type": "move",
+      "timestamp": 1779908010355
+    },
+    {
+      "message": "Bob marked (2,1)",
+      "type": "move",
+      "timestamp": 1779908010355
+    },
+    {
+      "message": "Alice marked (2,2)",
+      "type": "move",
+      "timestamp": 1779908010355
+    },
+    {
+      "message": "Bob marked (3,1)",
+      "type": "move",
+      "timestamp": 1779908010355
+    }
+  ]
+}

@@ -1,0 +1,302 @@
+{
+  "id": "screenshot-yahtzee",
+  "name": "Yahtzee",
+  "gameType": "yahtzee",
+  "stateVersion": 1,
+  "status": "playing",
+  "config": {
+    "settings": {
+      "diceCount": 5,
+      "diceFaces": 6,
+      "rollsPerTurn": 3,
+      "upperBonusThreshold": 63,
+      "upperBonus": 35,
+      "fullHouseScore": 25,
+      "smallStraightScore": 30,
+      "largeStraightScore": 40,
+      "yahtzeeScore": 50,
+      "minPlayers": 1,
+      "maxPlayers": 8,
+      "playerColors": [
+        {
+          "id": "red",
+          "hex": "#e63946"
+        },
+        {
+          "id": "blue",
+          "hex": "#3a86ff"
+        },
+        {
+          "id": "green",
+          "hex": "#2a9d8f"
+        },
+        {
+          "id": "yellow",
+          "hex": "#e8c428"
+        },
+        {
+          "id": "purple",
+          "hex": "#9d4edd"
+        },
+        {
+          "id": "orange",
+          "hex": "#f4845f"
+        },
+        {
+          "id": "teal",
+          "hex": "#43aa8b"
+        },
+        {
+          "id": "pink",
+          "hex": "#ef476f"
+        }
+      ],
+      "playerTokens": [
+        "🎲",
+        "🎯",
+        "🎪",
+        "🎨",
+        "🎭",
+        "🎰",
+        "🎳",
+        "🎱"
+      ]
+    }
+  },
+  "players": [
+    {
+      "userId": "player-1",
+      "username": "Alice",
+      "color": "red",
+      "colorHex": "#e63946",
+      "token": "🎲",
+      "active": true,
+      "connected": true,
+      "scoreSheet": {
+        "ones": 1,
+        "twos": 2,
+        "threes": 0,
+        "fours": null,
+        "fives": null,
+        "sixes": null,
+        "threeOfAKind": null,
+        "fourOfAKind": null,
+        "fullHouse": null,
+        "smallStraight": null,
+        "largeStraight": null,
+        "yahtzee": null,
+        "chance": null
+      }
+    },
+    {
+      "userId": "player-2",
+      "username": "Bob",
+      "color": "blue",
+      "colorHex": "#3a86ff",
+      "token": "🎯",
+      "active": true,
+      "connected": true,
+      "scoreSheet": {
+        "ones": 0,
+        "twos": 2,
+        "threes": 3,
+        "fours": null,
+        "fives": null,
+        "sixes": null,
+        "threeOfAKind": null,
+        "fourOfAKind": null,
+        "fullHouse": null,
+        "smallStraight": null,
+        "largeStraight": null,
+        "yahtzee": null,
+        "chance": null
+      }
+    },
+    {
+      "userId": "player-3",
+      "username": "Charlie",
+      "color": "green",
+      "colorHex": "#2a9d8f",
+      "token": "🎪",
+      "active": true,
+      "connected": true,
+      "scoreSheet": {
+        "ones": 1,
+        "twos": 0,
+        "threes": 0,
+        "fours": null,
+        "fives": null,
+        "sixes": null,
+        "threeOfAKind": null,
+        "fourOfAKind": null,
+        "fullHouse": null,
+        "smallStraight": null,
+        "largeStraight": null,
+        "yahtzee": null,
+        "chance": null
+      }
+    }
+  ],
+  "turnState": {
+    "currentPlayerIndex": 0,
+    "dice": [
+      6,
+      6,
+      6,
+      4,
+      6
+    ],
+    "held": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "rollsUsed": 1,
+    "roundsCompleted": 3
+  },
+  "winner": null,
+  "log": [
+    {
+      "message": "Alice rolled [3,2,4,3,1] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010364
+    },
+    {
+      "message": "Alice scored 1 in ones with [3,2,4,3,1]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob rolled [6,3,4,6,2] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob scored 0 in ones with [6,3,4,6,2]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie rolled [4,1,5,6,5] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie scored 1 in ones with [4,1,5,6,5]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice rolled [6,6,2,4,1] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice scored 2 in twos with [6,6,2,4,1]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob rolled [1,5,5,2,3] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob scored 2 in twos with [1,5,5,2,3]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie rolled [1,1,1,5,5] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie scored 0 in twos with [1,1,1,5,5]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice rolled [4,4,2,5,5] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice scored 0 in threes with [4,4,2,5,5]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob rolled [1,5,3,2,1] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Bob scored 3 in threes with [1,5,3,2,1]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie rolled [6,2,1,4,4] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Charlie scored 0 in threes with [6,2,1,4,4]",
+      "type": "score",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice's turn.",
+      "type": "turn",
+      "timestamp": 1779908010365
+    },
+    {
+      "message": "Alice rolled [6,6,6,4,6] (roll 1/3)",
+      "type": "dice",
+      "timestamp": 1779908010365
+    }
+  ]
+}

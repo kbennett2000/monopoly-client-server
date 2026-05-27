@@ -1,0 +1,212 @@
+{
+  "id": "screenshot-checkers",
+  "name": "Checkers",
+  "gameType": "checkers",
+  "stateVersion": 1,
+  "status": "playing",
+  "config": {
+    "settings": {
+      "boardSize": 8,
+      "piecesPerPlayer": 12,
+      "playerColors": [
+        {
+          "id": "red",
+          "hex": "#e74c3c"
+        },
+        {
+          "id": "black",
+          "hex": "#2c3e50"
+        }
+      ],
+      "playerTokens": [
+        "🔴",
+        "⚫"
+      ]
+    }
+  },
+  "players": [
+    {
+      "userId": "player-1",
+      "username": "Alice",
+      "color": "red",
+      "colorHex": "#e74c3c",
+      "token": "🔴",
+      "pieceCount": 12,
+      "active": true,
+      "connected": true
+    },
+    {
+      "userId": "player-2",
+      "username": "Bob",
+      "color": "black",
+      "colorHex": "#2c3e50",
+      "token": "⚫",
+      "pieceCount": 12,
+      "active": true,
+      "connected": true
+    }
+  ],
+  "board": [
+    [
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      }
+    ],
+    [
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null
+    ],
+    [
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      },
+      null,
+      {
+        "color": "black",
+        "king": false
+      }
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null
+    ],
+    [
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      }
+    ],
+    [
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null,
+      {
+        "color": "red",
+        "king": false
+      },
+      null
+    ]
+  ],
+  "turnState": {
+    "currentPlayerIndex": 0,
+    "phase": "move"
+  },
+  "winner": null,
+  "captureRequired": false,
+  "pendingChainPiece": null,
+  "lastMove": null,
+  "log": []
+}

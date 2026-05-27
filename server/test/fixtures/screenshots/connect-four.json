@@ -1,0 +1,181 @@
+{
+  "id": "screenshot-connect-four",
+  "name": "Connect Four",
+  "gameType": "connect-four",
+  "stateVersion": 1,
+  "status": "playing",
+  "config": {
+    "settings": {
+      "boardWidth": 7,
+      "boardHeight": 6,
+      "winLength": 4,
+      "playerColors": [
+        {
+          "id": "red",
+          "hex": "#e53935"
+        },
+        {
+          "id": "yellow",
+          "hex": "#fdd835"
+        }
+      ],
+      "playerTokens": [
+        "🔴",
+        "🟡"
+      ]
+    }
+  },
+  "players": [
+    {
+      "userId": "player-1",
+      "username": "Alice",
+      "color": "red",
+      "colorHex": "#e53935",
+      "token": "🔴",
+      "active": true,
+      "connected": true
+    },
+    {
+      "userId": "player-2",
+      "username": "Bob",
+      "color": "yellow",
+      "colorHex": "#fdd835",
+      "token": "🟡",
+      "active": true,
+      "connected": true
+    }
+  ],
+  "board": [
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "player-2",
+      "player-2",
+      "player-1",
+      null,
+      null
+    ],
+    [
+      null,
+      "player-2",
+      "player-1",
+      "player-2",
+      "player-2",
+      "player-2",
+      null
+    ],
+    [
+      "player-1",
+      "player-1",
+      "player-2",
+      "player-1",
+      "player-1",
+      "player-1",
+      null
+    ]
+  ],
+  "turnState": {
+    "currentPlayerIndex": 0,
+    "phase": "drop"
+  },
+  "winner": null,
+  "log": [
+    {
+      "message": "Alice dropped in column 4",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Bob dropped in column 3",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Alice dropped in column 5",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Bob dropped in column 4",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Alice dropped in column 3",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Bob dropped in column 5",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Alice dropped in column 2",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Bob dropped in column 4",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Alice dropped in column 6",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Bob dropped in column 3",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Alice dropped in column 1",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Bob dropped in column 6",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Alice dropped in column 5",
+      "type": "move",
+      "timestamp": 1779908010359
+    },
+    {
+      "message": "Bob dropped in column 2",
+      "type": "move",
+      "timestamp": 1779908010359
+    }
+  ]
+}
