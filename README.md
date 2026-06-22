@@ -2,9 +2,13 @@
 
 > A self-hosted multiplayer game platform for LAN parties. Eight classic games with real-time play, hidden information, and spectator support — all running on a server you control.
 
-![LAN Games — The Game of Life mid-game](docs/screenshots/hero.png)
+![LAN Games — self-hosted multiplayer board games for your LAN party](docs/banner.png)
 
+[![CI](https://github.com/kbennett2000/lan-games/actions/workflows/ci.yml/badge.svg)](https://github.com/kbennett2000/lan-games/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Code style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://prettier.io)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-4caf50.svg)](https://github.com/kbennett2000/lan-games/pulls)
 
 8 games · 660+ tests · single-server setup · Node.js 18+
 
@@ -263,6 +267,7 @@ npm run format:write   # Prettier (auto-fix)
 npm run reset-db       # drop all tables and recreate schema
 npm run reset-db:hard  # delete the .db file entirely
 npm run screenshots    # regenerate README screenshots (requires Playwright)
+npm run banner         # regenerate the README banner image (requires Playwright)
 ```
 
 See [docs/development.md](docs/development.md) for environment variables, port configuration, test details, hot-reloading, and the new-game checklist.
@@ -291,7 +296,7 @@ See [docs/development.md](docs/development.md) for environment variables, port c
 - **[Action Descriptors](docs/action-descriptors.md)** — optional rich-action interface (5 of 8 games)
 - **[Renderer Contract](docs/renderer-contract.md)** — client-side renderer interface design memo
 - **[State-Emission Audit](docs/state-emission-audit.md)** — security audit of every state-bearing emit
-- **[Screenshot Generation](docs/screenshots.md)** — how the README gallery images are captured
+- **[Screenshot & Banner Generation](docs/screenshots.md)** — how the README gallery images and banner are produced
 
 ---
 

@@ -32,7 +32,8 @@
     "format:write": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\" \"games/**/*.js\"",
     "reset-db": "node scripts/reset-db.js",
     "reset-db:hard": "node scripts/reset-db.js --hard",
-    "screenshots": "node scripts/capture-screenshots.js"
+    "screenshots": "node scripts/capture-screenshots.js",
+    "banner": "node scripts/generate-banner.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

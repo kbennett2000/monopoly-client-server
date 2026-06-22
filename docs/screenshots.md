@@ -1,4 +1,4 @@
-# Screenshot Generation
+# Screenshot & Banner Generation
 
 The README's game gallery and hero image are generated from hand-authored fixture states via headless Chromium. To regenerate:
 
@@ -8,6 +8,17 @@ npm run screenshots
 ```
 
 This starts an in-memory server, loads each game from its fixture state, opens it in a headless browser, and captures a PNG to `docs/screenshots/`.
+
+## Banner
+
+The README banner (`docs/banner.png`) is a designed wordmark — not a gameplay screenshot. It is rendered from an inline HTML/SVG template styled with the app's brand palette (see `client/css/main.css`) via the same headless Chromium dependency:
+
+```bash
+cd server
+npm run banner
+```
+
+The script (`server/scripts/generate-banner.js`) renders at a 2× device scale for a crisp ~2560×800 PNG. To restyle the banner, edit the `COLORS` map and `bannerHtml()` template in that file and re-run the command — no server or fixtures are needed.
 
 ## Prerequisites
 
